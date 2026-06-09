@@ -259,7 +259,7 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;selected=id;const
   const net=sI-sO,conc=outsS.length?Math.round(outsS[0].vv/sO*100):0;
   // YoY delta from the real SEC series (only when both years are reported)
   const cur=fx&&fx.revT[PERIODS[tIdx]],prv=fx&&fx.revT[String(+PERIODS[tIdx]-1)];
-  const yoy=(cur!=null&&prv!=null)?Math.round((cur-prv)/prv*100):null;
+  const yoy=(cur!=null&&prv>0)?Math.round((cur-prv)/prv*100):null;
   const mv=Math.max(1,...outs.map(x=>x.vv),...ins.map(x=>x.vv));
   const flowRow=(e,dir)=>{const o=dir==='out'?e.t:e.f,oc=byId[o];return `<div class="flow" role="button" tabindex="0" data-e="${e.f}|${e.t}"><div class="r1"><div class="who"><span class="ar">${dir==='out'?'→':'←'}</span><span style="width:9px;height:9px;border-radius:50%;background:${SEC[oc.sec]};display:inline-block"></span><span class="cplink" data-go="${o}" title="Open ${oc.name}">${oc.name}</span><span class="tag ${e.p}">${PNAME[e.p][0]}</span></div><div class="amt">${fmt(e.vv)}</div></div><div class="bar"><i style="width:${Math.min(100,e.vv/mv*100)}%;background:${PCOL[e.p]}"></i></div><div class="meth">confidence ${(e.c*100|0)}%</div></div>`;};
   const html=`
@@ -286,9 +286,9 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;selected=id;const
   document.getElementById('openDD').onclick=()=>openDrill(id);
   // sparkline of the real reported series, with a marker on the scrubbed year
   const cv=document.getElementById('nspark');
-  if(cv&&fx){const g=cv.getContext('2d');const w=cv.clientWidth||300,h=46;
+  const pts=fx?PERIODS.map((p,i)=>({i,v:fx.revT[p]})).filter(d=>d.v!=null):[];
+  if(cv&&pts.length){const g=cv.getContext('2d');const w=cv.clientWidth||300,h=46;
     cv.width=Math.round(w*DPR);cv.height=Math.round(h*DPR);g.setTransform(DPR,0,0,DPR,0,0);
-    const pts=PERIODS.map((p,i)=>({i,v:fx.revT[p]})).filter(d=>d.v!=null);
     const lo=Math.min(...pts.map(d=>d.v)),hi=Math.max(...pts.map(d=>d.v));
     const X=i=>10+i/(PERIODS.length-1)*(w-20),Y=v=>h-8-((v-lo)/((hi-lo)||1))*(h-18);
     g.strokeStyle=PCOL.R;g.lineWidth=1.8;g.beginPath();pts.forEach((d,k)=>k?g.lineTo(X(d.i),Y(d.v)):g.moveTo(X(d.i),Y(d.v)));g.stroke();
@@ -349,7 +349,7 @@ const srch=document.getElementById('srch'),reslist=document.getElementById('resl
 let srchIdx=-1;
 function searchScore(c,q){
   const id=c.id.toLowerCase(),nm=c.name.toLowerCase();
-  const tie=Math.min(9,(c.mcap||c.rev)/500); // big entities float on ties
+  const tie=Math.min(9,((c.mcap||c.rev)||0)/500); // big entities float on ties
   if(id===q)return 100+tie;
   if(id.startsWith(q))return 80+tie;
   if(nm.startsWith(q))return 60+tie;
@@ -459,7 +459,8 @@ function applyHash(){
   if(p.has('size')&&['mcap','rev'].includes(p.get('size'))){sizeBy=p.get('size');document.querySelectorAll('#sizeBy button').forEach(x=>x.classList.toggle('on',x.dataset.by===sizeBy));}
   buildSectors();buildLayers();refreshStats();
   let sel=false;
-  if(p.has('node')&&byId[p.get('node')]){selectNode(p.get('node'));sel=true;}
+  const nid=(p.get('node')||'').toUpperCase(); // ids are uppercase; accept #node=aapl
+  if(nid&&byId[nid]){selectNode(nid);sel=true;}
   restoring=false;
   return sel;
 }
