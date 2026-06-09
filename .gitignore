@@ -5,3 +5,8 @@ playwright-report/
 .DS_Store
 *.log
 npm-debug.log*
+
+# Throwaway probe/screenshot scripts created by local review tooling
+_*.mjs
+_*.cjs
+_*.png
