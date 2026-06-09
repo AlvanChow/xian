@@ -10,9 +10,13 @@ import { dirname, join } from 'node:path';
 import { COMPANIES } from '../src/data.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const UA = 'ValueGrid research (https://github.com/AlvanChow/xian)';
+// SEC's fair-access policy requires "Name contact-email" in the User-Agent.
+// Requests without an email — or with a URL in the string — are 403-rejected.
+const UA = 'ValueGrid research alvan.chow0@gmail.com';
 const MIN_YEAR = 2019, MAX_YEAR = 2024, MIN_YEARS = 3;
-const GAAP_TAGS = ['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'SalesRevenueNet'];
+// RevenuesNetOfInterestExpense is the top-line tag used by banks/brokers
+// (GS, MS, WFC) that don't report a plain Revenues concept.
+const GAAP_TAGS = ['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'SalesRevenueNet', 'RevenuesNetOfInterestExpense'];
 
 /* Manual alias map: data.js id -> ticker as it appears in company_tickers.json.
    Mostly foreign ADRs that file 20-F, plus ids that are not real US tickers. */
@@ -35,7 +39,7 @@ const ALIAS = {
 
 /* Ids whose exact-ticker match is KNOWN-CORRECT even though the SEC company
    title shares no obvious token with our display name. */
-const NAME_CHECK_OVERRIDE = new Set(['IBM', 'AMD', 'GE', 'TD', 'FMX', 'TSMC']);
+const NAME_CHECK_OVERRIDE = new Set(['IBM', 'AMD', 'GE', 'TD', 'FMX', 'TSMC', 'BP']); // BP: 2-letter name is shorter than the token filter
 
 /* Generic tokens that must not, on their own, validate a ticker collision
    (e.g. our "Int'l Holding Co" vs Independence Holding Co on ticker IHC). */
