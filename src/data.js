@@ -659,3 +659,172 @@ FLOWS.push({f:'UST',t:'RTX',v:32,p:'E',c:0.65,m:'US government sales: RTX 2024 1
 FLOWS.push({f:'AAPL',t:'QCOM',v:7,p:'E',c:0.6,m:'Modem/RF chipset purchases under the 2019 supply and license agreements; Apple is a disclosed >10% customer in Qualcomm\'s QCT concentration. Sized from bill-of-materials estimates.',s:'QCOM 10-K customer concentration + BOM estimates'});
 FLOWS.push({f:'NFLX',t:'AMZN',v:1,p:'I',c:0.4,m:'Cloud infrastructure spend: Netflix runs primarily on AWS; annual spend inferred from disclosed purchase commitments, ~$1B scale.',s:'NFLX 10-K purchase obligations + industry reporting'});
 FLOWS.push({f:'JPHH',t:'JPGOV',v:700,p:'E',c:0.45,m:'Household income taxes and social-insurance contributions in Japan (household-borne share of ~¥105T combined receipts).',s:'Japan MOF'});
+
+// Japan household consumption flows. Unlike the flat sector coefficients used
+// for US/EU/China households, Japanese majors earn most revenue overseas, so
+// each share is the sector coefficient applied to the company's DOMESTIC
+// revenue mix (segment disclosures) — a flat coefficient would overstate the
+// Japanese household share several-fold for the global names.
+FLOWS.push({f:'JPHH',t:'TM',v:60,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (~25% of Toyota revenue is Japan; household-borne share of domestic sales → ~19% of total revenue routed from Japan Households).',s:'OECD consumption I-O + TM segment disclosures'});
+FLOWS.push({f:'JPHH',t:'HONDA',v:17,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (~15% of Honda revenue is Japan — North America dominates; → ~12% of total revenue routed from Japan Households).',s:'OECD consumption I-O + Honda segment disclosures'});
+FLOWS.push({f:'JPHH',t:'SONY',v:15,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (~28% of Sony revenue is Japan; consumer-borne share of games/electronics/music → ~17% of total revenue routed from Japan Households).',s:'OECD consumption I-O + Sony segment disclosures'});
+FLOWS.push({f:'JPHH',t:'NTT',v:40,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (NTT revenue is ~80% domestic; consumer mobile/fiber share → ~44% of total revenue routed from Japan Households).',s:'OECD consumption I-O + NTT segment disclosures'});
+FLOWS.push({f:'JPHH',t:'SOFTBANK',v:16,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (SoftBank telecom revenue is predominantly domestic consumer → ~35% of total revenue routed from Japan Households).',s:'OECD consumption I-O + SoftBank segment disclosures'});
+FLOWS.push({f:'JPHH',t:'MUFG',v:12,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (domestic retail banking fees, interest and asset-management share → ~20% of total revenue routed from Japan Households).',s:'OECD consumption I-O + MUFG segment disclosures'});
+FLOWS.push({f:'JPHH',t:'HITACHI',v:2.5,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (Hitachi is mostly B2B; small consumer-appliance and domestic share → ~4% of total revenue routed from Japan Households).',s:'OECD consumption I-O + Hitachi segment disclosures'});
+
+// Rest-of-world household transfers and taxes for the governments we track
+// inside the GLOBALHH footprint (India, Brazil) — every other household node
+// already has its government transfer/tax loop seeded.
+FLOWS.push({f:'INGOV',t:'GLOBALHH',v:70,p:'E',c:0.4,m:'Indian government social transfers to households — food subsidy (~$25B), PM-Kisan, NREGA and other direct benefit transfers. Indian households are a subset of the rest-of-world household node.',s:'India Union Budget'});
+FLOWS.push({f:'GLOBALHH',t:'INGOV',v:120,p:'E',c:0.4,m:'Indian personal income tax receipts (~₹10T), paid by households inside the rest-of-world household node.',s:'India Union Budget receipts'});
+FLOWS.push({f:'BRGOV',t:'GLOBALHH',v:150,p:'E',c:0.4,m:'Brazilian social transfers to households — INSS pension benefits (~R$900B) plus Bolsa Família. Brazilian households are a subset of the rest-of-world household node.',s:'Brazil Tesouro Nacional'});
+FLOWS.push({f:'GLOBALHH',t:'BRGOV',v:90,p:'E',c:0.4,m:'Brazilian household income taxes and social-security contributions, paid by households inside the rest-of-world household node.',s:'Brazil Receita Federal'});
+
+// Regional breakdown for household macro nodes, keyed by node id. Shares are
+// best-estimate allocations of the node's total annual outflows by regional
+// consumption proportions (latest available official statistics) — estimates,
+// rounded to 0.1%, balanced to sum to exactly 1. t/tp name the breakdown unit
+// (singular/plural) for the inspector labels; row abbreviations are unique
+// two-letter codes within each node.
+export const STATE_SHARES = {
+  USHH: {
+    t:'state',tp:'states',
+    m:'State share of US household outflows, allocated by each state\'s proportion of BEA personal consumption expenditures (2023 vintage, rounded). The split is an allocation of the national total, not independently measured state flows.',
+    s:'BEA Personal Consumption Expenditures by State',
+    p:'I',
+    rows:[
+      {n:'California',a:'CA',sh:0.116},
+      {n:'Texas',a:'TX',sh:0.083},
+      {n:'Florida',a:'FL',sh:0.072},
+      {n:'New York',a:'NY',sh:0.069},
+      {n:'Pennsylvania',a:'PA',sh:0.039},
+      {n:'Illinois',a:'IL',sh:0.036},
+      {n:'Ohio',a:'OH',sh:0.033},
+      {n:'Georgia',a:'GA',sh:0.032},
+      {n:'North Carolina',a:'NC',sh:0.031},
+      {n:'New Jersey',a:'NJ',sh:0.030},
+      {n:'Massachusetts',a:'MA',sh:0.028},
+      {n:'Michigan',a:'MI',sh:0.028},
+      {n:'Virginia',a:'VA',sh:0.026},
+      {n:'Washington',a:'WA',sh:0.025},
+      {n:'Arizona',a:'AZ',sh:0.022},
+      {n:'Tennessee',a:'TN',sh:0.021},
+      {n:'Colorado',a:'CO',sh:0.020},
+      {n:'Maryland',a:'MD',sh:0.019},
+      {n:'Minnesota',a:'MN',sh:0.019},
+      {n:'Indiana',a:'IN',sh:0.019},
+      {n:'Missouri',a:'MO',sh:0.017},
+      {n:'Wisconsin',a:'WI',sh:0.017},
+      {n:'South Carolina',a:'SC',sh:0.016},
+      {n:'Alabama',a:'AL',sh:0.013},
+      {n:'Oregon',a:'OR',sh:0.013},
+      {n:'Louisiana',a:'LA',sh:0.013},
+      {n:'Connecticut',a:'CT',sh:0.012},
+      {n:'Kentucky',a:'KY',sh:0.012},
+      {n:'Oklahoma',a:'OK',sh:0.010},
+      {n:'Utah',a:'UT',sh:0.010},
+      {n:'Nevada',a:'NV',sh:0.010},
+      {n:'Iowa',a:'IA',sh:0.009},
+      {n:'Kansas',a:'KS',sh:0.008},
+      {n:'Arkansas',a:'AR',sh:0.008},
+      {n:'Mississippi',a:'MS',sh:0.007},
+      {n:'New Mexico',a:'NM',sh:0.006},
+      {n:'Nebraska',a:'NE',sh:0.006},
+      {n:'Idaho',a:'ID',sh:0.005},
+      {n:'New Hampshire',a:'NH',sh:0.005},
+      {n:'Hawaii',a:'HI',sh:0.004},
+      {n:'West Virginia',a:'WV',sh:0.004},
+      {n:'Maine',a:'ME',sh:0.004},
+      {n:'Montana',a:'MT',sh:0.003},
+      {n:'Rhode Island',a:'RI',sh:0.003},
+      {n:'Delaware',a:'DE',sh:0.003},
+      {n:'District of Columbia',a:'DC',sh:0.003},
+      {n:'South Dakota',a:'SD',sh:0.003},
+      {n:'North Dakota',a:'ND',sh:0.002},
+      {n:'Alaska',a:'AK',sh:0.002},
+      {n:'Vermont',a:'VT',sh:0.002},
+      {n:'Wyoming',a:'WY',sh:0.002},
+    ],
+  },
+  EUHH: {
+    t:'country',tp:'countries',
+    m:'Member-state share of EU household outflows, allocated by each country\'s proportion of EU-27 household final consumption expenditure (Eurostat, 2023 vintage, rounded). Smaller members are grouped as a residual. The split is an allocation of the EU total, not independently measured country flows.',
+    s:'Eurostat household final consumption expenditure by country',
+    p:'I',
+    rows:[
+      {n:'Germany',a:'DE',sh:0.245},
+      {n:'France',a:'FR',sh:0.165},
+      {n:'Italy',a:'IT',sh:0.130},
+      {n:'Spain',a:'ES',sh:0.095},
+      {n:'Netherlands',a:'NL',sh:0.055},
+      {n:'Poland',a:'PL',sh:0.045},
+      {n:'Belgium',a:'BE',sh:0.033},
+      {n:'Austria',a:'AT',sh:0.027},
+      {n:'Sweden',a:'SE',sh:0.027},
+      {n:'Romania',a:'RO',sh:0.019},
+      {n:'Portugal',a:'PT',sh:0.019},
+      {n:'Denmark',a:'DK',sh:0.018},
+      {n:'Ireland',a:'IE',sh:0.017},
+      {n:'Greece',a:'GR',sh:0.016},
+      {n:'Finland',a:'FI',sh:0.015},
+      {n:'Czechia',a:'CZ',sh:0.015},
+      {n:'Hungary',a:'HU',sh:0.010},
+      {n:'Other EU members',a:'OE',sh:0.049,res:1},
+    ],
+  },
+  CNHH: {
+    t:'province',tp:'provinces',
+    m:'Provincial share of China household outflows, allocated by each province\'s proportion of national household consumption (NBS provincial statistics, 2023 vintage, rounded). Smaller provinces and regions are grouped as a residual. The split is an allocation of the national total, not independently measured provincial flows.',
+    s:'China National Bureau of Statistics provincial household consumption',
+    p:'I',
+    rows:[
+      {n:'Guangdong',a:'GD',sh:0.108},
+      {n:'Jiangsu',a:'JS',sh:0.095},
+      {n:'Shandong',a:'SD',sh:0.072},
+      {n:'Zhejiang',a:'ZJ',sh:0.065},
+      {n:'Henan',a:'HA',sh:0.055},
+      {n:'Sichuan',a:'SC',sh:0.053},
+      {n:'Hubei',a:'HB',sh:0.045},
+      {n:'Hunan',a:'HN',sh:0.043},
+      {n:'Anhui',a:'AH',sh:0.039},
+      {n:'Shanghai',a:'SH',sh:0.038},
+      {n:'Hebei',a:'HE',sh:0.037},
+      {n:'Fujian',a:'FJ',sh:0.035},
+      {n:'Beijing',a:'BJ',sh:0.033},
+      {n:'Liaoning',a:'LN',sh:0.028},
+      {n:'Other provinces & regions',a:'OT',sh:0.254,res:1},
+    ],
+  },
+  JPHH: {
+    t:'region',tp:'regions',
+    m:'Regional share of Japan household outflows, allocated by each region\'s proportion of national household consumption (Cabinet Office prefectural accounts and Statistics Bureau household survey, rounded). The split is an allocation of the national total, not independently measured regional flows.',
+    s:'Japan Cabinet Office prefectural accounts · Statistics Bureau',
+    p:'I',
+    rows:[
+      {n:'Kanto (incl. Tokyo)',a:'KT',sh:0.350},
+      {n:'Chubu (incl. Nagoya)',a:'CB',sh:0.172},
+      {n:'Kinki (incl. Osaka)',a:'KK',sh:0.162},
+      {n:'Kyushu & Okinawa',a:'KY',sh:0.116},
+      {n:'Tohoku',a:'TH',sh:0.070},
+      {n:'Chugoku',a:'CG',sh:0.058},
+      {n:'Hokkaido',a:'HK',sh:0.042},
+      {n:'Shikoku',a:'SK',sh:0.030},
+    ],
+  },
+  GLOBALHH: {
+    t:'region',tp:'regions',
+    m:'Regional share of rest-of-world household outflows (this node covers households outside the US, EU, China, and Japan), allocated by each region\'s proportion of household final consumption expenditure (World Bank national accounts, 2023 vintage, rounded). The split is an allocation of the rest-of-world total, not independently measured regional flows.',
+    s:'World Bank household final consumption expenditure (national accounts)',
+    p:'I',
+    rows:[
+      {n:'Other Asia-Pacific',a:'AP',sh:0.260},
+      {n:'Other Europe & Central Asia',a:'OE',sh:0.220},
+      {n:'Latin America & Caribbean',a:'LA',sh:0.160},
+      {n:'India',a:'IN',sh:0.120},
+      {n:'Middle East & North Africa',a:'ME',sh:0.100},
+      {n:'Sub-Saharan Africa',a:'AF',sh:0.070},
+      {n:'Canada',a:'CA',sh:0.070},
+    ],
+  },
+};
