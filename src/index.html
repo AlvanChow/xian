@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ValueGrid · global capital-flow map</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<div id="app">
+  <div class="cell" id="top">
+    <div class="logo"><span class="mk"></span>ValueGrid <small>· global capital-flow map</small></div>
+    <div class="hsep"></div>
+    <div class="hstat">Entities <b id="hN">148</b></div>
+    <div class="hstat">Tracked cap <b id="hCap">—</b></div>
+    <div class="hstat">Flows <b id="hF">—</b></div>
+    <div class="hsep"></div>
+    <div class="seg" id="sizeBy"><button data-by="mcap" class="on">Market cap</button><button data-by="rev">Revenue</button></div>
+    <div class="hright">
+      <span class="livedot" id="liveDot"><i></i> Live</span>
+      <span class="clock" id="clock">--:--:--</span>
+    </div>
+  </div>
+
+  <div class="cell" id="left">
+    <div class="sec"><h4>Search</h4><input class="srch" id="srch" placeholder="Company, ticker, or country"><div class="reslist" id="reslist"></div></div>
+    <div class="sec"><h4>Sectors</h4><div id="sectors"></div></div>
+    <div class="sec"><h4>Data layers</h4><div id="layers"></div></div>
+    <div class="sec" style="border:0"><h4>Provenance mix</h4><div id="provmix"></div></div>
+  </div>
+
+  <div class="cell" id="center">
+    <canvas id="map"></canvas>
+    <div id="tip"></div>
+    <div class="ctl" id="ctlTop"></div>
+    <div class="ctl" id="zoom"><button id="zin">+</button><button id="zout">−</button><button id="zfit">⊡</button></div>
+    <div class="ctl" id="legend">
+      <span><i style="background:var(--reported)"></i>Reported</span>
+      <span><i style="background:var(--estimated)"></i>Estimated</span>
+      <span><i style="background:var(--inferred)"></i>Inferred</span>
+    </div>
+    <div class="ctl" id="hint">drag · scroll · click a node</div>
+    <div id="timebar">
+      <button id="play">▶</button>
+      <span class="period" id="period">2024</span>
+      <input type="range" id="scrub" min="0" max="5" value="5" step="1">
+      <button class="tbtn live" id="liveBtn">Live feed</button>
+    </div>
+  </div>
+
+  <div class="cell" id="right">
+    <div id="inspector"><div class="ins-empty"><div class="big">◎</div>Select any node on the map to inspect its scale, capital flows, counterparties, and the provenance behind every figure.</div></div>
+    <div class="feeds" id="feedsWrap">
+      <h4 style="margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut)">Live feeds <span class="tag" style="background:var(--live);color:#06131a;margin-left:4px">SIM</span></h4>
+      <div id="feeds"></div>
+      <canvas id="spark"></canvas>
+    </div>
+  </div>
+</div>
+
+<div id="modal"><div class="mcard">
+  <div class="mhd"><h3 id="ddTitle">Relationship graph</h3><button class="x" id="ddClose">×</button></div>
+  <canvas id="dd"></canvas>
+  <div class="mft" id="ddFoot"></div>
+</div></div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
