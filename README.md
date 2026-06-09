@@ -39,7 +39,7 @@ The figures are drawn from / modeled on a mix of public sources, including:
 - Central-bank annual financial statements and **Treasury / Eurostat** outlay & receipt tables for transfers and remittances.
 - Tax-incidence modeling (sector margin × jurisdiction effective rate) for corporate tax flows.
 
-> **Note:** This is an illustrative visualization. Reported (R) figures are anchored to filings; Estimated (E) and Inferred (I) figures are modeled and should be treated as directional, not audited.
+> **Note:** This is an illustrative visualization. Company revenue is **real where we can prove it**: `scripts/fetch-data.mjs` pulls reported annual revenue (FY2019–2024) from SEC XBRL filings (10-K / 20-F) into a generated `src/facts.js`, and only those figures display the **R (Reported)** tag — with a "Verify at SEC" link in the inspector. Everything not backed by a fetched filing is shown as **E (Estimated)** or **I (Inferred)** and should be treated as directional, not audited. Flow edges are modeled throughout. The "Market feeds" panel mixes real quotes (ECB FX via Frankfurter, BTC/gold via CoinGecko, fetched only while Live is on) with simulated series — each row is labeled `live` or `sim`.
 
 ## Project structure
 
@@ -49,11 +49,17 @@ src/
   styles.css   # all styling
   world.js     # coastline geometry (export const WORLD)
   data.js      # COMPANIES + FLOWS (export const)
+  facts.js     # GENERATED — real SEC-reported revenue series (do not edit)
   app.js       # render loop, projection/zoom, interaction, inspector, drill-down
 scripts/
-  postbuild.mjs # copies the inlined build to repo-root index.html
+  postbuild.mjs   # copies the inlined build to repo-root index.html
+  fetch-data.mjs  # fetches reported revenue from SEC XBRL -> src/facts.js
 tests/
-  smoke.spec.js # Playwright browser smoke tests
+  smoke.spec.js   # Playwright browser smoke tests
+  unit/           # node:test data-integrity tests
+.github/workflows/
+  ci.yml            # lint + unit + build (staleness guard) + smoke tests
+  refresh-data.yml  # monthly SEC data refresh + rebuild + commit
 index.html      # BUILT single-file deliverable (GitHub Pages entry point)
 ```
 

@@ -9,6 +9,8 @@ import { defineConfig } from '@playwright/test';
 // non-deterministic results, so we force a single serial worker.
 export default defineConfig({
   testDir: './tests',
+  // Only pick up Playwright specs; tests/unit/*.test.mjs run under node:test.
+  testMatch: '**/*.spec.js',
   fullyParallel: false,
   workers: 1,
   reporter: 'list',

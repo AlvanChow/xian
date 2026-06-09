@@ -18,6 +18,9 @@ export default [
         clearInterval: 'readonly',
         devicePixelRatio: 'readonly',
         console: 'readonly',
+        fetch: 'readonly',
+        Promise: 'readonly',
+        localStorage: 'readonly',
       },
     },
     rules: {
@@ -29,7 +32,7 @@ export default [
     // Node-side files: build scripts, configs, and Playwright specs. The spec
     // callbacks passed to page.evaluate()/locator.evaluate() execute in the
     // browser, so a few browser globals are allowed here too.
-    files: ['tests/**/*.js', 'scripts/**/*.mjs', '*.js', '*.mjs'],
+    files: ['tests/**/*.js', 'tests/**/*.mjs', 'scripts/**/*.mjs', '*.js', '*.mjs'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'module',
@@ -37,6 +40,9 @@ export default [
         console: 'readonly',
         process: 'readonly',
         URL: 'readonly',
+        fetch: 'readonly',
+        setTimeout: 'readonly',
+        Promise: 'readonly',
         window: 'readonly',
         document: 'readonly',
         getComputedStyle: 'readonly',

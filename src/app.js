@@ -1,6 +1,7 @@
 /* ValueGrid v2 — refined map app */
 import { WORLD } from './world.js';
 import { COMPANIES, FLOWS } from './data.js';
+import { FACTS } from './facts.js';
 
 const C=COMPANIES, FL=FLOWS;
 const byId=Object.fromEntries(C.map(c=>[c.id,c]));
@@ -11,6 +12,13 @@ const PERIODS=['2019','2020','2021','2022','2023','2024'], TMUL=[.62,.60,.82,.95
 let sizeBy='mcap',secOn={},layerOn={R:1,E:1,I:1},tIdx=5,playing=false,live=false,selected=null,hover=null;
 Object.keys(SEC).forEach(s=>secOn[s]=1);
 const fmt=v=>v>=1000?'$'+(v/1000).toFixed(2)+'T':(v>=1?'$'+v.toFixed(0)+'B':'$'+(v*1000).toFixed(0)+'M');
+// Revenue for the current period: real SEC-reported series where we have one
+// (FACTS, generated from XBRL filings), otherwise the curated base figure
+// scaled by the global year multiplier — an estimate, and labeled as such.
+const revAt=c=>{const f=FACTS[c.id],v=f&&f.revT&&f.revT[PERIODS[tIdx]];return v!=null?v:c.rev*TMUL[tIdx];};
+// Display provenance: a node only earns the "Reported" tag when its revenue is
+// actually backed by a filing we fetched; otherwise R degrades honestly to E.
+const nProv=c=>FACTS[c.id]?'R':(c.prov==='R'?'E':c.prov);
 // Respect the OS "reduce motion" setting: freeze the travelling flow-dot pulse.
 const reduceMotion=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -28,8 +36,11 @@ function unproj(x,y){const s=pxPerDeg();return{lon:view.cx+(x-MW/2)/s, lat:view.
 /* ---- filtered data ---- */
 // The selected node always stays visible even if its sector is toggled off
 // (search can select any node, so its pin must exist to anchor the view).
-const visC=()=>C.filter(c=>secOn[c.sec]||c.id===selected);
-const visF=()=>{const m=TMUL[tIdx];return FL.filter(e=>layerOn[e.p]&&byId[e.f]&&byId[e.t]&&secOn[byId[e.f].sec]&&secOn[byId[e.t].sec]).map(e=>({...e,vv:e.v*m}));};
+// nodeVis is the single visibility rule shared by the map AND the inspector,
+// so the inspector's flow lists always agree with the arcs actually drawn.
+const nodeVis=c=>secOn[c.sec]||c.id===selected;
+const visC=()=>C.filter(nodeVis);
+const visF=()=>{const m=TMUL[tIdx];return FL.filter(e=>layerOn[e.p]&&byId[e.f]&&byId[e.t]&&nodeVis(byId[e.f])&&nodeVis(byId[e.t])).map(e=>({...e,vv:e.v*m}));};
 
 /* ---- rendering ---- */
 let pulse=0,t0=performance.now(),lastDrawn=[];
@@ -66,11 +77,14 @@ function render(){
     mx.fillStyle='#142036';mx.fill();
     mx.strokeStyle='#27375a';mx.stroke();
   });
-  // subtle land top-light overlay
   const fl=visF();
   // arcs
   fl.forEach(e=>{
-    const A=byId[e.f],B=byId[e.t];const a=proj(A.lng,A.lat),b=proj(B.lng,B.lat);
+    const A=byId[e.f],B=byId[e.t];
+    // Antimeridian: route trans-Pacific flows the short way (shift the far
+    // endpoint ±360°) instead of dragging the arc across the whole Atlantic.
+    let bLng=B.lng; if(Math.abs(bLng-A.lng)>180)bLng+=bLng<A.lng?360:-360;
+    const a=proj(A.lng,A.lat),b=proj(bLng,B.lat);
     const hot=selected&&(e.f===selected||e.t===selected);
     if(selected&&!hot)return;
     const col=PCOL[e.p];
@@ -91,7 +105,9 @@ function render(){
   // pins. Radius shrinks as you zoom in so dense clusters reveal separation
   // instead of overlapping into a blob.
   const sized=visC();
-  const sizeVal=c=>{const v=c[sizeBy]; return v>0?v:c.rev;}; // macro nodes have mcap 0 → fall back to flow scale (rev)
+  // mcap sizing for listed companies; revenue sizing is time-aware (real SEC
+  // series where available). Macro nodes (mcap 0) always size by flow scale.
+  const sizeVal=c=>(sizeBy==='mcap'&&c.mcap>0)?c.mcap:revAt(c);
   const maxV=Math.max(1,...sized.map(sizeVal));
   const zoomShrink=Math.max(0.35, Math.min(1, 1.6/Math.sqrt(view.scale))); // 1 at scale~2.5, ~0.35 floor
   const drawn=[];
@@ -130,7 +146,7 @@ function render(){
     mx.fill();mx.shadowBlur=0;mx.globalAlpha=1;
     mx.lineWidth=(sel||hov?2.2:1.2)*DPR;mx.strokeStyle=sel||hov?'#fff':'rgba(255,255,255,.55)';mx.stroke();
     // provenance dot
-    mx.fillStyle=PCOL[c.prov];mx.strokeStyle='#0a0e16';mx.lineWidth=1.3*DPR;
+    mx.fillStyle=PCOL[nProv(c)];mx.strokeStyle='#0a0e16';mx.lineWidth=1.3*DPR;
     mx.beginPath();mx.arc(s.x+r*0.7,s.y-r*0.7,3.2*DPR,0,6.28);mx.fill();mx.stroke();
   });
   // Label pass — drawn biggest-first; skip a label whose box overlaps an already
@@ -161,7 +177,9 @@ function arrow(f,t,col){const an=Math.atan2(t.y-f.y,t.x-f.x),sz=6*DPR;mx.fillSty
 /* ---- interaction (pointer events: mouse, touch, and pen) ---- */
 let panning=false,last={x:0,y:0},moved=false,pinch0=null;
 const ptrs=new Map(); // active pointers over the map: id -> CSS-px position
-function pick(px,py){const dpr=DPR;px*=dpr;py*=dpr;let best=null,bd=1e9;for(const p of lastDrawn){const d=Math.hypot(px-p.x,py-p.y);if(d<=p.r+5*dpr&&d<bd){bd=d;best=p.c;}}return best;}
+// Touch pointers get a larger hit target: small pins are ~8 CSS px, well under
+// fingertip size, so floor the effective radius and widen the slop for touch.
+function pick(px,py,touch){const dpr=DPR;px*=dpr;py*=dpr;let best=null,bd=1e9;for(const p of lastDrawn){const eff=touch?Math.max(p.r,12*dpr)+8*dpr:p.r+5*dpr;const d=Math.hypot(px-p.x,py-p.y);if(d<=eff&&d<bd){bd=d;best=p.c;}}return best;}
 const hideTip=()=>{const tp=document.getElementById('tip');if(tp)tp.style.opacity=0;};
 function zoomAbout(px,py,scale){ // rescale while keeping the (CSS-px) point fixed on screen
   const before=unproj(px*DPR,py*DPR);
@@ -186,13 +204,13 @@ map.addEventListener('pointermove',e=>{
   if(panning){const dx=px-last.x,dy=py-last.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;const s=pxPerDeg()/DPR;target.cx-=dx/s;target.cy+=dy/(s*0.95);view.cx=target.cx;view.cy=target.cy;last={x:px,y:py};hideTip();return;}
   if(e.pointerType!=='mouse')return; // hover/tooltip is a mouse-only affordance
   const c=pick(px,py);hover=c;const tip=document.getElementById('tip');if(!tip)return;
-  if(c){const m=TMUL[tIdx];const isGov=c.mcap===0;tip.innerHTML=`<div class="t">${c.name}</div><div class="s">${SECNAME[c.sec]} · ${c.country}</div><div class="s">${isGov?'Annual flows ~'+fmt(c.rev*m):'Cap '+fmt(c.mcap)+' · Rev '+fmt(c.rev*m)}</div><div class="pv"><i style="background:${PCOL[c.prov]}"></i>${PNAME[c.prov]} ${isGov?'(modeled)':'revenue'}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-248)+'px';tip.style.top=Math.min(py+16,map.clientHeight-100)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
+  if(c){const isGov=c.mcap===0,np=nProv(c);tip.innerHTML=`<div class="t">${c.name}</div><div class="s">${SECNAME[c.sec]} · ${c.country}</div><div class="s">${isGov?'Annual flows ~'+fmt(revAt(c)):'Cap '+fmt(c.mcap)+' · Rev '+fmt(revAt(c))}</div><div class="pv"><i style="background:${PCOL[np]}"></i>${PNAME[np]} ${isGov?'(modeled)':(FACTS[c.id]?'revenue (SEC filing)':'revenue')}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-248)+'px';tip.style.top=Math.min(py+16,map.clientHeight-100)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
   else{tip.style.opacity=0;map.style.cursor='grab';}});
 function endPointer(e){
   if(!ptrs.delete(e.pointerId))return;
   if(ptrs.size===1){pinch0=null;const[a]=ptrs.values();panning=true;moved=true;last={x:a.x,y:a.y};} // pinch ended: remaining finger keeps panning
   else if(ptrs.size===0){
-    if(panning&&!moved&&e.type==='pointerup'){const c=pick(e.offsetX,e.offsetY);if(c)selectNode(c.id);}
+    if(panning&&!moved&&e.type==='pointerup'){const c=pick(e.offsetX,e.offsetY,e.pointerType!=='mouse');if(c)selectNode(c.id);}
     panning=false;pinch0=null;
   }
 }
@@ -220,10 +238,12 @@ document.getElementById('zout').onclick=()=>target.scale=Math.max(0.8,target.sca
 document.getElementById('zfit').onclick=fitView;
 
 /* ---- inspector ---- */
-function selectNode(id){selected=id;const n=byId[id],m=TMUL[tIdx];
-  target.cx=n.lng;target.cy=n.lat;if(target.scale<2)target.scale=2.2;
-  const outs=FL.filter(e=>e.f===id&&layerOn[e.p]).map(e=>({...e,vv:e.v*m}));
-  const ins=FL.filter(e=>e.t===id&&layerOn[e.p]).map(e=>({...e,vv:e.v*m}));
+// fly=false refreshes the inspector in place (filter/scrub changes) without
+// re-aiming the camera at the node.
+function selectNode(id,fly=true){const n=byId[id];if(!n)return;selected=id;const m=TMUL[tIdx],np=nProv(n),fx=FACTS[id];
+  if(fly){target.cx=n.lng;target.cy=n.lat;if(target.scale<2)target.scale=2.2;}
+  const outs=FL.filter(e=>e.f===id&&layerOn[e.p]&&nodeVis(byId[e.t])).map(e=>({...e,vv:e.v*m}));
+  const ins=FL.filter(e=>e.t===id&&layerOn[e.p]&&nodeVis(byId[e.f])).map(e=>({...e,vv:e.v*m}));
   const sO=outs.reduce((a,b)=>a+b.vv,0),sI=ins.reduce((a,b)=>a+b.vv,0);
   const mv=Math.max(1,...outs.map(x=>x.vv),...ins.map(x=>x.vv));
   const flowRow=(e,dir)=>{const o=dir==='out'?e.t:e.f,oc=byId[o];return `<div class="flow" role="button" tabindex="0" data-e="${e.f}|${e.t}"><div class="r1"><div class="who"><span class="ar">${dir==='out'?'→':'←'}</span><span style="width:9px;height:9px;border-radius:50%;background:${SEC[oc.sec]};display:inline-block"></span>${oc.name}<span class="tag ${e.p}">${PNAME[e.p][0]}</span></div><div class="amt">${fmt(e.vv)}</div></div><div class="bar"><i style="width:${Math.min(100,e.vv/mv*100)}%;background:${PCOL[e.p]}"></i></div><div class="meth">confidence ${(e.c*100|0)}%</div></div>`;};
@@ -231,13 +251,13 @@ function selectNode(id){selected=id;const n=byId[id],m=TMUL[tIdx];
    <div class="ihead"><div class="tk">${n.id}</div><div class="nm">${n.name}</div>
      <div class="meta"><span class="pill"><span class="d" style="background:${SEC[n.sec]}"></span>${SECNAME[n.sec]}</span><span class="pill">📍 ${n.country}</span></div></div>
    <div class="stats">
-     <div class="stat"><div class="k">${n.mcap===0?'ANNUAL FLOWS':'MARKET CAP'}</div><div class="v">${n.mcap===0?fmt(n.rev*m):fmt(n.mcap)}<span class="tag E">E</span></div></div>
-     <div class="stat"><div class="k">REVENUE · ${PERIODS[tIdx]}</div><div class="v">${fmt(n.rev*m)}<span class="tag ${n.prov}">${PNAME[n.prov][0]}</span></div></div>
+     <div class="stat"><div class="k">${n.mcap===0?'ANNUAL FLOWS':'MARKET CAP'}</div><div class="v">${n.mcap===0?fmt(revAt(n)):fmt(n.mcap)}<span class="tag ${n.mcap===0?np:'E'}">${n.mcap===0?PNAME[np][0]:'E'}</span></div></div>
+     <div class="stat"><div class="k">REVENUE · ${PERIODS[tIdx]}</div><div class="v">${fmt(revAt(n))}<span class="tag ${np}">${PNAME[np][0]}</span></div></div>
      <div class="stat"><div class="k">OUTFLOWS</div><div class="v" style="color:var(--accent)">${fmt(sO)}</div></div>
      <div class="stat"><div class="k">INFLOWS</div><div class="v" style="color:var(--live)">${fmt(sI)}</div></div>
    </div>
    <button class="ddbtn" id="openDD">View relationship graph →</button>
-   ${n.prov==='R'?`<div class="verdict ok">✓ Revenue anchored to a primary filing. Market cap is point-in-time (tagged Estimated — it moves every trading day).</div>`:`<div class="verdict warn">⚠ Revenue carries a ${PNAME[n.prov]} tag — modeled or from limited disclosure. Treat as directional.</div>`}
+   ${fx?`<div class="verdict ok">✓ Revenue is the reported figure from SEC XBRL filings (10-K/20-F, through ${fx.asOf}) — scrubbing years shows the real series, not an estimate. <a href="${fx.url}" target="_blank" rel="noopener">Verify at SEC ↗</a></div>`:np==='R'?`<div class="verdict ok">✓ Revenue anchored to a primary filing. Market cap is point-in-time (tagged Estimated — it moves every trading day).</div>`:`<div class="verdict warn">⚠ Revenue carries a ${PNAME[np]} tag — modeled or not yet verified against a filing. Treat as directional.</div>`}
    <div class="flowsec"><div class="lbl">Outflows <span>${outs.length}</span></div>${outs.length?outs.sort((a,b)=>b.vv-a.vv).map(e=>flowRow(e,'out')).join(''):'<div style="color:var(--mut);font-size:12px;padding:6px 0">No seeded outflows. In production these derive from supplier disclosures + input-output tables.</div>'}</div>
    <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Inflows <span>${ins.length}</span></div>${ins.length?ins.sort((a,b)=>b.vv-a.vv).map(e=>flowRow(e,'in')).join(''):'<div style="color:var(--mut);font-size:12px;padding:6px 0">No seeded inflows in current view.</div>'}</div>
    <div class="mblock" id="methblock"><div class="lbl">Methodology</div><div style="color:var(--mut);font-size:12px">Select a flow above to see how its figure was derived.</div></div>`;
@@ -278,16 +298,16 @@ function ddLoop(){
   dx.clearRect(0,0,W,H);
   eg.forEach(e=>{const a=m[e.f],b=m[e.t];dx.strokeStyle=PCOL[e.p];dx.globalAlpha=0.85;dx.setLineDash(e.p==='R'?[]:(e.p==='E'?[6,4]:[2,5]));dx.lineWidth=Math.max(1,Math.log(e.v+1)*0.7);dx.beginPath();dx.moveTo(cx+a.x,cy+a.y);dx.lineTo(cx+b.x,cy+b.y);dx.stroke();dx.setLineDash([]);const t=pulse%1,px=a.x+(b.x-a.x)*t,py=a.y+(b.y-a.y)*t;dx.fillStyle=PCOL[e.p];dx.globalAlpha=1;dx.beginPath();dx.arc(cx+px,cy+py,2.6,0,6.28);dx.fill();dx.fillStyle='#c9d4e3';dx.font='10px Inter,sans-serif';dx.textAlign='center';dx.fillText(fmt(e.v*TMUL[tIdx]),cx+(a.x+b.x)/2,cy+(a.y+b.y)/2-4);});
   dx.globalAlpha=1;
-  ddN.forEach(n=>{const c=byId[n.id],r=n.id===ddC?28:19;dx.beginPath();dx.arc(cx+n.x,cy+n.y,r,0,6.28);dx.fillStyle=SEC[c.sec];dx.globalAlpha=n.id===ddC?1:0.88;dx.shadowBlur=n.id===ddC?16:6;dx.shadowColor=SEC[c.sec];dx.fill();dx.shadowBlur=0;dx.globalAlpha=1;dx.lineWidth=n.id===ddC?3:1.5;dx.strokeStyle='#fff';dx.stroke();dx.fillStyle=PCOL[c.prov];dx.strokeStyle='#101725';dx.lineWidth=1.4;dx.beginPath();dx.arc(cx+n.x+r*0.7,cy+n.y-r*0.7,3.4,0,6.28);dx.fill();dx.stroke();dx.fillStyle='#fff';dx.font='600 11px Inter,sans-serif';dx.textAlign='center';dx.fillText(n.id,cx+n.x,cy+n.y+r+14);});
+  ddN.forEach(n=>{const c=byId[n.id],r=n.id===ddC?28:19;dx.beginPath();dx.arc(cx+n.x,cy+n.y,r,0,6.28);dx.fillStyle=SEC[c.sec];dx.globalAlpha=n.id===ddC?1:0.88;dx.shadowBlur=n.id===ddC?16:6;dx.shadowColor=SEC[c.sec];dx.fill();dx.shadowBlur=0;dx.globalAlpha=1;dx.lineWidth=n.id===ddC?3:1.5;dx.strokeStyle='#fff';dx.stroke();dx.fillStyle=PCOL[nProv(c)];dx.strokeStyle='#101725';dx.lineWidth=1.4;dx.beginPath();dx.arc(cx+n.x+r*0.7,cy+n.y-r*0.7,3.4,0,6.28);dx.fill();dx.stroke();dx.fillStyle='#fff';dx.font='600 11px Inter,sans-serif';dx.textAlign='center';dx.fillText(n.id,cx+n.x,cy+n.y+r+14);});
   ddRAF=requestAnimationFrame(ddLoop);}
-dd.addEventListener('pointerdown',e=>{dd.setPointerCapture(e.pointerId);const px=e.offsetX-dd.clientWidth/2,py=e.offsetY-dd.clientHeight/2;ddDrag=ddN.find(n=>Math.hypot(px-n.x,py-n.y)<24)||null;});
+dd.addEventListener('pointerdown',e=>{dd.setPointerCapture(e.pointerId);const px=e.offsetX-dd.clientWidth/2,py=e.offsetY-dd.clientHeight/2;ddDrag=ddN.find(n=>Math.hypot(px-n.x,py-n.y)<(n.id===ddC?33:24))||null;});
 dd.addEventListener('pointermove',e=>{if(ddDrag){ddDrag.x=e.offsetX-dd.clientWidth/2;ddDrag.y=e.offsetY-dd.clientHeight/2;ddDrag.vx=ddDrag.vy=0;}});
 dd.addEventListener('pointerup',()=>ddDrag=null);
 dd.addEventListener('pointercancel',()=>ddDrag=null);
 
 /* ---- panels ---- */
-function buildSectors(){const ct={};C.forEach(c=>ct[c.sec]=(ct[c.sec]||0)+1);document.getElementById('sectors').innerHTML=Object.keys(SEC).map(s=>`<button class="chip ${secOn[s]?'on':''}" data-s="${s}" style="${secOn[s]?'background:'+SEC[s]+'1a;border-color:'+SEC[s]+'66':''}"><span class="l"><span class="d" style="background:${SEC[s]}"></span>${SECNAME[s]}</span><span class="ct">${ct[s]}</span></button>`).join('');document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{secOn[b.dataset.s]=!secOn[b.dataset.s];buildSectors();refreshStats();});}
-function buildLayers(){const L={R:'Filing-anchored revenue & disclosures',E:'Modeled from disclosure + I-O; point-in-time caps',I:'Third-party or allocation heuristics'};document.getElementById('layers').innerHTML=Object.keys(L).map(k=>`<div class="leg ${layerOn[k]?'':'off'}" data-l="${k}" role="switch" tabindex="0" aria-checked="${layerOn[k]?'true':'false'}" aria-label="${PNAME[k]} layer"><span class="ln" style="border-color:${PCOL[k]};border-top-style:${k==='R'?'solid':k==='E'?'dashed':'dotted'}"></span><div><div class="ttl" style="color:${PCOL[k]}">${PNAME[k]}</div><div class="sub">${L[k]}</div></div></div>`).join('');document.querySelectorAll('[data-l]').forEach(el=>{const go=()=>{layerOn[el.dataset.l]=!layerOn[el.dataset.l];buildLayers();refreshStats();if(selected)selectNode(selected);};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});}
+function buildSectors(){const ct={};C.forEach(c=>ct[c.sec]=(ct[c.sec]||0)+1);document.getElementById('sectors').innerHTML=Object.keys(SEC).map(s=>`<button class="chip ${secOn[s]?'on':''}" data-s="${s}" style="${secOn[s]?'background:'+SEC[s]+'1a;border-color:'+SEC[s]+'66':''}"><span class="l"><span class="d" style="background:${SEC[s]}"></span>${SECNAME[s]}</span><span class="ct">${ct[s]}</span></button>`).join('');document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{secOn[b.dataset.s]=!secOn[b.dataset.s];buildSectors();refreshStats();if(selected)selectNode(selected,false);});}
+function buildLayers(){const L={R:'Filing-anchored revenue & disclosures',E:'Modeled from disclosure + I-O; point-in-time caps',I:'Third-party or allocation heuristics'};document.getElementById('layers').innerHTML=Object.keys(L).map(k=>`<div class="leg ${layerOn[k]?'':'off'}" data-l="${k}" role="switch" tabindex="0" aria-checked="${layerOn[k]?'true':'false'}" aria-label="${PNAME[k]} layer"><span class="ln" style="border-color:${PCOL[k]};border-top-style:${k==='R'?'solid':k==='E'?'dashed':'dotted'}"></span><div><div class="ttl" style="color:${PCOL[k]}">${PNAME[k]}</div><div class="sub">${L[k]}</div></div></div>`).join('');document.querySelectorAll('[data-l]').forEach(el=>{const go=()=>{layerOn[el.dataset.l]=!layerOn[el.dataset.l];buildLayers();refreshStats();if(selected)selectNode(selected,false);};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});}
 function refreshStats(){const sc=visC(),fl=visF();map.setAttribute('aria-label','Capital-flow world map — '+sc.length+' entities and '+fl.length+' flows shown for period '+(live?'live (simulated)':PERIODS[tIdx])+'. When focused: arrow keys pan, plus and minus zoom, zero resets. Use the search box and side panels to explore entity details and provenance.');document.getElementById('hCap').textContent=fmt(sc.reduce((a,c)=>a+c.mcap,0));document.getElementById('hF').textContent=fl.length;document.getElementById('hN').textContent=sc.length;const mix={R:0,E:0,I:0};fl.forEach(e=>mix[e.p]+=e.vv);const tot=mix.R+mix.E+mix.I||1;document.getElementById('provmix').innerHTML=['R','E','I'].map(k=>`<div class="mixrow"><div class="h"><b style="color:${PCOL[k]}">${PNAME[k]}</b><span>${(mix[k]/tot*100).toFixed(0)}%</span></div><div class="track"><i style="width:${mix[k]/tot*100}%;background:${PCOL[k]}"></i></div></div>`).join('')+`<div class="note">Share of visible flow volume by source quality. Toggle layers to see how much rests on modeling vs. reported figures.</div>`;}
 
 /* ---- search ---- */
@@ -296,25 +316,45 @@ srch.oninput=()=>{const q=srch.value.toLowerCase().trim();if(!q){reslist.innerHT
 
 /* ---- size toggle / time / live ---- */
 document.querySelectorAll('#sizeBy button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#sizeBy button').forEach(x=>x.classList.remove('on'));b.classList.add('on');sizeBy=b.dataset.by;});
-const scrub=document.getElementById('scrub');scrub.oninput=()=>{tIdx=+scrub.value;document.getElementById('period').textContent=PERIODS[tIdx];refreshStats();if(selected)selectNode(selected);};
+const scrub=document.getElementById('scrub');scrub.oninput=()=>{tIdx=+scrub.value;document.getElementById('period').textContent=PERIODS[tIdx];refreshStats();if(selected)selectNode(selected,false);};
 let playIv=null;
-document.getElementById('play').onclick=function(){playing=!playing;this.textContent=playing?'⏸':'▶';this.setAttribute('aria-label',playing?'Pause timeline':'Play timeline');clearInterval(playIv);playIv=null;if(playing){playIv=setInterval(()=>{tIdx=(tIdx+1)%6;scrub.value=tIdx;scrub.oninput();},1100);}};
-const feeds=[{k:'WTI Crude',v:72.4,u:''},{k:'Brent',v:76.1,u:''},{k:'USD/JPY',v:151.2,u:''},{k:'EUR/USD',v:1.083,u:''},{k:'10Y UST',v:4.21,u:'%'},{k:'Gold',v:2032,u:''}];
+document.getElementById('play').onclick=function(){playing=!playing;this.textContent=playing?'⏸':'▶';this.setAttribute('aria-label',playing?'Pause timeline':'Play timeline');clearInterval(playIv);playIv=null;if(playing){playIv=setInterval(()=>{tIdx=(tIdx+1)%PERIODS.length;scrub.value=tIdx;scrub.oninput();},1100);}};
+const feeds=[{k:'WTI Crude',v:72.4,u:''},{k:'Brent',v:76.1,u:''},{k:'USD/JPY',v:151.2,u:''},{k:'EUR/USD',v:1.083,u:''},{k:'10Y UST',v:4.21,u:'%'},{k:'Gold',v:2032,u:''},{k:'Bitcoin',v:97000,u:''}];
 const sd=Array.from({length:90},()=>50);
+// Real quotes where a keyless, CORS-open API exists: Frankfurter (ECB FX) and
+// CoinGecko (BTC, PAXG as a gold proxy). Rows the APIs cover are marked "live";
+// the rest stay an honest simulation marked "sim". Fetches run only while the
+// Live toggle is on, and any failure (offline, rate limit, file://) silently
+// leaves the row simulating — no console noise, no broken panel.
+let liveIv=null;
+async function fetchFeeds(){
+  if(!live)return;
+  try{
+    const[fx,cg]=await Promise.all([
+      fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=JPY,EUR').then(r=>r.json()),
+      fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,pax-gold&vs_currencies=usd').then(r=>r.json())
+    ]);
+    const set=(k,val)=>{const f=feeds.find(x=>x.k===k);if(f&&val>0){f.dir=val>=f.v;f.v=val;f.real=true;}};
+    if(fx&&fx.rates){set('USD/JPY',fx.rates.JPY);set('EUR/USD',1/fx.rates.EUR);}
+    if(cg){if(cg['pax-gold'])set('Gold',cg['pax-gold'].usd);if(cg.bitcoin)set('Bitcoin',cg.bitcoin.usd);}
+  }catch{/* keep simulating */}
+  tick();
+}
+function startLiveFetch(){clearInterval(liveIv);liveIv=null;if(live){fetchFeeds();liveIv=setInterval(fetchFeeds,60000);}}
 // Direction coloring only applies while live — before the sim runs there's no
 // tick-to-tick move, so values stay neutral instead of all reading as "down".
-function tick(){if(live)feeds.forEach(f=>{const d=(Math.random()-0.5)*f.v*0.004;f.v=Math.max(.001,f.v+d);f.dir=d>=0;});document.getElementById('feeds').innerHTML=feeds.map(f=>`<div class="feed"><span class="k">${f.k}</span><span class="v ${live?(f.dir?'up':'down'):''}">${f.v>100?f.v.toFixed(1):f.v.toFixed(3)}${f.u} ${live?(f.dir?'▲':'▼'):''}</span></div>`).join('');if(live){sd.push(sd[sd.length-1]+(Math.random()-.48)*6);sd.shift();}drawSpark();}
+function tick(){if(live)feeds.forEach(f=>{if(f.real)return;const d=(Math.random()-0.5)*f.v*0.004;f.v=Math.max(.001,f.v+d);f.dir=d>=0;});const anyReal=feeds.some(f=>f.real);const tg=document.getElementById('feedTag');if(tg)tg.textContent=anyReal?'MIXED':'SIM';document.getElementById('feeds').innerHTML=feeds.map(f=>`<div class="feed"><span class="k">${f.k}</span><span class="v ${live?(f.dir?'up':'down'):''}">${f.v>100?f.v.toFixed(1):f.v.toFixed(3)}${f.u} ${live?(f.dir?'▲':'▼'):''}${live?`<i class="fsrc">${f.real?'live':'sim'}</i>`:''}</span></div>`).join('');if(live){sd.push(sd[sd.length-1]+(Math.random()-.48)*6);sd.shift();}drawSpark();}
 const sc=document.getElementById('spark'),sx=sc.getContext('2d');
 function drawSpark(){const cw=Math.round(sc.clientWidth*DPR),ch=Math.round(38*DPR);if(sc.width!==cw||sc.height!==ch){sc.width=cw;sc.height=ch;}sx.setTransform(DPR,0,0,DPR,0,0);const w=sc.clientWidth,h=38,mn=Math.min(...sd),mv=Math.max(...sd);sx.clearRect(0,0,w,h);sx.beginPath();sd.forEach((v,i)=>{const x=i/sd.length*w,y=h-((v-mn)/((mv-mn)||1))*(h-6)-3;i?sx.lineTo(x,y):sx.moveTo(x,y);});sx.strokeStyle=live?'#2dd4e8':'#5b8cff';sx.lineWidth=1.8;sx.stroke();}
-document.getElementById('liveBtn').onclick=function(){live=!live;this.classList.toggle('on',live);this.setAttribute('aria-pressed',live?'true':'false');document.getElementById('liveDot').classList.toggle('on',live);document.getElementById('period').textContent=live?'LIVE':PERIODS[tIdx];};
+document.getElementById('liveBtn').onclick=function(){live=!live;this.classList.toggle('on',live);this.setAttribute('aria-pressed',live?'true':'false');document.getElementById('liveDot').classList.toggle('on',live);document.getElementById('period').textContent=live?'LIVE':PERIODS[tIdx];if(!live)feeds.forEach(f=>delete f.real);startLiveFetch();};
 const clockFn=()=>document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB');
 let tickIv=setInterval(tick,900),clockIv=setInterval(clockFn,1000);
 // Pause the always-on timers while the tab is hidden — no point burning CPU/battery
 // on the simulated feed + clock for a tab nobody's looking at. (The RAF render loop
 // is already suspended by the browser when backgrounded.)
 document.addEventListener('visibilitychange',()=>{
-  clearInterval(tickIv);clearInterval(clockIv);
-  if(!document.hidden){tickIv=setInterval(tick,900);clockIv=setInterval(clockFn,1000);clockFn();}
+  clearInterval(tickIv);clearInterval(clockIv);clearInterval(liveIv);liveIv=null;
+  if(!document.hidden){tickIv=setInterval(tick,900);clockIv=setInterval(clockFn,1000);clockFn();startLiveFetch();}
 });
 // Escape closes the drill-down if open, otherwise clears the map selection.
 window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(modal.classList.contains('show'))closeDrill();else if(selected){selected=null;renderInspectorEmpty();}});
