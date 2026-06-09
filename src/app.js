@@ -15,10 +15,12 @@ const fmt=v=>v>=1000?'$'+(v/1000).toFixed(2)+'T':(v>=1?'$'+v.toFixed(0)+'B':'$'+
 // Revenue for the current period: real SEC-reported series where we have one
 // (FACTS, generated from XBRL filings), otherwise the curated base figure
 // scaled by the global year multiplier — an estimate, and labeled as such.
-const revAt=c=>{const f=FACTS[c.id],v=f&&f.revT&&f.revT[PERIODS[tIdx]];return v!=null?v:c.rev*TMUL[tIdx];};
-// Display provenance: a node only earns the "Reported" tag when its revenue is
-// actually backed by a filing we fetched; otherwise R degrades honestly to E.
-const nProv=c=>FACTS[c.id]?'R':(c.prov==='R'?'E':c.prov);
+const hasFact=c=>{const f=FACTS[c.id];return !!(f&&f.revT&&f.revT[PERIODS[tIdx]]!=null);};
+const revAt=c=>hasFact(c)?FACTS[c.id].revT[PERIODS[tIdx]]:c.rev*TMUL[tIdx];
+// Display provenance: a node only earns the "Reported" tag when the figure for
+// the CURRENTLY SELECTED year is backed by a filing — a series with a gap year
+// degrades to E while scrubbed onto the gap, matching what revAt displays.
+const nProv=c=>hasFact(c)?'R':(c.prov==='R'?'E':c.prov);
 // Respect the OS "reduce motion" setting: freeze the travelling flow-dot pulse.
 const reduceMotion=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -204,7 +206,7 @@ map.addEventListener('pointermove',e=>{
   if(panning){const dx=px-last.x,dy=py-last.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;const s=pxPerDeg()/DPR;target.cx-=dx/s;target.cy+=dy/(s*0.95);view.cx=target.cx;view.cy=target.cy;last={x:px,y:py};hideTip();return;}
   if(e.pointerType!=='mouse')return; // hover/tooltip is a mouse-only affordance
   const c=pick(px,py);hover=c;const tip=document.getElementById('tip');if(!tip)return;
-  if(c){const isGov=c.mcap===0,np=nProv(c);tip.innerHTML=`<div class="t">${c.name}</div><div class="s">${SECNAME[c.sec]} · ${c.country}</div><div class="s">${isGov?'Annual flows ~'+fmt(revAt(c)):'Cap '+fmt(c.mcap)+' · Rev '+fmt(revAt(c))}</div><div class="pv"><i style="background:${PCOL[np]}"></i>${PNAME[np]} ${isGov?'(modeled)':(FACTS[c.id]?'revenue (SEC filing)':'revenue')}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-248)+'px';tip.style.top=Math.min(py+16,map.clientHeight-100)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
+  if(c){const isGov=c.mcap===0,np=nProv(c);tip.innerHTML=`<div class="t">${c.name}</div><div class="s">${SECNAME[c.sec]} · ${c.country}</div><div class="s">${isGov?'Annual flows ~'+fmt(revAt(c)):'Cap '+fmt(c.mcap)+' · Rev '+fmt(revAt(c))}</div><div class="pv"><i style="background:${PCOL[np]}"></i>${PNAME[np]} ${isGov?'(modeled)':(hasFact(c)?'revenue (SEC filing)':'revenue')}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-248)+'px';tip.style.top=Math.min(py+16,map.clientHeight-100)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
   else{tip.style.opacity=0;map.style.cursor='grab';}});
 function endPointer(e){
   if(!ptrs.delete(e.pointerId))return;
@@ -257,7 +259,7 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;selected=id;const
      <div class="stat"><div class="k">INFLOWS</div><div class="v" style="color:var(--live)">${fmt(sI)}</div></div>
    </div>
    <button class="ddbtn" id="openDD">View relationship graph →</button>
-   ${fx?`<div class="verdict ok">✓ Revenue is the reported figure from SEC XBRL filings (10-K/20-F, through ${fx.asOf}) — scrubbing years shows the real series, not an estimate. <a href="${fx.url}" target="_blank" rel="noopener">Verify at SEC ↗</a></div>`:np==='R'?`<div class="verdict ok">✓ Revenue anchored to a primary filing. Market cap is point-in-time (tagged Estimated — it moves every trading day).</div>`:`<div class="verdict warn">⚠ Revenue carries a ${PNAME[np]} tag — modeled or not yet verified against a filing. Treat as directional.</div>`}
+   ${hasFact(n)?`<div class="verdict ok">✓ Revenue is the reported figure from SEC XBRL filings (10-K/20-F, through ${fx.asOf}) — scrubbing years shows the real series, not an estimate. <a href="${fx.url}" target="_blank" rel="noopener">Verify at SEC ↗</a></div>`:fx?`<div class="verdict warn">⚠ No SEC filing figure for ${PERIODS[tIdx]} — showing a modeled estimate for this year. <a href="${fx.url}" target="_blank" rel="noopener">Verify other years at SEC ↗</a></div>`:np==='R'?`<div class="verdict ok">✓ Revenue anchored to a primary filing. Market cap is point-in-time (tagged Estimated — it moves every trading day).</div>`:`<div class="verdict warn">⚠ Revenue carries a ${PNAME[np]} tag — modeled or not yet verified against a filing. Treat as directional.</div>`}
    <div class="flowsec"><div class="lbl">Outflows <span>${outs.length}</span></div>${outs.length?outs.sort((a,b)=>b.vv-a.vv).map(e=>flowRow(e,'out')).join(''):'<div style="color:var(--mut);font-size:12px;padding:6px 0">No seeded outflows. In production these derive from supplier disclosures + input-output tables.</div>'}</div>
    <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Inflows <span>${ins.length}</span></div>${ins.length?ins.sort((a,b)=>b.vv-a.vv).map(e=>flowRow(e,'in')).join(''):'<div style="color:var(--mut);font-size:12px;padding:6px 0">No seeded inflows in current view.</div>'}</div>
    <div class="mblock" id="methblock"><div class="lbl">Methodology</div><div style="color:var(--mut);font-size:12px">Select a flow above to see how its figure was derived.</div></div>`;
@@ -329,15 +331,15 @@ const sd=Array.from({length:90},()=>50);
 let liveIv=null;
 async function fetchFeeds(){
   if(!live)return;
-  try{
-    const[fx,cg]=await Promise.all([
-      fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=JPY,EUR').then(r=>r.json()),
-      fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,pax-gold&vs_currencies=usd').then(r=>r.json())
-    ]);
-    const set=(k,val)=>{const f=feeds.find(x=>x.k===k);if(f&&val>0){f.dir=val>=f.v;f.v=val;f.real=true;}};
-    if(fx&&fx.rates){set('USD/JPY',fx.rates.JPY);set('EUR/USD',1/fx.rates.EUR);}
-    if(cg){if(cg['pax-gold'])set('Gold',cg['pax-gold'].usd);if(cg.bitcoin)set('Bitcoin',cg.bitcoin.usd);}
-  }catch{/* keep simulating */}
+  const set=(k,val)=>{const f=feeds.find(x=>x.k===k);if(f&&val>0){f.dir=val>=f.v;f.v=val;f.real=true;}};
+  // Each API fails independently — a CoinGecko rate-limit must not take the
+  // ECB FX rows down with it (and vice versa). Failed rows keep simulating.
+  await Promise.all([
+    fetch('https://api.frankfurter.dev/v1/latest?base=USD&symbols=JPY,EUR').then(r=>r.json())
+      .then(fx=>{if(fx&&fx.rates){set('USD/JPY',fx.rates.JPY);set('EUR/USD',1/fx.rates.EUR);}}).catch(()=>{}),
+    fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,pax-gold&vs_currencies=usd').then(r=>r.json())
+      .then(cg=>{if(cg){if(cg['pax-gold'])set('Gold',cg['pax-gold'].usd);if(cg.bitcoin)set('Bitcoin',cg.bitcoin.usd);}}).catch(()=>{})
+  ]);
   tick();
 }
 function startLiveFetch(){clearInterval(liveIv);liveIv=null;if(live){fetchFeeds();liveIv=setInterval(fetchFeeds,60000);}}

@@ -95,8 +95,15 @@ function annualEntries(conceptJson) {
     if (e.fp !== 'FY' || !e.form || !(e.form.startsWith('10-K') || e.form.startsWith('20-F'))) continue;
     if (!e.start || !e.end || typeof e.val !== 'number') continue;
     const days = (Date.parse(e.end) - Date.parse(e.start)) / 86400000;
-    if (days < 330 || days > 400) continue; // annual periods only, not quarters
+    // Positive-range check so NaN (unparseable dates) is rejected, not passed.
+    if (!(days >= 330 && days <= 400)) continue; // annual periods only, not quarters
     const end = new Date(e.end + 'T00:00:00Z');
+    // Assign each period to the calendar year containing the majority of it
+    // (end month >= 7 -> end year, else end year - 1): NVDA's FY ending
+    // Jan 2025 is overwhelmingly calendar-2024 activity and lands in 2024.
+    // NOTE: e.fy is NOT usable here — it is the fiscal year of the FILING,
+    // so the prior-year comparatives included in every 10-K would all
+    // collapse onto the filing's year.
     const year = end.getUTCMonth() + 1 >= 7 ? end.getUTCFullYear() : end.getUTCFullYear() - 1;
     if (year < MIN_YEAR || year > MAX_YEAR) continue;
     const prev = byYear.get(year);
@@ -141,8 +148,12 @@ async function main() {
     mapped++;
     const cik10 = String(hit.cik).padStart(10, '0');
 
-    // --- fetch revenue concepts, first tag with enough annual years wins ---
-    let best = null, anyData = false, hardError = null;
+    // --- fetch revenue concepts, MERGING years across tags ---
+    // Companies switch tags across filings (e.g. Revenues vs RevenueFromContract
+    // ...), which leaves single-tag series with gap years. Earlier-priority tags
+    // win on conflicts; later tags only fill years the earlier ones missed.
+    const merged = new Map();
+    let primary = null, anyData = false, hardError = null;
     const tryTags = [...GAAP_TAGS.map((t) => ['us-gaap', t]), ['ifrs-full', 'Revenue']];
     for (const [ns, tag] of tryTags) {
       const url = `https://data.sec.gov/api/xbrl/companyconcept/CIK${cik10}/${ns}/${tag}.json`;
@@ -151,8 +162,10 @@ async function main() {
       if (r.notFound) continue;
       anyData = true;
       const byYear = annualEntries(r.json);
-      if (!best || byYear.size > best.byYear.size) best = { tag, url, byYear };
-      if (byYear.size >= MIN_YEARS) break; // good enough — stop trying tags
+      if (byYear.size === 0) continue;
+      if (!primary || byYear.size > primary.count) primary = { tag, url, count: byYear.size };
+      for (const [y, v] of byYear) if (!merged.has(y)) merged.set(y, v);
+      if (merged.size >= MAX_YEAR - MIN_YEAR + 1) break; // full coverage — stop
     }
 
     if (!anyData) {
@@ -161,20 +174,20 @@ async function main() {
       continue;
     }
     fetchedOK++;
-    if (!best || best.byYear.size === 0) {
+    if (merged.size === 0) {
       skipped['no annual USD revenue facts (likely non-USD or 40-F filer)'].push(c.id);
       continue;
     }
-    if (best.byYear.size < MIN_YEARS) {
-      skipped[`fewer than ${MIN_YEARS} years in ${MIN_YEAR}-${MAX_YEAR}`].push(`${c.id} (${best.byYear.size}y)`);
+    if (merged.size < MIN_YEARS) {
+      skipped[`fewer than ${MIN_YEARS} years in ${MIN_YEAR}-${MAX_YEAR}`].push(`${c.id} (${merged.size}y)`);
       continue;
     }
 
     const revT = {};
-    const years = [...best.byYear.keys()].sort((a, b) => a - b);
-    for (const y of years) revT[y] = Math.round(best.byYear.get(y).val / 1e8) / 10; // raw USD -> $B, 1dp
-    facts[c.id] = { cik: hit.cik, tag: best.tag, asOf: `FY${years[years.length - 1]}`, url: best.url, revT };
-    process.stdout.write(`  ${c.id.padEnd(12)} ${best.tag.padEnd(52)} ${years.map((y) => `${y}:${revT[y]}`).join(' ')}\n`);
+    const years = [...merged.keys()].sort((a, b) => a - b);
+    for (const y of years) revT[y] = Math.round(merged.get(y).val / 1e8) / 10; // raw USD -> $B, 1dp
+    facts[c.id] = { cik: hit.cik, tag: primary.tag, asOf: `FY${years[years.length - 1]}`, url: primary.url, revT };
+    process.stdout.write(`  ${c.id.padEnd(12)} ${primary.tag.padEnd(52)} ${years.map((y) => `${y}:${revT[y]}`).join(' ')}\n`);
   }
 
   // --- emit src/facts.js ---
