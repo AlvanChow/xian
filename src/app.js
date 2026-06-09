@@ -13,6 +13,10 @@ const PERIODS=['2019','2020','2021','2022','2023','2024'], TMUL=[.62,.60,.82,.95
 let sizeBy='mcap',secOn={},layerOn={R:1,E:1,I:1},tIdx=5,playing=false,live=false,selected=null,hover=null;
 Object.keys(SEC).forEach(s=>secOn[s]=1);
 const fmt=v=>v>=1000?'$'+(v/1000).toFixed(2)+'T':(v>=1?'$'+v.toFixed(0)+'B':'$'+(v*1000).toFixed(0)+'M');
+// HTML-escape for data strings interpolated into innerHTML templates. The
+// dataset is curated, but names legitimately contain '&' and this keeps any
+// future data edit from becoming a markup injection.
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // Revenue for the current period: real SEC-reported series where we have one
 // (FACTS, generated from XBRL filings), otherwise the curated base figure
 // scaled by the global year multiplier — an estimate, and labeled as such.
@@ -220,7 +224,7 @@ map.addEventListener('pointermove',e=>{
   if(panning){const dx=px-last.x,dy=py-last.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;const s=pxPerDeg()/DPR;target.cx-=dx/s;target.cy+=dy/(s*0.95);view.cx=target.cx;view.cy=target.cy;last={x:px,y:py};hideTip();return;}
   if(e.pointerType!=='mouse')return; // hover/tooltip is a mouse-only affordance
   const c=pick(px,py);hover=c;const tip=document.getElementById('tip');if(!tip)return;
-  if(c){const isGov=c.mcap===0,np=nProv(c);tip.innerHTML=`<div class="t">${c.name}</div><div class="s">${SECNAME[c.sec]} · HQ ${c.country}</div><div class="s">${isGov?(CB.has(c.id)?'Balance sheet ~':'Annual flows ~')+fmt(revAt(c)):'Cap '+fmt(c.mcap)+' · Rev '+fmt(revAt(c))}</div><div class="pv"><i style="background:${PCOL[np]}"></i>${PNAME[np]} ${isGov?'(modeled)':(hasFact(c)?'revenue (SEC filing)':'revenue')}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-248)+'px';tip.style.top=Math.min(py+16,map.clientHeight-100)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
+  if(c){const isGov=c.mcap===0,np=nProv(c);tip.innerHTML=`<div class="t">${esc(c.name)}</div><div class="s">${SECNAME[c.sec]} · HQ ${esc(c.country)}</div><div class="s">${isGov?(CB.has(c.id)?'Balance sheet ~':'Annual flows ~')+fmt(revAt(c)):'Cap '+fmt(c.mcap)+' · Rev '+fmt(revAt(c))}</div><div class="pv"><i style="background:${PCOL[np]}"></i>${PNAME[np]} ${isGov?'(modeled)':(hasFact(c)?'revenue (SEC filing)':'revenue')}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-248)+'px';tip.style.top=Math.min(py+16,map.clientHeight-100)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
   else{tip.style.opacity=0;map.style.cursor='grab';}});
 function endPointer(e){
   if(!ptrs.delete(e.pointerId))return;
@@ -228,13 +232,24 @@ function endPointer(e){
   else if(ptrs.size===0){
     if(panning&&!moved&&e.type==='pointerup'){const c=pick(e.offsetX,e.offsetY,e.pointerType!=='mouse');if(c)selectNode(c.id);}
     panning=false;pinch0=null;
+    if(e.pointerType!=='mouse')hideTip(); // touch never gets a pointerleave to clear it
   }
 }
 map.addEventListener('pointerup',endPointer);
 map.addEventListener('pointercancel',endPointer);
 map.addEventListener('pointerleave',e=>{if(!panning&&e.pointerType==='mouse'){hover=null;hideTip();}});
-map.addEventListener('wheel',e=>{e.preventDefault();zoomAbout(e.offsetX,e.offsetY,view.scale*(e.deltaY<0?1.18:0.85));},{passive:false});
-map.addEventListener('dblclick',e=>{const before=unproj(e.offsetX*DPR,e.offsetY*DPR);target.scale=Math.min(80,target.scale*2);target.cx=before.lon;target.cy=before.lat;});
+// Wheel zoom, normalized across devices: trackpads fire many small pixel-mode
+// deltas while mouse wheels fire few large line-mode ones — a fixed per-event
+// multiplier made trackpads zoom explosively. Scale exponentially by the
+// actual normalized delta instead (~15% per 100px wheel notch), keeping the
+// old feel for a mouse wheel while taming high-frequency trackpad streams.
+map.addEventListener('wheel',e=>{e.preventDefault();
+  const px=e.deltaMode===1?e.deltaY*16:e.deltaMode===2?e.deltaY*100:e.deltaY;
+  zoomAbout(e.offsetX,e.offsetY,view.scale*Math.exp(-px*0.0015));
+},{passive:false});
+// Keep the double-clicked point fixed on screen while doubling the zoom
+// (centering on the point instead made the view jump mid-ease).
+map.addEventListener('dblclick',e=>{zoomAbout(e.offsetX,e.offsetY,view.scale*2);});
 // Keyboard map control (the canvas is tabbable): arrows pan, +/- zoom, 0 fits.
 map.addEventListener('keydown',e=>{
   const panDeg=60*DPR/pxPerDeg(); // ~60 CSS px per keypress at the current zoom
@@ -275,11 +290,11 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;if(selected!==id)
   // res-flagged residual rows ("Other …") always sort last, whatever their share.
   const sb=STATE_SHARES[id],sbRows=sb?[...sb.rows].sort((a,b)=>(a.res?1:0)-(b.res?1:0)||b.sh-a.sh):[];
   const sbMax=sbRows.length?Math.max(...sbRows.map(r=>r.sh)):1;
-  const stateRow=r=>`<div class="flow" role="button" tabindex="0" data-st="${r.a}"><div class="r1"><div class="who"><span class="ar">◆</span><span>${r.n}</span><span class="tag ${sb.p}">${PNAME[sb.p][0]}</span></div><div class="amt">${fmt(r.sh*revAt(n))}</div></div><div class="bar"><i style="width:${Math.min(100,r.sh/sbMax*100)}%;background:${PCOL[sb.p]}"></i></div><div class="meth">${(r.sh*100).toFixed(1)}% of total household outflows</div></div>`;
+  const stateRow=r=>`<div class="flow" role="button" tabindex="0" data-st="${r.a}" aria-label="${esc(r.n)}, ${fmt(r.sh*revAt(n))}, ${(r.sh*100).toFixed(1)}% of total household outflows"><div class="r1"><div class="who"><span class="ar">◆</span><span>${esc(r.n)}</span><span class="tag ${sb.p}">${PNAME[sb.p][0]}</span></div><div class="amt">${fmt(r.sh*revAt(n))}</div></div><div class="bar"><i style="width:${Math.min(100,r.sh/sbMax*100)}%;background:${PCOL[sb.p]}"></i></div><div class="meth">${(r.sh*100).toFixed(1)}% of total household outflows</div></div>`;
   const stateSec=sb?`<div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Breakdown by ${sb.t} <span>${sbRows.length}</span></div><div style="color:var(--mut);font-size:11px;margin:-2px 0 8px">Estimated allocation of the household total by ${sb.t}-level consumption shares. Select a ${sb.t} for methodology.</div>${(sbOpen||sbRows.length<=10?sbRows:sbRows.slice(0,10)).map(stateRow).join('')}${sbRows.length>10?`<button class="ddbtn" id="sbToggle" style="margin:10px 0 4px;width:100%">${sbOpen?'Show top 10 only':'Show all '+sbRows.length+' '+sb.tp+' →'}</button>`:''}</div>`:'';
-  const flowRow=(e,dir)=>{const o=dir==='out'?e.t:e.f,oc=byId[o],fp=fProv(e);return `<div class="flow" role="button" tabindex="0" data-e="${e.f}|${e.t}"><div class="r1"><div class="who"><span class="ar">${dir==='out'?'→':'←'}</span><span style="width:9px;height:9px;border-radius:50%;background:${SEC[oc.sec]};display:inline-block"></span><span class="cplink" data-go="${o}" title="Open ${oc.name}">${oc.name}</span><span class="tag ${fp}">${PNAME[fp][0]}</span></div><div class="amt">${fmt(e.vv)}</div></div><div class="bar"><i style="width:${Math.min(100,e.vv/mv*100)}%;background:${PCOL[fp]}"></i></div><div class="meth">source quality ${(e.c*100|0)}%</div></div>`;};
+  const flowRow=(e,dir)=>{const o=dir==='out'?e.t:e.f,oc=byId[o],fp=fProv(e);return `<div class="flow" role="button" tabindex="0" data-e="${e.f}|${e.t}" aria-label="${dir==='out'?'Outflow to':'Inflow from'} ${esc(oc.name)}, ${fmt(e.vv)}, ${PNAME[fp]}"><div class="r1"><div class="who"><span class="ar">${dir==='out'?'→':'←'}</span><span style="width:9px;height:9px;border-radius:50%;background:${SEC[oc.sec]};display:inline-block"></span><span class="cplink" data-go="${o}" title="Open ${esc(oc.name)}">${esc(oc.name)}</span><span class="tag ${fp}">${PNAME[fp][0]}</span></div><div class="amt">${fmt(e.vv)}</div></div><div class="bar"><i style="width:${Math.min(100,e.vv/mv*100)}%;background:${PCOL[fp]}"></i></div><div class="meth">source quality ${(e.c*100|0)}%</div></div>`;};
   const html=`
-   <div class="ihead"><div class="tk">${n.id}</div><div class="nm">${n.name}</div>
+   <div class="ihead"><div class="tk">${n.id}</div><div class="nm">${esc(n.name)}</div>
      <div class="meta"><span class="pill"><span class="d" style="background:${SEC[n.sec]}"></span>${SECNAME[n.sec]}</span><span class="pill" title="Pin marks the headquarters location (manually curated)">HQ · ${n.country}</span></div></div>
    <div class="stats">
      <div class="stat"><div class="k">${n.mcap===0?(CB.has(n.id)?'BALANCE SHEET (STOCK)':'ANNUAL FLOWS'):'MARKET CAP'}</div><div class="v">${n.mcap===0?fmt(revAt(n)):fmt(n.mcap)}<span class="tag ${n.mcap===0?np:'E'}">${n.mcap===0?PNAME[np][0]:'E'}</span></div>${n.mcap!==0?`<div class="k" style="margin-top:2px">point-in-time, not historical</div>`:''}</div>
@@ -291,7 +306,7 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;if(selected!==id)
    </div>
    ${fx?`<div class="nsw"><div class="k">SEC-REPORTED REVENUE SERIES${yoy!=null?` · <span class="${yoy>=0?'up':'down'}">${yoy>=0?'+':''}${yoy}% YoY</span>`:''}</div><canvas id="nspark" aria-label="Reported revenue ${PERIODS[0]}–${PERIODS[PERIODS.length-1]}"></canvas><div class="yrs"><span>${PERIODS[0]}</span><span>${PERIODS[PERIODS.length-1]}</span></div></div>`:''}
    <button class="ddbtn" id="openDD">View relationship graph →</button>
-   ${hasFact(n)?`<div class="verdict ok">✓ Revenue is the reported figure from SEC XBRL filings (10-K/20-F, through ${fx.asOf}) — scrubbing years shows the real series, not an estimate. <a href="${fx.url}" target="_blank" rel="noopener">Verify at SEC ↗</a></div>`:fx?`<div class="verdict warn">⚠ No SEC filing figure for ${PERIODS[tIdx]} — showing a modeled estimate for this year. <a href="${fx.url}" target="_blank" rel="noopener">Verify other years at SEC ↗</a></div>`:np==='R'?`<div class="verdict ok">✓ Revenue anchored to a primary filing. Market cap is point-in-time (tagged Estimated — it moves every trading day).</div>`:`<div class="verdict warn">⚠ Revenue carries a ${PNAME[np]} tag — modeled or not yet verified against a filing. Treat as directional.</div>`}
+   ${hasFact(n)?`<div class="verdict ok">✓ Revenue is the reported figure from SEC XBRL filings (10-K/20-F, through ${fx.asOf}) — scrubbing years shows the real series, not an estimate. <a href="${fx.url}" target="_blank" rel="noopener noreferrer">Verify at SEC ↗</a></div>`:fx?`<div class="verdict warn">⚠ No SEC filing figure for ${PERIODS[tIdx]} — showing a modeled estimate for this year. <a href="${fx.url}" target="_blank" rel="noopener noreferrer">Verify other years at SEC ↗</a></div>`:np==='R'?`<div class="verdict ok">✓ Revenue anchored to a primary filing. Market cap is point-in-time (tagged Estimated — it moves every trading day).</div>`:`<div class="verdict warn">⚠ Revenue carries a ${PNAME[np]} tag — modeled or not yet verified against a filing. Treat as directional.</div>`}
    ${stateSec}
    <div class="flowsec"><div class="lbl">Outflows <span>${outs.length}</span></div>${outsS.length?outsS.map(e=>flowRow(e,'out')).join(''):'<div style="color:var(--mut);font-size:12px;padding:6px 0">No seeded outflows. In production these derive from supplier disclosures + input-output tables.</div>'}</div>
    <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Inflows <span>${ins.length}</span></div>${insS.length?insS.map(e=>flowRow(e,'in')).join(''):'<div style="color:var(--mut);font-size:12px;padding:6px 0">No seeded inflows in current view.</div>'}</div>
@@ -391,7 +406,7 @@ function searchScore(c,q){
 }
 srch.oninput=()=>{srchIdx=-1;const q=srch.value.toLowerCase().trim();if(!q){reslist.innerHTML='';return;}
   const h=C.map(c=>[searchScore(c,q),c]).filter(([s])=>s>=0).sort((a,b)=>b[0]-a[0]).slice(0,24).map(([,c])=>c);
-  reslist.innerHTML=h.map(c=>`<div class="resrow" role="option" tabindex="0" data-id="${c.id}"><span class="dot" style="background:${SEC[c.sec]}"></span><span class="nm">${c.name}</span><span class="cty">${c.country}</span></div>`).join('')||'<div class="note" style="padding:8px">No matches.</div>';
+  reslist.innerHTML=h.map(c=>`<div class="resrow" role="option" tabindex="0" data-id="${c.id}" id="sr-${c.id}"><span class="dot" style="background:${SEC[c.sec]}"></span><span class="nm">${esc(c.name)}</span><span class="cty">${esc(c.country)}</span></div>`).join('')||'<div class="note" style="padding:8px">No matches.</div>';
   reslist.querySelectorAll('[data-id]').forEach(r=>{const go=()=>{selectNode(r.dataset.id);srch.value='';reslist.innerHTML='';srchIdx=-1;};r.onclick=go;r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});};
 // Arrow keys walk the results from the input; Enter selects (default: top hit).
 srch.onkeydown=e=>{
@@ -403,6 +418,8 @@ srch.onkeydown=e=>{
   else if(e.key==='Enter'){e.preventDefault();(rows[Math.max(0,srchIdx)]||rows[0]).click();return;}
   else return;
   rows.forEach((r,i)=>r.classList.toggle('active',i===srchIdx));
+  // announce the highlighted result to assistive tech without moving DOM focus
+  srch.setAttribute('aria-activedescendant',rows[srchIdx]?rows[srchIdx].id:'');
   if(rows[srchIdx])rows[srchIdx].scrollIntoView({block:'nearest'});
 };
 
@@ -421,7 +438,9 @@ const sd=Array.from({length:90},()=>50);
 let liveIv=null;
 async function fetchFeeds(){
   if(!live)return;
-  const set=(k,val)=>{const f=feeds.find(x=>x.k===k);if(f&&val>0){f.dir=val>=f.v;f.v=val;f.real=true;}};
+  // Only accept finite positive numbers — a malformed API response must not
+  // poison the feeds array (values get .toFixed()'d straight into the DOM).
+  const set=(k,val)=>{const f=feeds.find(x=>x.k===k);if(f&&Number.isFinite(val)&&val>0){f.dir=val>=f.v;f.v=val;f.real=true;}};
   // Each API fails independently — a CoinGecko rate-limit must not take the
   // ECB FX rows down with it (and vice versa). Failed rows keep simulating.
   await Promise.all([
@@ -456,7 +475,16 @@ function closeAbout(){aboutModal.classList.remove('show');if(abPrevFocus&&abPrev
 document.getElementById('aboutBtn').onclick=openAbout;
 document.getElementById('abClose').onclick=closeAbout;
 aboutModal.addEventListener('mousedown',e=>{if(e.target===aboutModal)closeAbout();});
-aboutModal.addEventListener('keydown',e=>{if(e.key==='Tab'&&aboutModal.classList.contains('show')){e.preventDefault();document.getElementById('abClose').focus();}});
+// About modal has real content (links) — cycle Tab through its focusables
+// instead of parking on the close button, so keyboard users can reach them.
+aboutModal.addEventListener('keydown',e=>{
+  if(e.key!=='Tab'||!aboutModal.classList.contains('show'))return;
+  const f=[...aboutModal.querySelectorAll('button,a[href]')];
+  if(!f.length)return;
+  const first=f[0],last=f[f.length-1],cur=document.activeElement;
+  if(e.shiftKey&&(cur===first||!f.includes(cur))){e.preventDefault();last.focus();}
+  else if(!e.shiftKey&&(cur===last||!f.includes(cur))){e.preventDefault();first.focus();}
+});
 
 // Escape closes whichever overlay is open, otherwise clears the map selection.
 window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(aboutModal.classList.contains('show'))closeAbout();else if(modal.classList.contains('show'))closeDrill();else if(selected){selected=null;renderInspectorEmpty();syncHash(true);}});

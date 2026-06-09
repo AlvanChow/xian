@@ -1,6 +1,6 @@
 # ValueGrid
 
-An interactive, canvas-rendered world map of **global capital flows** — companies, governments, central banks, and household sectors, linked by ~480 directional money flows. Every figure carries a **provenance tag** so you can see exactly how trustworthy it is.
+An interactive, canvas-rendered world map of **global capital flows** — companies, governments, central banks, and household sectors, linked by ~510 directional money flows. Every figure carries a **provenance tag** so you can see exactly how trustworthy it is.
 
 Live site: **https://alvanchow.github.io/xian/**
 
@@ -8,8 +8,8 @@ Live site: **https://alvanchow.github.io/xian/**
 
 ## What it is
 
-- **~163 nodes** — public companies (sized by market cap or revenue), plus macro nodes: treasuries, central banks (Fed, ECB, PBOC, BOJ), governments, and household sectors.
-- **~480 flow edges** — supplier payments, corporate tax, household consumption, banking/credit, energy input-output, foundry bill-of-materials, dividends, central-bank remittances, and government transfers.
+- **164 nodes** — public companies (sized by market cap or revenue), plus macro nodes: treasuries, central banks (Fed, ECB, PBOC, BOJ), governments, and household sectors.
+- **~510 flow edges** — supplier payments, corporate tax, household consumption, banking/credit, energy input-output, foundry bill-of-materials, dividends, central-bank remittances, and government transfers.
 - **A force-directed drill-down graph** for any node's ego-network.
 - **Time scrubbing** (2019–2024) and a simulated **live feed** panel.
 - **An inspector** that breaks down every node's inflows/outflows and shows the methodology + source behind each figure.
