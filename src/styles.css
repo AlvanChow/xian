@@ -136,9 +136,18 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .feed .fsrc{font-style:normal;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);margin-left:5px;vertical-align:middle}
 #spark{width:100%;height:38px;display:block;margin-top:8px}
 
-/* drill modal */
-#modal{position:fixed;inset:0;background:rgba(6,9,14,.7);display:none;align-items:center;justify-content:center;z-index:30;backdrop-filter:blur(4px)}
-#modal.show{display:flex}
+/* overlay modals (drill graph, about) */
+#modal,#aboutModal{position:fixed;inset:0;background:rgba(6,9,14,.7);display:none;align-items:center;justify-content:center;z-index:30;backdrop-filter:blur(4px)}
+#modal.show,#aboutModal.show{display:flex}
+#aboutModal .mcard{width:min(720px,92vw);height:auto;max-height:86vh}
+.abody{padding:16px 22px 20px;overflow-y:auto;font-size:13px;line-height:1.65;color:var(--dim)}
+.abody p{margin:0 0 12px}.abody b{color:var(--txt)}
+.abody h4{margin:16px 0 8px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut)}
+.abody ul{margin:0 0 12px;padding-left:18px}.abody li{margin:4px 0}
+.abtab{border-collapse:collapse;margin:0 0 12px}
+.abtab td{padding:6px 10px 6px 0;vertical-align:top;border-bottom:1px solid var(--line)}
+.abtab tr:last-child td{border-bottom:0}
+.absrc{font-size:11.5px;color:var(--mut);border-top:1px solid var(--line);padding-top:10px}
 .mcard{width:min(940px,92vw);height:min(620px,86vh);background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.6)}
 .mhd{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
 .mhd h3{margin:0;font-size:16px}.mhd .x{margin-left:auto;background:none;border:0;color:var(--dim);font-size:22px;cursor:pointer;line-height:1}

@@ -147,6 +147,22 @@ async function findPin(page) {
   return null;
 }
 
+test('About-the-data modal opens and closes', async ({ page }) => {
+  await page.locator('#aboutBtn').click();
+  await expect(page.locator('#aboutModal')).toHaveClass(/show/);
+  await expect(page.locator('#aboutModal')).toContainText('provenance model');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#aboutModal')).not.toHaveClass(/show/);
+
+  // Escape closed the modal, NOT the selection underneath it.
+  await expect(page.locator('#inspector .ihead')).toBeVisible();
+
+  // Re-open via the close button path.
+  await page.locator('#aboutBtn').click();
+  await page.locator('#abClose').click();
+  await expect(page.locator('#aboutModal')).not.toHaveClass(/show/);
+});
+
 test('Escape clears the selection', async ({ page }) => {
   // Boot auto-selects NVDA, so the inspector starts populated.
   await expect(page.locator('#inspector .ihead')).toBeVisible();

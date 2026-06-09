@@ -265,7 +265,7 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;selected=id;const
   el.querySelectorAll('.flow').forEach(r=>{const go=()=>{const[f,t]=r.dataset.e.split('|');showMethod(FL.find(e=>e.f===f&&e.t===t));};r.onclick=go;r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});
   document.getElementById('openDD').onclick=()=>openDrill(id);
 }
-function renderInspectorEmpty(){document.getElementById('inspector').innerHTML='<div class="ins-empty"><div class="big">◎</div>Select any node on the map to inspect its scale, capital flows, counterparties, and the provenance behind every figure.</div>';}
+function renderInspectorEmpty(){const el=document.getElementById('inspector');el.innerHTML='<div class="ins-empty"><div class="big">◎</div>Select any node on the map to inspect its scale, capital flows, counterparties, and the provenance behind every figure.<div class="note" style="margin-top:12px">Illustrative dataset — revenue is SEC-verified where tagged R. <a href="#about" id="abLink" style="color:var(--accent)">About the data</a></div></div>';const l=document.getElementById('abLink');if(l)l.onclick=e=>{e.preventDefault();openAbout();};}
 function showMethod(e){if(!e)return;const b=document.getElementById('methblock');if(!b)return;
   b.innerHTML=`<div class="lbl">Methodology · ${e.f} → ${e.t}</div>
    <div class="mb-row"><span class="k">Value (${PERIODS[tIdx]})</span><span class="v">${fmt(e.v*TMUL[tIdx])}</span></div>
@@ -356,9 +356,20 @@ document.addEventListener('visibilitychange',()=>{
   clearInterval(tickIv);clearInterval(clockIv);clearInterval(liveIv);liveIv=null;
   if(!document.hidden){tickIv=setInterval(tick,900);clockIv=setInterval(clockFn,1000);clockFn();startLiveFetch();}
 });
-// Escape closes the drill-down if open, otherwise clears the map selection.
-window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(modal.classList.contains('show'))closeDrill();else if(selected){selected=null;renderInspectorEmpty();}});
+/* ---- about modal ---- */
+const aboutModal=document.getElementById('aboutModal');
+let abPrevFocus=null;
+function openAbout(){abPrevFocus=document.activeElement;aboutModal.classList.add('show');document.getElementById('abClose').focus();}
+function closeAbout(){aboutModal.classList.remove('show');if(abPrevFocus&&abPrevFocus.focus){try{abPrevFocus.focus();}catch{/* element gone */}}}
+document.getElementById('aboutBtn').onclick=openAbout;
+document.getElementById('abClose').onclick=closeAbout;
+aboutModal.addEventListener('mousedown',e=>{if(e.target===aboutModal)closeAbout();});
+aboutModal.addEventListener('keydown',e=>{if(e.key==='Tab'&&aboutModal.classList.contains('show')){e.preventDefault();document.getElementById('abClose').focus();}});
+
+// Escape closes whichever overlay is open, otherwise clears the map selection.
+window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(aboutModal.classList.contains('show'))closeAbout();else if(modal.classList.contains('show'))closeDrill();else if(selected){selected=null;renderInspectorEmpty();}});
 
 /* boot */
 buildSectors();buildLayers();refreshStats();tick();requestAnimationFrame(frame);
 setTimeout(()=>selectNode('NVDA'),400);
+if(location.hash==='#about')openAbout(); // linkable methodology page

@@ -21,6 +21,8 @@ export default [
         fetch: 'readonly',
         Promise: 'readonly',
         localStorage: 'readonly',
+        location: 'readonly',
+        history: 'readonly',
       },
     },
     rules: {
