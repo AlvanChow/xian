@@ -268,12 +268,15 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;if(selected!==id)
   const cur=fx&&fx.revT[PERIODS[tIdx]],prv=fx&&fx.revT[String(+PERIODS[tIdx]-1)];
   const yoy=(cur!=null&&prv>0)?Math.round((cur-prv)/prv*100):null;
   const mv=Math.max(1,...outs.map(x=>x.vv),...ins.map(x=>x.vv));
-  // Geographic breakdown for household macro nodes (currently USHH): an
-  // allocation of the node's national total, so each state figure scales
-  // with the scrubbed year exactly like the headline flows number.
-  const sb=STATE_SHARES[id],sbRows=sb?[...sb.rows].sort((a,b)=>b.sh-a.sh):[];
-  const stateRow=r=>`<div class="flow" role="button" tabindex="0" data-st="${r.a}"><div class="r1"><div class="who"><span class="ar">◆</span><span>${r.n}</span><span class="tag ${sb.p}">${PNAME[sb.p][0]}</span></div><div class="amt">${fmt(r.sh*revAt(n))}</div></div><div class="bar"><i style="width:${Math.min(100,r.sh/sbRows[0].sh*100)}%;background:${PCOL[sb.p]}"></i></div><div class="meth">${(r.sh*100).toFixed(1)}% of national household outflows</div></div>`;
-  const stateSec=sb?`<div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Breakdown by state <span>${sbRows.length}</span></div><div style="color:var(--mut);font-size:11px;margin:-2px 0 8px">Estimated allocation of the national total by BEA state consumption shares. Select a state for methodology.</div>${(sbOpen?sbRows:sbRows.slice(0,10)).map(stateRow).join('')}<button class="ddbtn" id="sbToggle" style="margin:10px 0 4px;width:100%">${sbOpen?'Show top 10 only':'Show all '+sbRows.length+' states →'}</button></div>`:'';
+  // Geographic breakdown for household macro nodes (US states, EU countries,
+  // China provinces, Japan / rest-of-world regions): an allocation of the
+  // node's household total, so each row scales with the scrubbed year exactly
+  // like the headline flows number. Long lists collapse to a top-10 toggle.
+  // res-flagged residual rows ("Other …") always sort last, whatever their share.
+  const sb=STATE_SHARES[id],sbRows=sb?[...sb.rows].sort((a,b)=>(a.res?1:0)-(b.res?1:0)||b.sh-a.sh):[];
+  const sbMax=sbRows.length?Math.max(...sbRows.map(r=>r.sh)):1;
+  const stateRow=r=>`<div class="flow" role="button" tabindex="0" data-st="${r.a}"><div class="r1"><div class="who"><span class="ar">◆</span><span>${r.n}</span><span class="tag ${sb.p}">${PNAME[sb.p][0]}</span></div><div class="amt">${fmt(r.sh*revAt(n))}</div></div><div class="bar"><i style="width:${Math.min(100,r.sh/sbMax*100)}%;background:${PCOL[sb.p]}"></i></div><div class="meth">${(r.sh*100).toFixed(1)}% of total household outflows</div></div>`;
+  const stateSec=sb?`<div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Breakdown by ${sb.t} <span>${sbRows.length}</span></div><div style="color:var(--mut);font-size:11px;margin:-2px 0 8px">Estimated allocation of the household total by ${sb.t}-level consumption shares. Select a ${sb.t} for methodology.</div>${(sbOpen||sbRows.length<=10?sbRows:sbRows.slice(0,10)).map(stateRow).join('')}${sbRows.length>10?`<button class="ddbtn" id="sbToggle" style="margin:10px 0 4px;width:100%">${sbOpen?'Show top 10 only':'Show all '+sbRows.length+' '+sb.tp+' →'}</button>`:''}</div>`:'';
   const flowRow=(e,dir)=>{const o=dir==='out'?e.t:e.f,oc=byId[o],fp=fProv(e);return `<div class="flow" role="button" tabindex="0" data-e="${e.f}|${e.t}"><div class="r1"><div class="who"><span class="ar">${dir==='out'?'→':'←'}</span><span style="width:9px;height:9px;border-radius:50%;background:${SEC[oc.sec]};display:inline-block"></span><span class="cplink" data-go="${o}" title="Open ${oc.name}">${oc.name}</span><span class="tag ${fp}">${PNAME[fp][0]}</span></div><div class="amt">${fmt(e.vv)}</div></div><div class="bar"><i style="width:${Math.min(100,e.vv/mv*100)}%;background:${PCOL[fp]}"></i></div><div class="meth">source quality ${(e.c*100|0)}%</div></div>`;};
   const html=`
    <div class="ihead"><div class="tk">${n.id}</div><div class="nm">${n.name}</div>
@@ -327,14 +330,14 @@ function showMethod(e){if(!e)return;const b=document.getElementById('methblock')
    <div class="prov-txt"><b>Method.</b> ${e.m}</div><div class="prov-txt"><b>Source.</b> ${e.s}</div>`;
   b.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-// Methodology panel for a state-breakdown row: the figure is an allocation of
-// the node's national total, so it shares one method/source for all states.
+// Methodology panel for a regional-breakdown row: the figure is an allocation
+// of the node's household total, so it shares one method/source for all rows.
 function showStateMethod(n,sb,r){if(!r)return;const b=document.getElementById('methblock');if(!b)return;
   b.innerHTML=`<div class="lbl">Methodology · ${n.id} · ${r.n}</div>
    <div class="mb-row"><span class="k">Est. outflows (${PERIODS[tIdx]})</span><span class="v">${fmt(r.sh*revAt(n))}</span></div>
-   <div class="mb-row"><span class="k">Share of national total</span><span class="v">${(r.sh*100).toFixed(1)}%</span></div>
+   <div class="mb-row"><span class="k">Share of household total</span><span class="v">${(r.sh*100).toFixed(1)}%</span></div>
    <div class="mb-row"><span class="k">Provenance</span><span class="v"><span class="tag ${sb.p}">${PNAME[sb.p]}</span></span></div>
-   ${tIdx!==ANCHOR?`<div class="prov-txt">⚠ <b>Scaled figure.</b> The national total is the ${PERIODS[ANCHOR]} figure ×${TMUL[tIdx]} (global year multiplier); the state share is held constant across years.</div>`:''}
+   ${tIdx!==ANCHOR?`<div class="prov-txt">⚠ <b>Scaled figure.</b> The household total is the ${PERIODS[ANCHOR]} figure ×${TMUL[tIdx]} (global year multiplier); the ${sb.t} share is held constant across years.</div>`:''}
    <div class="prov-txt"><b>Method.</b> ${sb.m}</div><div class="prov-txt"><b>Source.</b> ${sb.s}</div>`;
   b.scrollIntoView({behavior:'smooth',block:'nearest'});
 }

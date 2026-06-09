@@ -87,6 +87,8 @@ test('STATE_SHARES are keyed by COMPANIES ids with valid metadata', () => {
     assert.ok(typeof sb.m === 'string' && sb.m.length > 0, `${id}: m must be a non-empty string`);
     assert.ok(typeof sb.s === 'string' && sb.s.length > 0, `${id}: s must be a non-empty string`);
     assert.ok(PROVS.has(sb.p), `${id}: p must be one of R/E/I, got ${sb.p}`);
+    assert.ok(typeof sb.t === 'string' && sb.t.length > 0, `${id}: t (unit singular) must be a non-empty string`);
+    assert.ok(typeof sb.tp === 'string' && sb.tp.length > 0, `${id}: tp (unit plural) must be a non-empty string`);
   }
 });
 
@@ -112,6 +114,14 @@ test('STATE_SHARES rows have unique names/abbreviations and shares summing to 1'
 test('STATE_SHARES for USHH covers all 50 states plus DC', () => {
   assert.ok(STATE_SHARES.USHH, 'USHH breakdown must exist');
   assert.equal(STATE_SHARES.USHH.rows.length, 51, 'expected 50 states + DC');
+});
+
+test('every household macro node has a regional breakdown', () => {
+  const households = COMPANIES.filter((c) => /HH$/.test(c.id)).map((c) => c.id);
+  assert.ok(households.length >= 5, `expected several household nodes, found ${households.length}`);
+  for (const id of households) {
+    assert.ok(STATE_SHARES[id], `household node ${id} is missing a STATE_SHARES breakdown`);
+  }
 });
 
 // --- src/facts.js (optional, generated) -----------------------------------
