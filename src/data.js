@@ -660,6 +660,27 @@ FLOWS.push({f:'AAPL',t:'QCOM',v:7,p:'E',c:0.6,m:'Modem/RF chipset purchases unde
 FLOWS.push({f:'NFLX',t:'AMZN',v:1,p:'I',c:0.4,m:'Cloud infrastructure spend: Netflix runs primarily on AWS; annual spend inferred from disclosed purchase commitments, ~$1B scale.',s:'NFLX 10-K purchase obligations + industry reporting'});
 FLOWS.push({f:'JPHH',t:'JPGOV',v:700,p:'E',c:0.45,m:'Household income taxes and social-insurance contributions in Japan (household-borne share of ~¥105T combined receipts).',s:'Japan MOF'});
 
+// Japan household consumption flows. Unlike the flat sector coefficients used
+// for US/EU/China households, Japanese majors earn most revenue overseas, so
+// each share is the sector coefficient applied to the company's DOMESTIC
+// revenue mix (segment disclosures) — a flat coefficient would overstate the
+// Japanese household share several-fold for the global names.
+FLOWS.push({f:'JPHH',t:'TM',v:60,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (~25% of Toyota revenue is Japan; household-borne share of domestic sales → ~19% of total revenue routed from Japan Households).',s:'OECD consumption I-O + TM segment disclosures'});
+FLOWS.push({f:'JPHH',t:'HONDA',v:17,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (~15% of Honda revenue is Japan — North America dominates; → ~12% of total revenue routed from Japan Households).',s:'OECD consumption I-O + Honda segment disclosures'});
+FLOWS.push({f:'JPHH',t:'SONY',v:15,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (~28% of Sony revenue is Japan; consumer-borne share of games/electronics/music → ~17% of total revenue routed from Japan Households).',s:'OECD consumption I-O + Sony segment disclosures'});
+FLOWS.push({f:'JPHH',t:'NTT',v:40,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (NTT revenue is ~80% domestic; consumer mobile/fiber share → ~44% of total revenue routed from Japan Households).',s:'OECD consumption I-O + NTT segment disclosures'});
+FLOWS.push({f:'JPHH',t:'SOFTBANK',v:16,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (SoftBank telecom revenue is predominantly domestic consumer → ~35% of total revenue routed from Japan Households).',s:'OECD consumption I-O + SoftBank segment disclosures'});
+FLOWS.push({f:'JPHH',t:'MUFG',v:12,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (domestic retail banking fees, interest and asset-management share → ~20% of total revenue routed from Japan Households).',s:'OECD consumption I-O + MUFG segment disclosures'});
+FLOWS.push({f:'JPHH',t:'HITACHI',v:2.5,p:'E',c:0.4,m:'Household demand share of revenue, modeled from sector consumption coefficients applied to the domestic revenue mix (Hitachi is mostly B2B; small consumer-appliance and domestic share → ~4% of total revenue routed from Japan Households).',s:'OECD consumption I-O + Hitachi segment disclosures'});
+
+// Rest-of-world household transfers and taxes for the governments we track
+// inside the GLOBALHH footprint (India, Brazil) — every other household node
+// already has its government transfer/tax loop seeded.
+FLOWS.push({f:'INGOV',t:'GLOBALHH',v:70,p:'E',c:0.4,m:'Indian government social transfers to households — food subsidy (~$25B), PM-Kisan, NREGA and other direct benefit transfers. Indian households are a subset of the rest-of-world household node.',s:'India Union Budget'});
+FLOWS.push({f:'GLOBALHH',t:'INGOV',v:120,p:'E',c:0.4,m:'Indian personal income tax receipts (~₹10T), paid by households inside the rest-of-world household node.',s:'India Union Budget receipts'});
+FLOWS.push({f:'BRGOV',t:'GLOBALHH',v:150,p:'E',c:0.4,m:'Brazilian social transfers to households — INSS pension benefits (~R$900B) plus Bolsa Família. Brazilian households are a subset of the rest-of-world household node.',s:'Brazil Tesouro Nacional'});
+FLOWS.push({f:'GLOBALHH',t:'BRGOV',v:90,p:'E',c:0.4,m:'Brazilian household income taxes and social-security contributions, paid by households inside the rest-of-world household node.',s:'Brazil Receita Federal'});
+
 // Regional breakdown for household macro nodes, keyed by node id. Shares are
 // best-estimate allocations of the node's total annual outflows by regional
 // consumption proportions (latest available official statistics) — estimates,
