@@ -26,7 +26,9 @@ function proj(lon,lat){const s=pxPerDeg();return{x:MW/2+(lon-view.cx)*s, y:MH/2-
 function unproj(x,y){const s=pxPerDeg();return{lon:view.cx+(x-MW/2)/s, lat:view.cy-(y-MH/2)/(s*0.95)};}
 
 /* ---- filtered data ---- */
-const visC=()=>C.filter(c=>secOn[c.sec]);
+// The selected node always stays visible even if its sector is toggled off
+// (search can select any node, so its pin must exist to anchor the view).
+const visC=()=>C.filter(c=>secOn[c.sec]||c.id===selected);
 const visF=()=>{const m=TMUL[tIdx];return FL.filter(e=>layerOn[e.p]&&byId[e.f]&&byId[e.t]&&secOn[byId[e.f].sec]&&secOn[byId[e.t].sec]).map(e=>({...e,vv:e.v*m}));};
 
 /* ---- rendering ---- */
@@ -147,26 +149,75 @@ function render(){
     mx.lineWidth=3*DPR;mx.strokeStyle='rgba(8,12,20,.92)';mx.strokeText(c.id,lx,ly);
     mx.fillStyle=sel||hov?'#fff':'#c9d4e3';mx.fillText(c.id,lx,ly);
   });
-  document.getElementById('ctlTop').innerHTML=`<b>${live?'Real-time (sim)':PERIODS[tIdx]}</b> · ${sized.length} entities · ${fl.length} flows · sized by <b>${sizeBy==='mcap'?'market cap':'revenue'}</b> · zoom <b>${view.scale.toFixed(1)}×</b>`;
+  // Skip the innerHTML write when nothing changed — this runs every frame and
+  // the string only moves while zoom eases or a control flips.
+  const ctl=`<b>${live?'Real-time (sim)':PERIODS[tIdx]}</b> · ${sized.length} entities · ${fl.length} flows · sized by <b>${sizeBy==='mcap'?'market cap':'revenue'}</b> · zoom <b>${view.scale.toFixed(1)}×</b>`;
+  if(ctl!==ctlPrev)ctlTopEl.innerHTML=ctlPrev=ctl;
 }
+const ctlTopEl=document.getElementById('ctlTop');let ctlPrev='';
 function quad(a,c,b,t){const u=1-t;return{x:u*u*a.x+2*u*t*c.x+t*t*b.x,y:u*u*a.y+2*u*t*c.y+t*t*b.y};}
 function arrow(f,t,col){const an=Math.atan2(t.y-f.y,t.x-f.x),sz=6*DPR;mx.fillStyle=col;mx.beginPath();mx.moveTo(t.x,t.y);mx.lineTo(t.x-sz*Math.cos(an-.4),t.y-sz*Math.sin(an-.4));mx.lineTo(t.x-sz*Math.cos(an+.4),t.y-sz*Math.sin(an+.4));mx.closePath();mx.fill();}
 
-/* ---- interaction ---- */
-let panning=false,last={x:0,y:0},moved=false;
+/* ---- interaction (pointer events: mouse, touch, and pen) ---- */
+let panning=false,last={x:0,y:0},moved=false,pinch0=null;
+const ptrs=new Map(); // active pointers over the map: id -> CSS-px position
 function pick(px,py){const dpr=DPR;px*=dpr;py*=dpr;let best=null,bd=1e9;for(const p of lastDrawn){const d=Math.hypot(px-p.x,py-p.y);if(d<=p.r+5*dpr&&d<bd){bd=d;best=p.c;}}return best;}
-map.addEventListener('mousedown',e=>{panning=true;moved=false;last={x:e.offsetX,y:e.offsetY};});
-map.addEventListener('mousemove',e=>{const px=e.offsetX,py=e.offsetY;
-  if(panning){const dx=px-last.x,dy=py-last.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;const s=pxPerDeg()/DPR;target.cx-=dx/s;target.cy+=dy/(s*0.95);view.cx=target.cx;view.cy=target.cy;last={x:px,y:py};const tp=document.getElementById('tip');if(tp)tp.style.opacity=0;return;}
+const hideTip=()=>{const tp=document.getElementById('tip');if(tp)tp.style.opacity=0;};
+function zoomAbout(px,py,scale){ // rescale while keeping the (CSS-px) point fixed on screen
+  const before=unproj(px*DPR,py*DPR);
+  target.scale=view.scale=Math.max(0.8,Math.min(80,scale));
+  const after=unproj(px*DPR,py*DPR);
+  target.cx=view.cx+=before.lon-after.lon;target.cy=view.cy+=before.lat-after.lat;
+}
+map.addEventListener('pointerdown',e=>{
+  map.setPointerCapture(e.pointerId);
+  ptrs.set(e.pointerId,{x:e.offsetX,y:e.offsetY});
+  if(ptrs.size===1){panning=true;moved=false;last={x:e.offsetX,y:e.offsetY};}
+  else if(ptrs.size===2){panning=false;hideTip();const[a,b]=ptrs.values();pinch0={d:Math.hypot(a.x-b.x,a.y-b.y)||1,scale:view.scale};}
+});
+map.addEventListener('pointermove',e=>{
+  const px=e.offsetX,py=e.offsetY;
+  if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:px,y:py});
+  if(pinch0&&ptrs.size===2){ // two-finger pinch: zoom about the finger midpoint
+    const[a,b]=ptrs.values();
+    zoomAbout((a.x+b.x)/2,(a.y+b.y)/2,pinch0.scale*(Math.hypot(a.x-b.x,a.y-b.y)/pinch0.d));
+    moved=true;return;
+  }
+  if(panning){const dx=px-last.x,dy=py-last.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;const s=pxPerDeg()/DPR;target.cx-=dx/s;target.cy+=dy/(s*0.95);view.cx=target.cx;view.cy=target.cy;last={x:px,y:py};hideTip();return;}
+  if(e.pointerType!=='mouse')return; // hover/tooltip is a mouse-only affordance
   const c=pick(px,py);hover=c;const tip=document.getElementById('tip');if(!tip)return;
-  if(c){const m=TMUL[tIdx];const isGov=c.mcap===0;tip.innerHTML=`<div class="t">${c.name}</div><div class="s">${SECNAME[c.sec]} · ${c.country}</div><div class="s">${isGov?'Annual flows ~'+fmt(c.rev*m):'Cap '+fmt(c.mcap)+' · Rev '+fmt(c.rev*m)}</div><div class="pv"><i style="background:${PCOL[c.prov]}"></i>${PNAME[c.prov]} ${isGov?'(modeled)':'revenue'}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-240)+'px';tip.style.top=(py+16)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
-  else{tip.style.opacity=0;map.style.cursor=panning?'grabbing':'grab';}});
-window.addEventListener('mouseup',e=>{if(panning&&!moved){const r=map.getBoundingClientRect();const c=pick(e.clientX-r.left,e.clientY-r.top);if(c)selectNode(c.id);}panning=false;});
-map.addEventListener('wheel',e=>{e.preventDefault();const before=unproj(e.offsetX*DPR,e.offsetY*DPR);target.scale=view.scale=Math.max(0.8,Math.min(80,view.scale*(e.deltaY<0?1.18:0.85)));const after=unproj(e.offsetX*DPR,e.offsetY*DPR);target.cx=view.cx+=before.lon-after.lon;target.cy=view.cy+=before.lat-after.lat;},{passive:false});
+  if(c){const m=TMUL[tIdx];const isGov=c.mcap===0;tip.innerHTML=`<div class="t">${c.name}</div><div class="s">${SECNAME[c.sec]} · ${c.country}</div><div class="s">${isGov?'Annual flows ~'+fmt(c.rev*m):'Cap '+fmt(c.mcap)+' · Rev '+fmt(c.rev*m)}</div><div class="pv"><i style="background:${PCOL[c.prov]}"></i>${PNAME[c.prov]} ${isGov?'(modeled)':'revenue'}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-248)+'px';tip.style.top=Math.min(py+16,map.clientHeight-100)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
+  else{tip.style.opacity=0;map.style.cursor='grab';}});
+function endPointer(e){
+  if(!ptrs.delete(e.pointerId))return;
+  if(ptrs.size===1){pinch0=null;const[a]=ptrs.values();panning=true;moved=true;last={x:a.x,y:a.y};} // pinch ended: remaining finger keeps panning
+  else if(ptrs.size===0){
+    if(panning&&!moved&&e.type==='pointerup'){const c=pick(e.offsetX,e.offsetY);if(c)selectNode(c.id);}
+    panning=false;pinch0=null;
+  }
+}
+map.addEventListener('pointerup',endPointer);
+map.addEventListener('pointercancel',endPointer);
+map.addEventListener('pointerleave',e=>{if(!panning&&e.pointerType==='mouse'){hover=null;hideTip();}});
+map.addEventListener('wheel',e=>{e.preventDefault();zoomAbout(e.offsetX,e.offsetY,view.scale*(e.deltaY<0?1.18:0.85));},{passive:false});
 map.addEventListener('dblclick',e=>{const before=unproj(e.offsetX*DPR,e.offsetY*DPR);target.scale=Math.min(80,target.scale*2);target.cx=before.lon;target.cy=before.lat;});
+// Keyboard map control (the canvas is tabbable): arrows pan, +/- zoom, 0 fits.
+map.addEventListener('keydown',e=>{
+  const panDeg=60*DPR/pxPerDeg(); // ~60 CSS px per keypress at the current zoom
+  if(e.key==='ArrowLeft')target.cx-=panDeg;
+  else if(e.key==='ArrowRight')target.cx+=panDeg;
+  else if(e.key==='ArrowUp')target.cy+=panDeg;
+  else if(e.key==='ArrowDown')target.cy-=panDeg;
+  else if(e.key==='+'||e.key==='=')target.scale=Math.min(80,target.scale*1.6);
+  else if(e.key==='-'||e.key==='_')target.scale=Math.max(0.8,target.scale/1.6);
+  else if(e.key==='0')fitView();
+  else return;
+  e.preventDefault();
+});
+function fitView(){target={cx:10,cy:25,scale:1};selected=null;renderInspectorEmpty();}
 document.getElementById('zin').onclick=()=>target.scale=Math.min(80,target.scale*1.6);
 document.getElementById('zout').onclick=()=>target.scale=Math.max(0.8,target.scale/1.6);
-document.getElementById('zfit').onclick=()=>{target={cx:10,cy:25,scale:1};selected=null;renderInspectorEmpty();};
+document.getElementById('zfit').onclick=fitView;
 
 /* ---- inspector ---- */
 function selectNode(id){selected=id;const n=byId[id],m=TMUL[tIdx];
@@ -215,7 +266,12 @@ modal.addEventListener('mousedown',e=>{if(e.target===modal)closeDrill();});
 modal.addEventListener('keydown',e=>{if(e.key==='Tab'&&modal.classList.contains('show')){e.preventDefault();document.getElementById('ddClose').focus();}});
 function openDrill(id){ddPrevFocus=document.activeElement;ddC=id;const eg=FL.filter(e=>(e.f===id||e.t===id)&&layerOn[e.p]);const ids=new Set([id]);eg.forEach(e=>{ids.add(e.f);ids.add(e.t);});ddN=[...ids].map((nid,i)=>{const an=i/ids.size*6.28;return{id:nid,x:nid===id?0:Math.cos(an)*170,y:nid===id?0:Math.sin(an)*170,vx:0,vy:0};});document.getElementById('ddTitle').textContent='Relationships · '+byId[id].name;document.getElementById('ddFoot').innerHTML=`${eg.length} seeded flows. Line style = provenance (solid reported · dashed estimated · dotted inferred). Drag to rearrange. Production resolves the full counterparty set from filings and input-output tables.`;modal.classList.add('show');document.getElementById('ddClose').focus();cancelAnimationFrame(ddRAF);ddLoop();}
 function closeDrill(){modal.classList.remove('show');cancelAnimationFrame(ddRAF);if(ddPrevFocus&&ddPrevFocus.focus){try{ddPrevFocus.focus();}catch{/* element gone */}}}
-function ddLoop(){dd.width=dd.clientWidth*DPR;dd.height=dd.clientHeight*DPR;dx.setTransform(DPR,0,0,DPR,0,0);const W=dd.clientWidth,H=dd.clientHeight,cx=W/2,cy=H/2;const m=Object.fromEntries(ddN.map(n=>[n.id,n]));const eg=FL.filter(e=>m[e.f]&&m[e.t]&&layerOn[e.p]);
+function ddLoop(){
+  // Resize the backing store only when needed (reassigning width every frame
+  // forces a clear + GPU realloc); the explicit clearRect below wipes the frame.
+  const cw=Math.round(dd.clientWidth*DPR),ch=Math.round(dd.clientHeight*DPR);
+  if(dd.width!==cw||dd.height!==ch){dd.width=cw;dd.height=ch;}
+  dx.setTransform(DPR,0,0,DPR,0,0);const W=dd.clientWidth,H=dd.clientHeight,cx=W/2,cy=H/2;const m=Object.fromEntries(ddN.map(n=>[n.id,n]));const eg=FL.filter(e=>m[e.f]&&m[e.t]&&layerOn[e.p]);
   for(let i=0;i<ddN.length;i++)for(let j=i+1;j<ddN.length;j++){const a=ddN[i],b=ddN[j];let ax=a.x-b.x,ay=a.y-b.y,d2=ax*ax+ay*ay||1,f=30000/d2,d=Math.sqrt(d2);a.vx+=ax/d*f;a.vy+=ay/d*f;b.vx-=ax/d*f;b.vy-=ay/d*f;}
   eg.forEach(e=>{const a=m[e.f],b=m[e.t],ax=b.x-a.x,ay=b.y-a.y,d=Math.hypot(ax,ay)||1,f=(d-160)*0.01;a.vx+=ax/d*f;a.vy+=ay/d*f;b.vx-=ax/d*f;b.vy-=ay/d*f;});
   ddN.forEach(n=>{if(n.id===ddC){n.x=0;n.y=0;return;}n.vx+=-n.x*0.01;n.vy+=-n.y*0.01;if(n!==ddDrag){n.x+=n.vx*0.5;n.y+=n.vy*0.5;}n.vx*=0.85;n.vy*=0.85;});
@@ -224,14 +280,15 @@ function ddLoop(){dd.width=dd.clientWidth*DPR;dd.height=dd.clientHeight*DPR;dx.s
   dx.globalAlpha=1;
   ddN.forEach(n=>{const c=byId[n.id],r=n.id===ddC?28:19;dx.beginPath();dx.arc(cx+n.x,cy+n.y,r,0,6.28);dx.fillStyle=SEC[c.sec];dx.globalAlpha=n.id===ddC?1:0.88;dx.shadowBlur=n.id===ddC?16:6;dx.shadowColor=SEC[c.sec];dx.fill();dx.shadowBlur=0;dx.globalAlpha=1;dx.lineWidth=n.id===ddC?3:1.5;dx.strokeStyle='#fff';dx.stroke();dx.fillStyle=PCOL[c.prov];dx.strokeStyle='#101725';dx.lineWidth=1.4;dx.beginPath();dx.arc(cx+n.x+r*0.7,cy+n.y-r*0.7,3.4,0,6.28);dx.fill();dx.stroke();dx.fillStyle='#fff';dx.font='600 11px Inter,sans-serif';dx.textAlign='center';dx.fillText(n.id,cx+n.x,cy+n.y+r+14);});
   ddRAF=requestAnimationFrame(ddLoop);}
-dd.addEventListener('mousedown',e=>{const W=dd.clientWidth,H=dd.clientHeight,px=e.offsetX-W/2,py=e.offsetY-H/2;ddDrag=ddN.find(n=>Math.hypot(px-n.x,py-n.y)<24)||null;});
-dd.addEventListener('mousemove',e=>{if(ddDrag){const W=dd.clientWidth,H=dd.clientHeight;ddDrag.x=e.offsetX-W/2;ddDrag.y=e.offsetY-H/2;ddDrag.vx=ddDrag.vy=0;}});
-window.addEventListener('mouseup',()=>ddDrag=null);
+dd.addEventListener('pointerdown',e=>{dd.setPointerCapture(e.pointerId);const px=e.offsetX-dd.clientWidth/2,py=e.offsetY-dd.clientHeight/2;ddDrag=ddN.find(n=>Math.hypot(px-n.x,py-n.y)<24)||null;});
+dd.addEventListener('pointermove',e=>{if(ddDrag){ddDrag.x=e.offsetX-dd.clientWidth/2;ddDrag.y=e.offsetY-dd.clientHeight/2;ddDrag.vx=ddDrag.vy=0;}});
+dd.addEventListener('pointerup',()=>ddDrag=null);
+dd.addEventListener('pointercancel',()=>ddDrag=null);
 
 /* ---- panels ---- */
 function buildSectors(){const ct={};C.forEach(c=>ct[c.sec]=(ct[c.sec]||0)+1);document.getElementById('sectors').innerHTML=Object.keys(SEC).map(s=>`<button class="chip ${secOn[s]?'on':''}" data-s="${s}" style="${secOn[s]?'background:'+SEC[s]+'1a;border-color:'+SEC[s]+'66':''}"><span class="l"><span class="d" style="background:${SEC[s]}"></span>${SECNAME[s]}</span><span class="ct">${ct[s]}</span></button>`).join('');document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{secOn[b.dataset.s]=!secOn[b.dataset.s];buildSectors();refreshStats();});}
 function buildLayers(){const L={R:'Filing-anchored revenue & disclosures',E:'Modeled from disclosure + I-O; point-in-time caps',I:'Third-party or allocation heuristics'};document.getElementById('layers').innerHTML=Object.keys(L).map(k=>`<div class="leg ${layerOn[k]?'':'off'}" data-l="${k}" role="switch" tabindex="0" aria-checked="${layerOn[k]?'true':'false'}" aria-label="${PNAME[k]} layer"><span class="ln" style="border-color:${PCOL[k]};border-top-style:${k==='R'?'solid':k==='E'?'dashed':'dotted'}"></span><div><div class="ttl" style="color:${PCOL[k]}">${PNAME[k]}</div><div class="sub">${L[k]}</div></div></div>`).join('');document.querySelectorAll('[data-l]').forEach(el=>{const go=()=>{layerOn[el.dataset.l]=!layerOn[el.dataset.l];buildLayers();refreshStats();if(selected)selectNode(selected);};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});}
-function refreshStats(){const sc=visC(),fl=visF();map.setAttribute('aria-label','Capital-flow world map — '+sc.length+' entities and '+fl.length+' flows shown for period '+(live?'live (simulated)':PERIODS[tIdx])+'. Use the search box and side panels to explore entity details and provenance.');document.getElementById('hCap').textContent=fmt(sc.reduce((a,c)=>a+c.mcap,0));document.getElementById('hF').textContent=fl.length;document.getElementById('hN').textContent=sc.length;const mix={R:0,E:0,I:0};fl.forEach(e=>mix[e.p]+=e.vv);const tot=mix.R+mix.E+mix.I||1;document.getElementById('provmix').innerHTML=['R','E','I'].map(k=>`<div class="mixrow"><div class="h"><b style="color:${PCOL[k]}">${PNAME[k]}</b><span>${(mix[k]/tot*100).toFixed(0)}%</span></div><div class="track"><i style="width:${mix[k]/tot*100}%;background:${PCOL[k]}"></i></div></div>`).join('')+`<div class="note">Share of visible flow volume by source quality. Toggle layers to see how much rests on modeling vs. reported figures.</div>`;}
+function refreshStats(){const sc=visC(),fl=visF();map.setAttribute('aria-label','Capital-flow world map — '+sc.length+' entities and '+fl.length+' flows shown for period '+(live?'live (simulated)':PERIODS[tIdx])+'. When focused: arrow keys pan, plus and minus zoom, zero resets. Use the search box and side panels to explore entity details and provenance.');document.getElementById('hCap').textContent=fmt(sc.reduce((a,c)=>a+c.mcap,0));document.getElementById('hF').textContent=fl.length;document.getElementById('hN').textContent=sc.length;const mix={R:0,E:0,I:0};fl.forEach(e=>mix[e.p]+=e.vv);const tot=mix.R+mix.E+mix.I||1;document.getElementById('provmix').innerHTML=['R','E','I'].map(k=>`<div class="mixrow"><div class="h"><b style="color:${PCOL[k]}">${PNAME[k]}</b><span>${(mix[k]/tot*100).toFixed(0)}%</span></div><div class="track"><i style="width:${mix[k]/tot*100}%;background:${PCOL[k]}"></i></div></div>`).join('')+`<div class="note">Share of visible flow volume by source quality. Toggle layers to see how much rests on modeling vs. reported figures.</div>`;}
 
 /* ---- search ---- */
 const srch=document.getElementById('srch'),reslist=document.getElementById('reslist');
@@ -244,9 +301,11 @@ let playIv=null;
 document.getElementById('play').onclick=function(){playing=!playing;this.textContent=playing?'⏸':'▶';this.setAttribute('aria-label',playing?'Pause timeline':'Play timeline');clearInterval(playIv);playIv=null;if(playing){playIv=setInterval(()=>{tIdx=(tIdx+1)%6;scrub.value=tIdx;scrub.oninput();},1100);}};
 const feeds=[{k:'WTI Crude',v:72.4,u:''},{k:'Brent',v:76.1,u:''},{k:'USD/JPY',v:151.2,u:''},{k:'EUR/USD',v:1.083,u:''},{k:'10Y UST',v:4.21,u:'%'},{k:'Gold',v:2032,u:''}];
 const sd=Array.from({length:90},()=>50);
-function tick(){if(live)feeds.forEach(f=>{const d=(Math.random()-0.5)*f.v*0.004;f.v=Math.max(.001,f.v+d);f.dir=d>=0;});document.getElementById('feeds').innerHTML=feeds.map(f=>`<div class="feed"><span class="k">${f.k}</span><span class="v ${f.dir?'up':'down'}">${f.v>100?f.v.toFixed(1):f.v.toFixed(3)}${f.u} ${live?(f.dir?'▲':'▼'):''}</span></div>`).join('');if(live){sd.push(sd[sd.length-1]+(Math.random()-.48)*6);sd.shift();}drawSpark();}
+// Direction coloring only applies while live — before the sim runs there's no
+// tick-to-tick move, so values stay neutral instead of all reading as "down".
+function tick(){if(live)feeds.forEach(f=>{const d=(Math.random()-0.5)*f.v*0.004;f.v=Math.max(.001,f.v+d);f.dir=d>=0;});document.getElementById('feeds').innerHTML=feeds.map(f=>`<div class="feed"><span class="k">${f.k}</span><span class="v ${live?(f.dir?'up':'down'):''}">${f.v>100?f.v.toFixed(1):f.v.toFixed(3)}${f.u} ${live?(f.dir?'▲':'▼'):''}</span></div>`).join('');if(live){sd.push(sd[sd.length-1]+(Math.random()-.48)*6);sd.shift();}drawSpark();}
 const sc=document.getElementById('spark'),sx=sc.getContext('2d');
-function drawSpark(){sc.width=sc.clientWidth*DPR;sc.height=38*DPR;sx.setTransform(DPR,0,0,DPR,0,0);const w=sc.clientWidth,h=38,mn=Math.min(...sd),mv=Math.max(...sd);sx.clearRect(0,0,w,h);sx.beginPath();sd.forEach((v,i)=>{const x=i/sd.length*w,y=h-((v-mn)/((mv-mn)||1))*(h-6)-3;i?sx.lineTo(x,y):sx.moveTo(x,y);});sx.strokeStyle=live?'#2dd4e8':'#5b8cff';sx.lineWidth=1.8;sx.stroke();}
+function drawSpark(){const cw=Math.round(sc.clientWidth*DPR),ch=Math.round(38*DPR);if(sc.width!==cw||sc.height!==ch){sc.width=cw;sc.height=ch;}sx.setTransform(DPR,0,0,DPR,0,0);const w=sc.clientWidth,h=38,mn=Math.min(...sd),mv=Math.max(...sd);sx.clearRect(0,0,w,h);sx.beginPath();sd.forEach((v,i)=>{const x=i/sd.length*w,y=h-((v-mn)/((mv-mn)||1))*(h-6)-3;i?sx.lineTo(x,y):sx.moveTo(x,y);});sx.strokeStyle=live?'#2dd4e8':'#5b8cff';sx.lineWidth=1.8;sx.stroke();}
 document.getElementById('liveBtn').onclick=function(){live=!live;this.classList.toggle('on',live);this.setAttribute('aria-pressed',live?'true':'false');document.getElementById('liveDot').classList.toggle('on',live);document.getElementById('period').textContent=live?'LIVE':PERIODS[tIdx];};
 const clockFn=()=>document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB');
 let tickIv=setInterval(tick,900),clockIv=setInterval(clockFn,1000);
@@ -257,7 +316,8 @@ document.addEventListener('visibilitychange',()=>{
   clearInterval(tickIv);clearInterval(clockIv);
   if(!document.hidden){tickIv=setInterval(tick,900);clockIv=setInterval(clockFn,1000);clockFn();}
 });
-window.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrill();});
+// Escape closes the drill-down if open, otherwise clears the map selection.
+window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(modal.classList.contains('show'))closeDrill();else if(selected){selected=null;renderInspectorEmpty();}});
 
 /* boot */
 buildSectors();buildLayers();refreshStats();tick();requestAnimationFrame(frame);

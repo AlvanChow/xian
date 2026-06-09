@@ -1,6 +1,7 @@
 // Lenient flat config: catches real errors (undefined vars, syntax) without
 // drowning the terse rendering code in style warnings.
 export default [
+  { ignores: ['node_modules/**', 'dist/**', 'test-results/**', 'playwright-report/**'] },
   {
     files: ['src/**/*.js'],
     languageOptions: {
@@ -17,6 +18,28 @@ export default [
         clearInterval: 'readonly',
         devicePixelRatio: 'readonly',
         console: 'readonly',
+      },
+    },
+    rules: {
+      'no-undef': 'error',
+      'no-unused-vars': 'warn',
+    },
+  },
+  {
+    // Node-side files: build scripts, configs, and Playwright specs. The spec
+    // callbacks passed to page.evaluate()/locator.evaluate() execute in the
+    // browser, so a few browser globals are allowed here too.
+    files: ['tests/**/*.js', 'scripts/**/*.mjs', '*.js', '*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        URL: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        getComputedStyle: 'readonly',
       },
     },
     rules: {

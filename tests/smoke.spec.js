@@ -72,25 +72,11 @@ test('clicking the map re-selects a node', async ({ page }) => {
   await expect(page.locator('#ctlTop')).toContainText('zoom 1.0×');
 
   // Find a point that actually sits over a pin and click it through the real
-  // pointer pipeline (mousedown -> mouseup with no drag -> pick -> selectNode).
-  // We scan a grid rather than assuming a pin is at dead-center: at the fit view
-  // the entity cluster does not land at the canvas midpoint, so a hardcoded
-  // center click would hit empty ocean. The cursor turns to 'pointer' only when
-  // pick() resolves a node under it, so we sweep until the cursor reports a hit,
-  // then click there — this exercises the exact interaction path under test.
-  const box = await page.locator('#map').boundingBox();
-  const map = page.locator('#map');
-  let hit = null;
-  for (let gy = 0.2; gy <= 0.8 && !hit; gy += 0.1) {
-    for (let gx = 0.1; gx <= 0.9 && !hit; gx += 0.05) {
-      const x = box.x + box.width * gx;
-      const y = box.y + box.height * gy;
-      await page.mouse.move(x, y);
-      // pick() sets cursor:'pointer' on the canvas when the pointer is over a pin.
-      const overPin = await map.evaluate((el) => getComputedStyle(el).cursor === 'pointer');
-      if (overPin) hit = { x, y };
-    }
-  }
+  // pointer pipeline (pointerdown -> pointerup with no drag -> pick ->
+  // selectNode). findPin scans a grid rather than assuming a pin is at
+  // dead-center: at the fit view the entity cluster does not land at the canvas
+  // midpoint, so a hardcoded center click would hit empty ocean.
+  const hit = await findPin(page);
   expect(hit, 'expected to find a pin somewhere on the fit-view map').not.toBeNull();
   await page.mouse.click(hit.x, hit.y);
 
@@ -141,6 +127,69 @@ test('hovering the map throws nothing and #tip exists', async ({ page }) => {
     await page.waitForTimeout(40); // short settling between moves; not a state gate
   }
   // The "throws nothing" assertion is enforced by the afterEach error check.
+});
+
+// --- helper: find a CSS-px point that sits over a pin at the fit view ------
+// Sweeps the pointer across a grid; pick() sets cursor:'pointer' on the canvas
+// only when the pointer is over a pin, so the first 'pointer' hit is our point.
+async function findPin(page) {
+  const map = page.locator('#map');
+  const box = await map.boundingBox();
+  for (let gy = 0.2; gy <= 0.8; gy += 0.1) {
+    for (let gx = 0.1; gx <= 0.9; gx += 0.05) {
+      const x = box.x + box.width * gx;
+      const y = box.y + box.height * gy;
+      await page.mouse.move(x, y);
+      const overPin = await map.evaluate((el) => getComputedStyle(el).cursor === 'pointer');
+      if (overPin) return { x, y };
+    }
+  }
+  return null;
+}
+
+test('Escape clears the selection', async ({ page }) => {
+  // Boot auto-selects NVDA, so the inspector starts populated.
+  await expect(page.locator('#inspector .ihead')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#inspector .ins-empty')).toBeVisible();
+});
+
+test('keyboard zooms the focused map and 0 resets it', async ({ page }) => {
+  const ctlTop = page.locator('#ctlTop');
+  await page.locator('#zfit').click();
+  await expect(ctlTop).toContainText('zoom 1.0×');
+
+  // Focus the canvas (it's tabbable) and zoom in one step (×1.6).
+  await page.locator('#map').focus();
+  await page.keyboard.press('+');
+  await expect.poll(() => ctlTop.evaluate((el) => el.innerHTML))
+    .toMatch(/zoom <b>(1\.[6-9]|2)/);
+
+  // '0' fits the view back to 1.0× and clears the selection.
+  await page.keyboard.press('0');
+  await expect(ctlTop).toContainText('zoom 1.0×');
+  await expect(page.locator('#inspector .ins-empty')).toBeVisible();
+});
+
+test.describe('touch input', () => {
+  test.use({ hasTouch: true });
+
+  test('tapping a pin selects it', async ({ page }) => {
+    // Clear the boot selection and let the view settle at the 1.0× fit.
+    await page.locator('#zfit').click();
+    await expect(page.locator('#inspector .ins-empty')).toBeVisible();
+    await expect(page.locator('#ctlTop')).toContainText('zoom 1.0×');
+
+    // Locate a pin with the mouse sweep, then tap it through the real touch
+    // pipeline (pointerdown/up with pointerType 'touch' -> pick -> selectNode).
+    const hit = await findPin(page);
+    expect(hit, 'expected to find a pin somewhere on the fit-view map').not.toBeNull();
+    await page.touchscreen.tap(hit.x, hit.y);
+
+    const nm = page.locator('#inspector .ihead .nm');
+    await expect(nm).toBeVisible();
+    await expect(nm).not.toHaveText('');
+  });
 });
 
 // --- helper: read the REVENUE stat value text from the inspector ----------

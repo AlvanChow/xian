@@ -13,6 +13,7 @@ Live site: **https://alvanchow.github.io/xian/**
 - **A force-directed drill-down graph** for any node's ego-network.
 - **Time scrubbing** (2019–2024) and a simulated **live feed** panel.
 - **An inspector** that breaks down every node's inflows/outflows and shows the methodology + source behind each figure.
+- **Mouse, touch, and keyboard control** — drag/scroll-wheel on desktop; one-finger pan, pinch-zoom, and tap-select on touch devices; arrow keys pan, `+`/`−` zoom, and `0` resets when the map is focused.
 
 ## The provenance model (R / E / I)
 

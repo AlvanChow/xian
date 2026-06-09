@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="ValueGrid — an interactive, canvas-rendered world map of global capital flows with full provenance tagging (Reported / Estimated / Inferred).">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232a5bd0'/><circle cx='12' cy='12' r='7' fill='%236ea8ff'/></svg>">
 <title>ValueGrid · global capital-flow map</title>
 <link rel="stylesheet" href="./styles.css">
 </head>
@@ -12,7 +14,7 @@
   <div class="cell" id="top">
     <div class="logo"><span class="mk"></span>ValueGrid <small>· global capital-flow map</small></div>
     <div class="hsep"></div>
-    <div class="hstat">Entities <b id="hN">148</b></div>
+    <div class="hstat">Entities <b id="hN">—</b></div>
     <div class="hstat">Tracked cap <b id="hCap">—</b></div>
     <div class="hstat">Flows <b id="hF">—</b></div>
     <div class="hsep"></div>
@@ -31,7 +33,7 @@
   </div>
 
   <div class="cell" id="center" role="region" aria-label="Capital-flow map">
-    <canvas id="map" role="img" aria-label="Interactive capital-flow world map"></canvas>
+    <canvas id="map" role="img" tabindex="0" aria-label="Interactive capital-flow world map"></canvas>
     <div id="tip"></div>
     <div class="ctl" id="ctlTop"></div>
     <div class="ctl" id="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Reset view">⊡</button></div>
@@ -40,7 +42,7 @@
       <span><i style="background:var(--estimated)"></i>Estimated</span>
       <span><i style="background:var(--inferred)"></i>Inferred</span>
     </div>
-    <div class="ctl" id="hint">drag · scroll · click a node</div>
+    <div class="ctl" id="hint">drag · scroll / pinch · click a node</div>
     <div id="timebar">
       <button id="play" aria-label="Play timeline">▶</button>
       <span class="period" id="period">2024</span>
