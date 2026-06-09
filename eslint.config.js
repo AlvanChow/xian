@@ -22,6 +22,7 @@ export default [
         Promise: 'readonly',
         localStorage: 'readonly',
         location: 'readonly',
+        URLSearchParams: 'readonly',
         history: 'readonly',
       },
     },
@@ -48,6 +49,7 @@ export default [
         window: 'readonly',
         document: 'readonly',
         getComputedStyle: 'readonly',
+        location: 'readonly',
       },
     },
     rules: {

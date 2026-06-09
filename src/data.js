@@ -649,3 +649,11 @@ FLOWS.push({f:'PLTR',t:'UST',v:1.2,p:'E',c:0.45,m:'Palantir government revenue: 
 FLOWS.push({f:'UST',t:'PLTR',v:1.5,p:'E',c:0.5,m:'US government contract payments to Palantir (defense/intelligence/civil). Estimated from federal contract data.',s:'USAspending.gov'});
 FLOWS.push({f:'GLOBALHH',t:'DANGOTE',v:3.0,p:'I',c:0.3,m:'Consumer/construction demand for Dangote cement across African markets, inferred from regional consumption.',s:'Regional demand model'});
 FLOWS.push({f:'GLOBALHH',t:'CIB',v:2.0,p:'I',c:0.3,m:'Egyptian household banking deposits/fees to Commercial International Bank, inferred from retail banking base.',s:'Retail banking model'});
+
+// Curated high-profile flows between existing nodes — each from a public,
+// widely-reported disclosure, tagged E where the figure is approximate.
+FLOWS.push({f:'GOOGL',t:'AAPL',v:20,p:'E',c:0.7,m:'Traffic-acquisition payment for default search placement on Apple devices, ~$20B/yr per evidence disclosed in US v. Google (2023). Not a separate line item in either filing.',s:'US v. Google antitrust trial disclosures'});
+FLOWS.push({f:'UST',t:'LMT',v:44,p:'E',c:0.75,m:'US government sales: Lockheed discloses ~73% of net sales from the US government (10-K customer concentration), applied to annual revenue.',s:'LMT 10-K customer concentration + USAspending.gov'});
+FLOWS.push({f:'UST',t:'RTX',v:30,p:'E',c:0.6,m:'US government sales: RTX discloses roughly 45-50% of net sales to the US government (10-K customer concentration), applied to annual revenue.',s:'RTX 10-K customer concentration'});
+FLOWS.push({f:'AAPL',t:'QCOM',v:7,p:'E',c:0.6,m:'Modem/RF chipset purchases under the 2019 supply and license agreements; Apple is a disclosed >10% customer in Qualcomm\'s QCT concentration. Sized from bill-of-materials estimates.',s:'QCOM 10-K customer concentration + BOM estimates'});
+FLOWS.push({f:'NFLX',t:'AMZN',v:1,p:'I',c:0.4,m:'Cloud infrastructure spend: Netflix runs primarily on AWS; annual spend inferred from disclosed purchase commitments, ~$1B scale.',s:'NFLX 10-K purchase obligations + industry reporting'});
