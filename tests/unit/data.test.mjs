@@ -3,7 +3,7 @@
 // runner: `npm run test:unit` (node --test tests/unit/).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COMPANIES, FLOWS } from '../../src/data.js';
+import { COMPANIES, FLOWS, STATE_SHARES } from '../../src/data.js';
 
 const PROVS = new Set(['R', 'E', 'I']);
 const ids = new Set(COMPANIES.map((c) => c.id));
@@ -77,6 +77,41 @@ test('FLOWS have no duplicate f|t pairs', () => {
     assert.ok(!seen.has(key), `duplicate flow pair: ${key}`);
     seen.add(key);
   }
+});
+
+test('STATE_SHARES are keyed by COMPANIES ids with valid metadata', () => {
+  const entries = Object.entries(STATE_SHARES);
+  assert.ok(entries.length > 0, 'STATE_SHARES must not be empty');
+  for (const [id, sb] of entries) {
+    assert.ok(ids.has(id), `STATE_SHARES key is not a COMPANIES id: ${id}`);
+    assert.ok(typeof sb.m === 'string' && sb.m.length > 0, `${id}: m must be a non-empty string`);
+    assert.ok(typeof sb.s === 'string' && sb.s.length > 0, `${id}: s must be a non-empty string`);
+    assert.ok(PROVS.has(sb.p), `${id}: p must be one of R/E/I, got ${sb.p}`);
+  }
+});
+
+test('STATE_SHARES rows have unique names/abbreviations and shares summing to 1', () => {
+  for (const [id, sb] of Object.entries(STATE_SHARES)) {
+    const names = new Set();
+    const abbrs = new Set();
+    let sum = 0;
+    for (const r of sb.rows) {
+      assert.ok(typeof r.n === 'string' && r.n.length > 0, `${id}: row name missing`);
+      assert.ok(/^[A-Z]{2}$/.test(r.a), `${id}/${r.n}: abbreviation must be two capitals, got ${r.a}`);
+      assert.ok(Number.isFinite(r.sh) && r.sh > 0 && r.sh < 1, `${id}/${r.n}: sh must be in (0,1), got ${r.sh}`);
+      assert.ok(!names.has(r.n), `${id}: duplicate state name: ${r.n}`);
+      assert.ok(!abbrs.has(r.a), `${id}: duplicate state abbreviation: ${r.a}`);
+      names.add(r.n);
+      abbrs.add(r.a);
+      sum += r.sh;
+    }
+    assert.ok(Math.abs(sum - 1) < 1e-9, `${id}: shares must sum to 1, got ${sum}`);
+  }
+});
+
+test('STATE_SHARES for USHH covers all 50 states plus DC', () => {
+  assert.ok(STATE_SHARES.USHH, 'USHH breakdown must exist');
+  assert.equal(STATE_SHARES.USHH.rows.length, 51, 'expected 50 states + DC');
 });
 
 // --- src/facts.js (optional, generated) -----------------------------------

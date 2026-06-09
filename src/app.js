@@ -1,6 +1,6 @@
 /* ValueGrid v2 — refined map app */
 import { WORLD } from './world.js';
-import { COMPANIES, FLOWS } from './data.js';
+import { COMPANIES, FLOWS, STATE_SHARES } from './data.js';
 import { FACTS } from './facts.js';
 
 const C=COMPANIES, FL=FLOWS;
@@ -256,7 +256,8 @@ document.getElementById('zfit').onclick=fitView;
 /* ---- inspector ---- */
 // fly=false refreshes the inspector in place (filter/scrub changes) without
 // re-aiming the camera at the node.
-function selectNode(id,fly=true){const n=byId[id];if(!n)return;selected=id;const m=TMUL[tIdx],np=nProv(n),fx=FACTS[id];
+let sbOpen=false; // state-breakdown "show all" toggle; collapses again on node change
+function selectNode(id,fly=true){const n=byId[id];if(!n)return;if(selected!==id)sbOpen=false;selected=id;const m=TMUL[tIdx],np=nProv(n),fx=FACTS[id];
   if(fly){target.cx=n.lng;target.cy=n.lat;if(target.scale<2)target.scale=2.2;}
   const outs=FL.filter(e=>e.f===id&&layerOn[e.p]&&nodeVis(byId[e.t])).map(e=>({...e,vv:e.v*m}));
   const ins=FL.filter(e=>e.t===id&&layerOn[e.p]&&nodeVis(byId[e.f])).map(e=>({...e,vv:e.v*m}));
@@ -267,6 +268,12 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;selected=id;const
   const cur=fx&&fx.revT[PERIODS[tIdx]],prv=fx&&fx.revT[String(+PERIODS[tIdx]-1)];
   const yoy=(cur!=null&&prv>0)?Math.round((cur-prv)/prv*100):null;
   const mv=Math.max(1,...outs.map(x=>x.vv),...ins.map(x=>x.vv));
+  // Geographic breakdown for household macro nodes (currently USHH): an
+  // allocation of the node's national total, so each state figure scales
+  // with the scrubbed year exactly like the headline flows number.
+  const sb=STATE_SHARES[id],sbRows=sb?[...sb.rows].sort((a,b)=>b.sh-a.sh):[];
+  const stateRow=r=>`<div class="flow" role="button" tabindex="0" data-st="${r.a}"><div class="r1"><div class="who"><span class="ar">◆</span><span>${r.n}</span><span class="tag ${sb.p}">${PNAME[sb.p][0]}</span></div><div class="amt">${fmt(r.sh*revAt(n))}</div></div><div class="bar"><i style="width:${Math.min(100,r.sh/sbRows[0].sh*100)}%;background:${PCOL[sb.p]}"></i></div><div class="meth">${(r.sh*100).toFixed(1)}% of national household outflows</div></div>`;
+  const stateSec=sb?`<div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Breakdown by state <span>${sbRows.length}</span></div><div style="color:var(--mut);font-size:11px;margin:-2px 0 8px">Estimated allocation of the national total by BEA state consumption shares. Select a state for methodology.</div>${(sbOpen?sbRows:sbRows.slice(0,10)).map(stateRow).join('')}<button class="ddbtn" id="sbToggle" style="margin:10px 0 4px;width:100%">${sbOpen?'Show top 10 only':'Show all '+sbRows.length+' states →'}</button></div>`:'';
   const flowRow=(e,dir)=>{const o=dir==='out'?e.t:e.f,oc=byId[o],fp=fProv(e);return `<div class="flow" role="button" tabindex="0" data-e="${e.f}|${e.t}"><div class="r1"><div class="who"><span class="ar">${dir==='out'?'→':'←'}</span><span style="width:9px;height:9px;border-radius:50%;background:${SEC[oc.sec]};display:inline-block"></span><span class="cplink" data-go="${o}" title="Open ${oc.name}">${oc.name}</span><span class="tag ${fp}">${PNAME[fp][0]}</span></div><div class="amt">${fmt(e.vv)}</div></div><div class="bar"><i style="width:${Math.min(100,e.vv/mv*100)}%;background:${PCOL[fp]}"></i></div><div class="meth">source quality ${(e.c*100|0)}%</div></div>`;};
   const html=`
    <div class="ihead"><div class="tk">${n.id}</div><div class="nm">${n.name}</div>
@@ -282,11 +289,15 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;selected=id;const
    ${fx?`<div class="nsw"><div class="k">SEC-REPORTED REVENUE SERIES${yoy!=null?` · <span class="${yoy>=0?'up':'down'}">${yoy>=0?'+':''}${yoy}% YoY</span>`:''}</div><canvas id="nspark" aria-label="Reported revenue ${PERIODS[0]}–${PERIODS[PERIODS.length-1]}"></canvas><div class="yrs"><span>${PERIODS[0]}</span><span>${PERIODS[PERIODS.length-1]}</span></div></div>`:''}
    <button class="ddbtn" id="openDD">View relationship graph →</button>
    ${hasFact(n)?`<div class="verdict ok">✓ Revenue is the reported figure from SEC XBRL filings (10-K/20-F, through ${fx.asOf}) — scrubbing years shows the real series, not an estimate. <a href="${fx.url}" target="_blank" rel="noopener">Verify at SEC ↗</a></div>`:fx?`<div class="verdict warn">⚠ No SEC filing figure for ${PERIODS[tIdx]} — showing a modeled estimate for this year. <a href="${fx.url}" target="_blank" rel="noopener">Verify other years at SEC ↗</a></div>`:np==='R'?`<div class="verdict ok">✓ Revenue anchored to a primary filing. Market cap is point-in-time (tagged Estimated — it moves every trading day).</div>`:`<div class="verdict warn">⚠ Revenue carries a ${PNAME[np]} tag — modeled or not yet verified against a filing. Treat as directional.</div>`}
+   ${stateSec}
    <div class="flowsec"><div class="lbl">Outflows <span>${outs.length}</span></div>${outsS.length?outsS.map(e=>flowRow(e,'out')).join(''):'<div style="color:var(--mut);font-size:12px;padding:6px 0">No seeded outflows. In production these derive from supplier disclosures + input-output tables.</div>'}</div>
    <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Inflows <span>${ins.length}</span></div>${insS.length?insS.map(e=>flowRow(e,'in')).join(''):'<div style="color:var(--mut);font-size:12px;padding:6px 0">No seeded inflows in current view.</div>'}</div>
    <div class="mblock" id="methblock"><div class="lbl">Methodology</div><div style="color:var(--mut);font-size:12px">Select a flow above to see how its figure was derived.</div></div>`;
   const el=document.getElementById('inspector');el.innerHTML=html;
-  el.querySelectorAll('.flow').forEach(r=>{const go=()=>{const[f,t]=r.dataset.e.split('|');showMethod(FL.find(e=>e.f===f&&e.t===t));};r.onclick=go;r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});
+  el.querySelectorAll('.flow[data-e]').forEach(r=>{const go=()=>{const[f,t]=r.dataset.e.split('|');showMethod(FL.find(e=>e.f===f&&e.t===t));};r.onclick=go;r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});
+  // state breakdown rows open methodology; the toggle re-renders in place
+  el.querySelectorAll('.flow[data-st]').forEach(r=>{const go=()=>showStateMethod(n,sb,sb.rows.find(x=>x.a===r.dataset.st));r.onclick=go;r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});
+  const sbT=document.getElementById('sbToggle');if(sbT)sbT.onclick=()=>{sbOpen=!sbOpen;selectNode(id,false);};
   // counterparty names navigate to that node (flow row body still opens methodology)
   el.querySelectorAll('.cplink').forEach(s=>{s.onclick=e=>{e.stopPropagation();selectNode(s.dataset.go);};});
   document.getElementById('openDD').onclick=()=>openDrill(id);
@@ -314,6 +325,17 @@ function showMethod(e){if(!e)return;const b=document.getElementById('methblock')
    <div class="track" style="margin-top:6px"><i style="width:${e.c*100}%;background:${PCOL[fProv(e)]}"></i></div>
    ${tIdx!==ANCHOR?`<div class="prov-txt">⚠ <b>Scaled figure.</b> This is the ${PERIODS[ANCHOR]} value ×${TMUL[tIdx]} (global year multiplier), not a reported ${PERIODS[tIdx]} figure${e.p==='R'?' — the Reported tag applies to the anchor year only':''}.</div>`:''}
    <div class="prov-txt"><b>Method.</b> ${e.m}</div><div class="prov-txt"><b>Source.</b> ${e.s}</div>`;
+  b.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+// Methodology panel for a state-breakdown row: the figure is an allocation of
+// the node's national total, so it shares one method/source for all states.
+function showStateMethod(n,sb,r){if(!r)return;const b=document.getElementById('methblock');if(!b)return;
+  b.innerHTML=`<div class="lbl">Methodology · ${n.id} · ${r.n}</div>
+   <div class="mb-row"><span class="k">Est. outflows (${PERIODS[tIdx]})</span><span class="v">${fmt(r.sh*revAt(n))}</span></div>
+   <div class="mb-row"><span class="k">Share of national total</span><span class="v">${(r.sh*100).toFixed(1)}%</span></div>
+   <div class="mb-row"><span class="k">Provenance</span><span class="v"><span class="tag ${sb.p}">${PNAME[sb.p]}</span></span></div>
+   ${tIdx!==ANCHOR?`<div class="prov-txt">⚠ <b>Scaled figure.</b> The national total is the ${PERIODS[ANCHOR]} figure ×${TMUL[tIdx]} (global year multiplier); the state share is held constant across years.</div>`:''}
+   <div class="prov-txt"><b>Method.</b> ${sb.m}</div><div class="prov-txt"><b>Source.</b> ${sb.s}</div>`;
   b.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
