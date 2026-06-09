@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="ValueGrid — an interactive, canvas-rendered world map of global capital flows with full provenance tagging (Reported / Estimated / Inferred).">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232a5bd0'/><circle cx='12' cy='12' r='7' fill='%236ea8ff'/></svg>">
 <title>ValueGrid · global capital-flow map</title>
 <link rel="stylesheet" href="./styles.css">
 </head>
@@ -12,12 +14,13 @@
   <div class="cell" id="top">
     <div class="logo"><span class="mk"></span>ValueGrid <small>· global capital-flow map</small></div>
     <div class="hsep"></div>
-    <div class="hstat">Entities <b id="hN">148</b></div>
+    <div class="hstat">Entities <b id="hN">—</b></div>
     <div class="hstat">Tracked cap <b id="hCap">—</b></div>
     <div class="hstat">Flows <b id="hF">—</b></div>
     <div class="hsep"></div>
     <div class="seg" id="sizeBy"><button data-by="mcap" class="on">Market cap</button><button data-by="rev">Revenue</button></div>
     <div class="hright">
+      <button class="tbtn" id="aboutBtn">About the data</button>
       <span class="livedot" id="liveDot"><i></i> Live</span>
       <span class="clock" id="clock" aria-hidden="true">--:--:--</span>
     </div>
@@ -31,7 +34,7 @@
   </div>
 
   <div class="cell" id="center" role="region" aria-label="Capital-flow map">
-    <canvas id="map" role="img" aria-label="Interactive capital-flow world map"></canvas>
+    <canvas id="map" role="img" tabindex="0" aria-label="Interactive capital-flow world map"></canvas>
     <div id="tip"></div>
     <div class="ctl" id="ctlTop"></div>
     <div class="ctl" id="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button><button id="zfit" aria-label="Reset view">⊡</button></div>
@@ -40,7 +43,7 @@
       <span><i style="background:var(--estimated)"></i>Estimated</span>
       <span><i style="background:var(--inferred)"></i>Inferred</span>
     </div>
-    <div class="ctl" id="hint">drag · scroll · click a node</div>
+    <div class="ctl" id="hint">drag · scroll / pinch · click a node</div>
     <div id="timebar">
       <button id="play" aria-label="Play timeline">▶</button>
       <span class="period" id="period">2024</span>
@@ -52,7 +55,7 @@
   <div class="cell" id="right" role="region" aria-label="Inspector">
     <div id="inspector"><div class="ins-empty"><div class="big" aria-hidden="true">◎</div>Select any node on the map to inspect its scale, capital flows, counterparties, and the provenance behind every figure.</div></div>
     <div class="feeds" id="feedsWrap">
-      <h4 style="margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut)">Live feeds <span class="tag" style="background:var(--live);color:#06131a;margin-left:4px">SIM</span></h4>
+      <h4 style="margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut)">Market feeds <span class="tag" id="feedTag" style="background:var(--live);color:#06131a;margin-left:4px">SIM</span></h4>
       <div id="feeds" aria-hidden="true"></div>
       <canvas id="spark" aria-hidden="true"></canvas>
     </div>
@@ -63,6 +66,43 @@
   <div class="mhd"><h3 id="ddTitle">Relationship graph</h3><button class="x" id="ddClose" aria-label="Close dialog">×</button></div>
   <canvas id="dd" role="img" aria-label="Force-directed relationship graph for the selected entity"></canvas>
   <div class="mft" id="ddFoot"></div>
+</div></div>
+
+<div id="aboutModal"><div class="mcard" role="dialog" aria-modal="true" aria-labelledby="abTitle">
+  <div class="mhd"><h3 id="abTitle">About the data</h3><button class="x" id="abClose" aria-label="Close dialog">×</button></div>
+  <div class="abody">
+    <p><b>ValueGrid is an illustrative visualization</b> of global capital flows. It mixes verified
+    filings data with modeled estimates — and tags every figure so you can tell which is which.</p>
+    <h4>The provenance model</h4>
+    <table class="abtab">
+      <tr><td><span class="tag R">R</span></td><td><b>Reported.</b> Backed by a primary filing we actually fetched.
+        Company revenue tagged R comes from SEC XBRL facts (10-K / 20-F annual filings, FY2019–2024),
+        refreshed automatically — the inspector links each one to the underlying SEC data ("Verify at SEC").</td></tr>
+      <tr><td><span class="tag E">E</span></td><td><b>Estimated.</b> Modeled from disclosure plus input-output tables,
+        tax-incidence models, or trade data. Also covers figures we could not verify against a filing
+        (non-SEC reporters, non-USD filers) and point-in-time values like market cap.</td></tr>
+      <tr><td><span class="tag I">I</span></td><td><b>Inferred.</b> Third-party allocations and heuristics
+        (bill-of-materials traces, 13-F ownership × payout, banking-relationship models). Directional only.</td></tr>
+    </table>
+    <h4>What is real, exactly</h4>
+    <ul>
+      <li><b>Revenue for ~70 companies</b> is the reported annual series from SEC XBRL — scrubbing the
+        timeline shows real history for those names, not a scaled estimate.</li>
+      <li><b>Market feeds</b>: while Live is on, FX comes from the ECB (Frankfurter) and BTC/gold from
+        CoinGecko; rows are labeled <i>live</i> or <i>sim</i> individually.</li>
+      <li><b>Everything else is modeled</b>: all flow edges, market caps, revenue for non-SEC reporters, and
+        historical scaling for untracked entities (a single global multiplier per year). Each flow's
+        methodology and source are shown when you select it in the inspector.</li>
+    </ul>
+    <h4>Caveats</h4>
+    <p>Estimated and Inferred figures are directional, not audited. Flow values between specific
+    counterparties are modeled even when both endpoints report real totals. Confidence percentages
+    express relative source quality within this dataset, not statistical confidence intervals.
+    Do not cite modeled figures as fact.</p>
+    <p class="absrc">Sources: SEC EDGAR XBRL company facts · company annual reports · UN Comtrade ·
+    BEA/OECD input-output tables · 13-F holdings · USAspending.gov · central-bank financial statements ·
+    Frankfurter (ECB) · CoinGecko. Code &amp; data: <span style="white-space:nowrap">github.com/AlvanChow/xian</span></p>
+  </div>
 </div></div>
 
 <script type="module" src="./app.js"></script>

@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Build
+        run: npm run build
+
+      # The repo-root index.html is the committed deploy artifact (GitHub Pages
+      # serves it via deploy-from-branch). The build is byte-deterministic
+      # (verified: two consecutive builds produce identical sha256 — all assets
+      # are inlined by vite-plugin-singlefile, so no hashed filenames leak in),
+      # so a fresh build must match the committed file exactly. If this step
+      # fails, run `npm run build` locally and commit the regenerated index.html.
+      - name: Check committed index.html is not stale
+        run: git diff --exit-code -- index.html
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke tests
+        run: npm test

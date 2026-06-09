@@ -8,8 +8,9 @@
     "dev": "vite",
     "build": "vite build && node scripts/postbuild.mjs",
     "preview": "vite preview",
-    "lint": "eslint src",
-    "test": "playwright test"
+    "lint": "eslint .",
+    "test": "playwright test",
+    "test:unit": "node --test \"tests/unit/*.test.mjs\""
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",

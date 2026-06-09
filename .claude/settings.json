@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "c=$(jq -r '.tool_input.command // \"\"'); case \"$c\" in *\"git commit\"*) git push -u origin HEAD;; esac",
+            "timeout": 120,
+            "statusMessage": "Auto-pushing commit..."
+          }
+        ]
+      }
+    ]
+  }
+}

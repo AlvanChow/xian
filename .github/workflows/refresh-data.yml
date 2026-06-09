@@ -1,0 +1,30 @@
+# Periodically re-fetches real reported revenue from SEC XBRL (scripts/fetch-data.mjs),
+# regenerates src/facts.js, rebuilds the single-file site, and commits the result.
+# Under Pages deploy-from-branch, that commit IS the deploy.
+name: Refresh data
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 1 * *' # monthly; SEC annual facts move on filing cadence
+permissions:
+  contents: write
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/fetch-data.mjs
+      - run: npm run build
+      - name: Commit refreshed data if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/facts.js index.html
+          git diff --cached --quiet && echo "No data changes." && exit 0
+          git commit -m "chore: refresh SEC revenue facts"
+          git push
