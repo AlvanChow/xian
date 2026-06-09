@@ -299,7 +299,7 @@ test('clicking a flow row shows its methodology', async ({ page }) => {
   await page.locator('#inspector .flowsec .flow').first().click();
   const meth = page.locator('#methblock');
   await expect(meth).toContainText('Method.');
-  await expect(meth).toContainText('Confidence');
+  await expect(meth).toContainText('Source quality');
 });
 
 test('zoom in raises the zoom level and fit resets it', async ({ page }) => {

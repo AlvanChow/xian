@@ -8,6 +8,7 @@ const byId=Object.fromEntries(C.map(c=>[c.id,c]));
 const SEC={tech:'#5b8cff',fin:'#2dd4e8',energy:'#f5b042',health:'#3fd68a',cons:'#f472b6',ind:'#a78bfa',gov:'#e2e8f0'};
 const SECNAME={tech:'Technology',fin:'Finance',energy:'Energy',health:'Healthcare',cons:'Consumer',ind:'Industrials',gov:'Government / Central Bank'};
 const PCOL={R:'#3fd68a',E:'#f5b042',I:'#ff6b7a'}, PNAME={R:'Reported',E:'Estimated',I:'Inferred'};
+const CB=new Set(['FED','ECB','PBOC','BOJ']); // central banks: their scale figure is a balance-sheet stock, not an annual flow
 const PERIODS=['2019','2020','2021','2022','2023','2024'], TMUL=[.62,.60,.82,.95,.97,1.0];
 let sizeBy='mcap',secOn={},layerOn={R:1,E:1,I:1},tIdx=5,playing=false,live=false,selected=null,hover=null;
 Object.keys(SEC).forEach(s=>secOn[s]=1);
@@ -21,6 +22,11 @@ const revAt=c=>hasFact(c)?FACTS[c.id].revT[PERIODS[tIdx]]:c.rev*TMUL[tIdx];
 // the CURRENTLY SELECTED year is backed by a filing — a series with a gap year
 // degrades to E while scrubbed onto the gap, matching what revAt displays.
 const nProv=c=>hasFact(c)?'R':(c.prov==='R'?'E':c.prov);
+// Flow display provenance: flow values are anchored to the latest year and
+// scaled by the global multiplier when scrubbed — so off the anchor year even
+// a "Reported" flow is showing an estimate, and must degrade to E on screen.
+const ANCHOR=PERIODS.length-1;
+const fProv=e=>(e.p==='R'&&tIdx!==ANCHOR)?'E':e.p;
 // Respect the OS "reduce motion" setting: freeze the travelling flow-dot pulse.
 const reduceMotion=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -89,11 +95,11 @@ function render(){
     const a=proj(A.lng,A.lat),b=proj(bLng,B.lat);
     const hot=selected&&(e.f===selected||e.t===selected);
     if(selected&&!hot)return;
-    const col=PCOL[e.p];
+    const fp=fProv(e),col=PCOL[fp];
     const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1,lift=Math.min(180*DPR,len*0.3);
     const mxp=(a.x+b.x)/2,myp=(a.y+b.y)/2,cx=mxp-dy/len*lift,cy=myp+dx/len*lift-lift*0.3;
     mx.globalAlpha=hot?0.95:0.34;
-    mx.setLineDash(e.p==='R'?[]:(e.p==='E'?[8*DPR,6*DPR]:[2*DPR,7*DPR]));
+    mx.setLineDash(fp==='R'?[]:(fp==='E'?[8*DPR,6*DPR]:[2*DPR,7*DPR]));
     mx.lineWidth=Math.max(1,Math.log(e.vv+1)*0.6)*(hot?1.7:1)*DPR;
     if(hot){mx.shadowBlur=12*DPR;mx.shadowColor=col;}
     mx.strokeStyle=col;mx.beginPath();mx.moveTo(a.x,a.y);mx.quadraticCurveTo(cx,cy,b.x,b.y);mx.stroke();
@@ -170,7 +176,7 @@ function render(){
   });
   // Skip the innerHTML write when nothing changed — this runs every frame and
   // the string only moves while zoom eases or a control flips.
-  const ctl=`<b>${live?'Real-time (sim)':PERIODS[tIdx]}</b> · ${sized.length} entities · ${fl.length} flows · sized by <b>${sizeBy==='mcap'?'market cap':'revenue'}</b> · zoom <b>${view.scale.toFixed(1)}×</b>`;
+  const ctl=`<b>${live?'Feeds live · map '+PERIODS[tIdx]:PERIODS[tIdx]}</b> · ${sized.length} entities · ${fl.length} flows · sized by <b>${sizeBy==='mcap'?'market cap':'revenue'}</b> · zoom <b>${view.scale.toFixed(1)}×</b> · <span class="hon">${tIdx===ANCHOR?'flows modeled (E/I)':'flows = '+PERIODS[ANCHOR]+' figures ×'+TMUL[tIdx]}</span>`;
   if(ctl!==ctlPrev)ctlTopEl.innerHTML=ctlPrev=ctl;
 }
 const ctlTopEl=document.getElementById('ctlTop');let ctlPrev='';
@@ -214,7 +220,7 @@ map.addEventListener('pointermove',e=>{
   if(panning){const dx=px-last.x,dy=py-last.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;const s=pxPerDeg()/DPR;target.cx-=dx/s;target.cy+=dy/(s*0.95);view.cx=target.cx;view.cy=target.cy;last={x:px,y:py};hideTip();return;}
   if(e.pointerType!=='mouse')return; // hover/tooltip is a mouse-only affordance
   const c=pick(px,py);hover=c;const tip=document.getElementById('tip');if(!tip)return;
-  if(c){const isGov=c.mcap===0,np=nProv(c);tip.innerHTML=`<div class="t">${c.name}</div><div class="s">${SECNAME[c.sec]} · ${c.country}</div><div class="s">${isGov?'Annual flows ~'+fmt(revAt(c)):'Cap '+fmt(c.mcap)+' · Rev '+fmt(revAt(c))}</div><div class="pv"><i style="background:${PCOL[np]}"></i>${PNAME[np]} ${isGov?'(modeled)':(hasFact(c)?'revenue (SEC filing)':'revenue')}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-248)+'px';tip.style.top=Math.min(py+16,map.clientHeight-100)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
+  if(c){const isGov=c.mcap===0,np=nProv(c);tip.innerHTML=`<div class="t">${c.name}</div><div class="s">${SECNAME[c.sec]} · HQ ${c.country}</div><div class="s">${isGov?(CB.has(c.id)?'Balance sheet ~':'Annual flows ~')+fmt(revAt(c)):'Cap '+fmt(c.mcap)+' · Rev '+fmt(revAt(c))}</div><div class="pv"><i style="background:${PCOL[np]}"></i>${PNAME[np]} ${isGov?'(modeled)':(hasFact(c)?'revenue (SEC filing)':'revenue')}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-248)+'px';tip.style.top=Math.min(py+16,map.clientHeight-100)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
   else{tip.style.opacity=0;map.style.cursor='grab';}});
 function endPointer(e){
   if(!ptrs.delete(e.pointerId))return;
@@ -261,12 +267,12 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;selected=id;const
   const cur=fx&&fx.revT[PERIODS[tIdx]],prv=fx&&fx.revT[String(+PERIODS[tIdx]-1)];
   const yoy=(cur!=null&&prv>0)?Math.round((cur-prv)/prv*100):null;
   const mv=Math.max(1,...outs.map(x=>x.vv),...ins.map(x=>x.vv));
-  const flowRow=(e,dir)=>{const o=dir==='out'?e.t:e.f,oc=byId[o];return `<div class="flow" role="button" tabindex="0" data-e="${e.f}|${e.t}"><div class="r1"><div class="who"><span class="ar">${dir==='out'?'→':'←'}</span><span style="width:9px;height:9px;border-radius:50%;background:${SEC[oc.sec]};display:inline-block"></span><span class="cplink" data-go="${o}" title="Open ${oc.name}">${oc.name}</span><span class="tag ${e.p}">${PNAME[e.p][0]}</span></div><div class="amt">${fmt(e.vv)}</div></div><div class="bar"><i style="width:${Math.min(100,e.vv/mv*100)}%;background:${PCOL[e.p]}"></i></div><div class="meth">confidence ${(e.c*100|0)}%</div></div>`;};
+  const flowRow=(e,dir)=>{const o=dir==='out'?e.t:e.f,oc=byId[o],fp=fProv(e);return `<div class="flow" role="button" tabindex="0" data-e="${e.f}|${e.t}"><div class="r1"><div class="who"><span class="ar">${dir==='out'?'→':'←'}</span><span style="width:9px;height:9px;border-radius:50%;background:${SEC[oc.sec]};display:inline-block"></span><span class="cplink" data-go="${o}" title="Open ${oc.name}">${oc.name}</span><span class="tag ${fp}">${PNAME[fp][0]}</span></div><div class="amt">${fmt(e.vv)}</div></div><div class="bar"><i style="width:${Math.min(100,e.vv/mv*100)}%;background:${PCOL[fp]}"></i></div><div class="meth">source quality ${(e.c*100|0)}%</div></div>`;};
   const html=`
    <div class="ihead"><div class="tk">${n.id}</div><div class="nm">${n.name}</div>
-     <div class="meta"><span class="pill"><span class="d" style="background:${SEC[n.sec]}"></span>${SECNAME[n.sec]}</span><span class="pill">📍 ${n.country}</span></div></div>
+     <div class="meta"><span class="pill"><span class="d" style="background:${SEC[n.sec]}"></span>${SECNAME[n.sec]}</span><span class="pill" title="Pin marks the headquarters location (manually curated)">HQ · ${n.country}</span></div></div>
    <div class="stats">
-     <div class="stat"><div class="k">${n.mcap===0?'ANNUAL FLOWS':'MARKET CAP'}</div><div class="v">${n.mcap===0?fmt(revAt(n)):fmt(n.mcap)}<span class="tag ${n.mcap===0?np:'E'}">${n.mcap===0?PNAME[np][0]:'E'}</span></div></div>
+     <div class="stat"><div class="k">${n.mcap===0?(CB.has(n.id)?'BALANCE SHEET (STOCK)':'ANNUAL FLOWS'):'MARKET CAP'}</div><div class="v">${n.mcap===0?fmt(revAt(n)):fmt(n.mcap)}<span class="tag ${n.mcap===0?np:'E'}">${n.mcap===0?PNAME[np][0]:'E'}</span></div>${n.mcap!==0?`<div class="k" style="margin-top:2px">point-in-time, not historical</div>`:''}</div>
      <div class="stat"><div class="k">REVENUE · ${PERIODS[tIdx]}</div><div class="v">${fmt(revAt(n))}<span class="tag ${np}">${PNAME[np][0]}</span></div></div>
      <div class="stat"><div class="k">OUTFLOWS</div><div class="v" style="color:var(--accent)">${fmt(sO)}</div></div>
      <div class="stat"><div class="k">INFLOWS</div><div class="v" style="color:var(--live)">${fmt(sI)}</div></div>
@@ -303,9 +309,10 @@ function renderInspectorEmpty(){const el=document.getElementById('inspector');el
 function showMethod(e){if(!e)return;const b=document.getElementById('methblock');if(!b)return;
   b.innerHTML=`<div class="lbl">Methodology · ${e.f} → ${e.t}</div>
    <div class="mb-row"><span class="k">Value (${PERIODS[tIdx]})</span><span class="v">${fmt(e.v*TMUL[tIdx])}</span></div>
-   <div class="mb-row"><span class="k">Provenance</span><span class="v"><span class="tag ${e.p}">${PNAME[e.p]}</span></span></div>
-   <div class="mb-row"><span class="k">Confidence</span><span class="v">${(e.c*100|0)}%</span></div>
-   <div class="track" style="margin-top:6px"><i style="width:${e.c*100}%;background:${PCOL[e.p]}"></i></div>
+   <div class="mb-row"><span class="k">Provenance</span><span class="v"><span class="tag ${fProv(e)}">${PNAME[fProv(e)]}</span></span></div>
+   <div class="mb-row"><span class="k">Source quality</span><span class="v">${(e.c*100|0)}%</span></div>
+   <div class="track" style="margin-top:6px"><i style="width:${e.c*100}%;background:${PCOL[fProv(e)]}"></i></div>
+   ${tIdx!==ANCHOR?`<div class="prov-txt">⚠ <b>Scaled figure.</b> This is the ${PERIODS[ANCHOR]} value ×${TMUL[tIdx]} (global year multiplier), not a reported ${PERIODS[tIdx]} figure${e.p==='R'?' — the Reported tag applies to the anchor year only':''}.</div>`:''}
    <div class="prov-txt"><b>Method.</b> ${e.m}</div><div class="prov-txt"><b>Source.</b> ${e.s}</div>`;
   b.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
@@ -330,7 +337,7 @@ function ddLoop(){
   eg.forEach(e=>{const a=m[e.f],b=m[e.t],ax=b.x-a.x,ay=b.y-a.y,d=Math.hypot(ax,ay)||1,f=(d-160)*0.01;a.vx+=ax/d*f;a.vy+=ay/d*f;b.vx-=ax/d*f;b.vy-=ay/d*f;});
   ddN.forEach(n=>{if(n.id===ddC){n.x=0;n.y=0;return;}n.vx+=-n.x*0.01;n.vy+=-n.y*0.01;if(n!==ddDrag){n.x+=n.vx*0.5;n.y+=n.vy*0.5;}n.vx*=0.85;n.vy*=0.85;});
   dx.clearRect(0,0,W,H);
-  eg.forEach(e=>{const a=m[e.f],b=m[e.t];dx.strokeStyle=PCOL[e.p];dx.globalAlpha=0.85;dx.setLineDash(e.p==='R'?[]:(e.p==='E'?[6,4]:[2,5]));dx.lineWidth=Math.max(1,Math.log(e.v+1)*0.7);dx.beginPath();dx.moveTo(cx+a.x,cy+a.y);dx.lineTo(cx+b.x,cy+b.y);dx.stroke();dx.setLineDash([]);const t=pulse%1,px=a.x+(b.x-a.x)*t,py=a.y+(b.y-a.y)*t;dx.fillStyle=PCOL[e.p];dx.globalAlpha=1;dx.beginPath();dx.arc(cx+px,cy+py,2.6,0,6.28);dx.fill();dx.fillStyle='#c9d4e3';dx.font='10px Inter,sans-serif';dx.textAlign='center';dx.fillText(fmt(e.v*TMUL[tIdx]),cx+(a.x+b.x)/2,cy+(a.y+b.y)/2-4);});
+  eg.forEach(e=>{const a=m[e.f],b=m[e.t],fp=fProv(e);dx.strokeStyle=PCOL[fp];dx.globalAlpha=0.85;dx.setLineDash(fp==='R'?[]:(fp==='E'?[6,4]:[2,5]));dx.lineWidth=Math.max(1,Math.log(e.v+1)*0.7);dx.beginPath();dx.moveTo(cx+a.x,cy+a.y);dx.lineTo(cx+b.x,cy+b.y);dx.stroke();dx.setLineDash([]);const t=pulse%1,px=a.x+(b.x-a.x)*t,py=a.y+(b.y-a.y)*t;dx.fillStyle=PCOL[fp];dx.globalAlpha=1;dx.beginPath();dx.arc(cx+px,cy+py,2.6,0,6.28);dx.fill();dx.fillStyle='#c9d4e3';dx.font='10px Inter,sans-serif';dx.textAlign='center';dx.fillText(fmt(e.v*TMUL[tIdx]),cx+(a.x+b.x)/2,cy+(a.y+b.y)/2-4);});
   dx.globalAlpha=1;
   ddN.forEach(n=>{const c=byId[n.id],r=n.id===ddC?28:19;dx.beginPath();dx.arc(cx+n.x,cy+n.y,r,0,6.28);dx.fillStyle=SEC[c.sec];dx.globalAlpha=n.id===ddC?1:0.88;dx.shadowBlur=n.id===ddC?16:6;dx.shadowColor=SEC[c.sec];dx.fill();dx.shadowBlur=0;dx.globalAlpha=1;dx.lineWidth=n.id===ddC?3:1.5;dx.strokeStyle='#fff';dx.stroke();const dnp=nProv(c);dx.fillStyle=PCOL[dnp];dx.strokeStyle='#101725';dx.lineWidth=1.4;provDot(dx,cx+n.x+r*0.7,cy+n.y-r*0.7,3.4,dnp);dx.fillStyle='#fff';dx.font='600 11px Inter,sans-serif';dx.textAlign='center';dx.fillText(n.id,cx+n.x,cy+n.y+r+14);});
   ddRAF=requestAnimationFrame(ddLoop);}
@@ -342,7 +349,7 @@ dd.addEventListener('pointercancel',()=>ddDrag=null);
 /* ---- panels ---- */
 function buildSectors(){const ct={};C.forEach(c=>ct[c.sec]=(ct[c.sec]||0)+1);document.getElementById('sectors').innerHTML=Object.keys(SEC).map(s=>`<button class="chip ${secOn[s]?'on':''}" data-s="${s}" style="${secOn[s]?'background:'+SEC[s]+'1a;border-color:'+SEC[s]+'66':''}"><span class="l"><span class="d" style="background:${SEC[s]}"></span>${SECNAME[s]}</span><span class="ct">${ct[s]}</span></button>`).join('');document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{secOn[b.dataset.s]=!secOn[b.dataset.s];buildSectors();refreshStats();if(selected)selectNode(selected,false);syncHash(false);});}
 function buildLayers(){const L={R:'Filing-anchored revenue & disclosures',E:'Modeled from disclosure + I-O; point-in-time caps',I:'Third-party or allocation heuristics'};document.getElementById('layers').innerHTML=Object.keys(L).map(k=>`<div class="leg ${layerOn[k]?'':'off'}" data-l="${k}" role="switch" tabindex="0" aria-checked="${layerOn[k]?'true':'false'}" aria-label="${PNAME[k]} layer"><span class="ln" style="border-color:${PCOL[k]};border-top-style:${k==='R'?'solid':k==='E'?'dashed':'dotted'}"></span><div><div class="ttl" style="color:${PCOL[k]}">${PNAME[k]}</div><div class="sub">${L[k]}</div></div></div>`).join('');document.querySelectorAll('[data-l]').forEach(el=>{const go=()=>{layerOn[el.dataset.l]=!layerOn[el.dataset.l];buildLayers();refreshStats();if(selected)selectNode(selected,false);syncHash(false);};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});}
-function refreshStats(){const sc=visC(),fl=visF();map.setAttribute('aria-label','Capital-flow world map — '+sc.length+' entities and '+fl.length+' flows shown for period '+(live?'live (simulated)':PERIODS[tIdx])+'. When focused: arrow keys pan, plus and minus zoom, zero resets. Use the search box and side panels to explore entity details and provenance.');document.getElementById('hCap').textContent=fmt(sc.reduce((a,c)=>a+c.mcap,0));document.getElementById('hF').textContent=fl.length;document.getElementById('hN').textContent=sc.length;const mix={R:0,E:0,I:0};fl.forEach(e=>mix[e.p]+=e.vv);const tot=mix.R+mix.E+mix.I||1;document.getElementById('provmix').innerHTML=['R','E','I'].map(k=>`<div class="mixrow"><div class="h"><b style="color:${PCOL[k]}">${PNAME[k]}</b><span>${(mix[k]/tot*100).toFixed(0)}%</span></div><div class="track"><i style="width:${mix[k]/tot*100}%;background:${PCOL[k]}"></i></div></div>`).join('')+`<div class="note">Share of visible flow volume by source quality. Toggle layers to see how much rests on modeling vs. reported figures.</div>`;}
+function refreshStats(){const sc=visC(),fl=visF();map.setAttribute('aria-label','Capital-flow world map — '+sc.length+' entities and '+fl.length+' flows shown for period '+(live?'live (simulated)':PERIODS[tIdx])+'. When focused: arrow keys pan, plus and minus zoom, zero resets. Use the search box and side panels to explore entity details and provenance.');document.getElementById('hCap').textContent=fmt(sc.reduce((a,c)=>a+c.mcap,0));document.getElementById('hF').textContent=fl.length;document.getElementById('hN').textContent=sc.length;const mix={R:0,E:0,I:0};fl.forEach(e=>mix[fProv(e)]+=e.vv);const tot=mix.R+mix.E+mix.I||1;document.getElementById('provmix').innerHTML=['R','E','I'].map(k=>`<div class="mixrow"><div class="h"><b style="color:${PCOL[k]}">${PNAME[k]}</b><span>${(mix[k]/tot*100).toFixed(0)}%</span></div><div class="track"><i style="width:${mix[k]/tot*100}%;background:${PCOL[k]}"></i></div></div>`).join('')+`<div class="note">Share of visible flow volume by source quality. Toggle layers to see how much rests on modeling vs. reported figures.</div>`;}
 
 /* ---- search (ranked: exact ticker ≫ ticker prefix ≫ name ≫ country) ---- */
 const srch=document.getElementById('srch'),reslist=document.getElementById('reslist');
