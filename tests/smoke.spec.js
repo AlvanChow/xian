@@ -147,6 +147,31 @@ async function findPin(page) {
   return null;
 }
 
+test('selection writes the URL hash and deep links restore state', async ({ page }) => {
+  // Selecting a node puts it in the hash (shareable link).
+  await page.fill('#srch', 'Apple');
+  await page.locator('#reslist .resrow').first().click();
+  await expect(page.locator('#inspector .ihead .nm')).toContainText('Apple');
+  await expect.poll(() => page.evaluate(() => location.hash)).toContain('node=AAPL');
+
+  // A fresh load with a deep link restores node and period (and skips the
+  // NVDA demo auto-select).
+  await page.goto(PAGE_URL + '#node=MSFT&t=2020');
+  await expect(page.locator('#inspector .ihead .nm')).toContainText('Microsoft');
+  await expect(page.locator('#period')).toHaveText('2020');
+});
+
+test('search ranks ticker matches first and supports keyboard selection', async ({ page }) => {
+  // 'v' is a substring of many names, but the ticker V (Visa) must rank first.
+  await page.fill('#srch', 'v');
+  await expect(page.locator('#reslist .resrow').first()).toContainText('Visa');
+
+  // ArrowDown + Enter selects from the keyboard without leaving the input.
+  await page.locator('#srch').press('ArrowDown');
+  await page.locator('#srch').press('Enter');
+  await expect(page.locator('#inspector .ihead .nm')).toContainText('Visa');
+});
+
 test('About-the-data modal opens and closes', async ({ page }) => {
   await page.locator('#aboutBtn').click();
   await expect(page.locator('#aboutModal')).toHaveClass(/show/);
