@@ -3,10 +3,10 @@
    Generated flows derive from sector margins, tax rates, consumption I-O, banking,
    energy intensity, tech BOM, and ownership models — each tagged and confidence-scored. */
 export const COMPANIES=[
-  {id:'NVDA',name:'NVIDIA',sec:'tech',country:'USA',lat:37.371,lng:-121.955,mcap:4560,rev:60.9,prov:'R'},
+  {id:'NVDA',name:'NVIDIA',sec:'tech',country:'USA',lat:37.371,lng:-121.955,mcap:3300,rev:60.9,prov:'R'},
   {id:'AAPL',name:'Apple',sec:'tech',country:'USA',lat:37.3349,lng:-122.009,mcap:3950,rev:391,prov:'R'},
   {id:'MSFT',name:'Microsoft',sec:'tech',country:'USA',lat:47.6396,lng:-122.1283,mcap:3530,rev:245.1,prov:'R'},
-  {id:'GOOGL',name:'Alphabet',sec:'tech',country:'USA',lat:37.422,lng:-122.084,mcap:3830,rev:350,prov:'R'},
+  {id:'GOOGL',name:'Alphabet',sec:'tech',country:'USA',lat:37.422,lng:-122.084,mcap:2300,rev:350,prov:'R'},
   {id:'AMZN',name:'Amazon',sec:'cons',country:'USA',lat:47.6228,lng:-122.3364,mcap:2490,rev:638,prov:'R'},
   {id:'META',name:'Meta Platforms',sec:'tech',country:'USA',lat:37.4847,lng:-122.1477,mcap:1700,rev:164.5,prov:'R'},
   {id:'AVGO',name:'Broadcom',sec:'tech',country:'USA',lat:37.38,lng:-121.965,mcap:1900,rev:51.6,prov:'R'},
@@ -21,7 +21,7 @@ export const COMPANIES=[
   {id:'TXN',name:'Texas Instruments',sec:'tech',country:'USA',lat:32.91,lng:-96.751,mcap:170,rev:15.6,prov:'R'},
   {id:'IBM',name:'IBM',sec:'tech',country:'USA',lat:41.1083,lng:-73.7197,mcap:200,rev:62.8,prov:'R'},
   {id:'NOW',name:'ServiceNow',sec:'tech',country:'USA',lat:37.408,lng:-121.945,mcap:200,rev:11,prov:'R'},
-  {id:'PLTR',name:'Palantir',sec:'tech',country:'USA',lat:38.8951,lng:-77.0364,mcap:300,rev:2.9,prov:'R'},
+  {id:'PLTR',name:'Palantir',sec:'tech',country:'USA',lat:38.8951,lng:-77.0364,mcap:170,rev:2.9,prov:'R'},
   {id:'MU',name:'Micron',sec:'tech',country:'USA',lat:43.5407,lng:-116.2461,mcap:130,rev:25.1,prov:'R'},
   {id:'JPM',name:'JPMorgan Chase',sec:'fin',country:'USA',lat:40.7557,lng:-73.9787,mcap:680,rev:158,prov:'R'},
   {id:'V',name:'Visa',sec:'fin',country:'USA',lat:37.7858,lng:-122.4064,mcap:600,rev:35.9,prov:'R'},
@@ -55,7 +55,7 @@ export const COMPANIES=[
   {id:'GE',name:'GE Aerospace',sec:'ind',country:'USA',lat:39.131,lng:-84.422,mcap:280,rev:35,prov:'R'},
   {id:'CAT',name:'Caterpillar',sec:'ind',country:'USA',lat:32.756,lng:-97.091,mcap:180,rev:64.8,prov:'R'},
   {id:'BA',name:'Boeing',sec:'ind',country:'USA',lat:38.951,lng:-77.448,mcap:130,rev:66.5,prov:'R'},
-  {id:'HON',name:'Honeywell',sec:'ind',country:'USA',lat:28.392,lng:-81.415,mcap:140,rev:38.5,prov:'R'},
+  {id:'HON',name:'Honeywell',sec:'ind',country:'USA',lat:35.227,lng:-80.85,mcap:140,rev:38.5,prov:'R'},
   {id:'RTX',name:'RTX',sec:'ind',country:'USA',lat:38.881,lng:-77.111,mcap:180,rev:80.7,prov:'R'},
   {id:'LMT',name:'Lockheed Martin',sec:'ind',country:'USA',lat:39.0517,lng:-77.1206,mcap:110,rev:71,prov:'R'},
   {id:'RY',name:'Royal Bank of Canada',sec:'fin',country:'Canada',lat:43.6476,lng:-79.3811,mcap:180,rev:44,prov:'R'},
@@ -119,7 +119,7 @@ export const COMPANIES=[
   {id:'XIAOMI',name:'Xiaomi',sec:'tech',country:'China',lat:40.041,lng:116.289,mcap:140,rev:50,prov:'R'},
   {id:'MEITUAN',name:'Meituan',sec:'tech',country:'China',lat:39.992,lng:116.481,mcap:90,rev:46,prov:'R'},
   {id:'CMCSA2',name:'China Mobile',sec:'tech',country:'China',lat:39.915,lng:116.422,mcap:230,rev:140,prov:'R'},
-  {id:'TSMC',name:'TSMC',sec:'tech',country:'Taiwan',lat:24.774,lng:120.996,mcap:2000,rev:90.1,prov:'R'},
+  {id:'TSMC',name:'TSMC',sec:'tech',country:'Taiwan',lat:24.774,lng:120.996,mcap:1050,rev:90.1,prov:'R'},
   {id:'HONHAI',name:'Foxconn (Hon Hai)',sec:'tech',country:'Taiwan',lat:25.012,lng:121.385,mcap:90,rev:215,prov:'R'},
   {id:'MEDIATEK',name:'MediaTek',sec:'tech',country:'Taiwan',lat:24.774,lng:120.996,mcap:70,rev:17,prov:'R'},
   {id:'SAMSUNG',name:'Samsung Electronics',sec:'tech',country:'South Korea',lat:37.258,lng:127.054,mcap:380,rev:200,prov:'R'},
@@ -130,7 +130,7 @@ export const COMPANIES=[
   {id:'8306MUFG',name:'Mitsubishi UFJ',sec:'fin',country:'Japan',lat:35.68,lng:139.766,mcap:140,rev:60,prov:'R'},
   {id:'6758KEYENCE',name:'Keyence',sec:'ind',country:'Japan',lat:34.733,lng:135.494,mcap:130,rev:25,prov:'R'},
   {id:'9984SOFTBANK',name:'SoftBank Group',sec:'tech',country:'Japan',lat:35.666,lng:139.748,mcap:130,rev:46,prov:'R'},
-  {id:'6861FANUC',name:'Hitachi',sec:'ind',country:'Japan',lat:35.694,lng:139.767,mcap:90,rev:85,prov:'R'},
+  {id:'HITACHI',name:'Hitachi',sec:'ind',country:'Japan',lat:35.694,lng:139.767,mcap:90,rev:85,prov:'R'},
   {id:'7267HONDA',name:'Honda',sec:'cons',country:'Japan',lat:35.674,lng:139.746,mcap:60,rev:140,prov:'R'},
   {id:'NTT',name:'NTT',sec:'tech',country:'Japan',lat:35.681,lng:139.74,mcap:100,rev:130,prov:'R'},
   {id:'RELIANCE',name:'Reliance Industries',sec:'energy',country:'India',lat:19.041,lng:72.868,mcap:230,rev:110,prov:'R'},
@@ -155,7 +155,7 @@ export const COMPANIES=[
   {id:'FED',name:'Federal Reserve',sec:'gov',country:'USA',lat:38.8926,lng:-77.0451,mcap:0,rev:7000,prov:'R'},
   {id:'USHH',name:'US Households',sec:'cons',country:'USA',lat:39.5,lng:-98.35,mcap:0,rev:19000,prov:'I'},
   {id:'ECB',name:'European Central Bank',sec:'gov',country:'Germany',lat:50.1109,lng:8.6733,mcap:0,rev:5500,prov:'E'},
-  {id:'EUGOV',name:'EU Governments',sec:'gov',country:'Germany',lat:50.85,lng:4.35,mcap:0,rev:3800,prov:'E'},
+  {id:'EUGOV',name:'EU Governments',sec:'gov',country:'Belgium',lat:50.85,lng:4.35,mcap:0,rev:3800,prov:'E'},
   {id:'EUHH',name:'EU Households',sec:'cons',country:'France',lat:48,lng:7,mcap:0,rev:12000,prov:'I'},
   {id:'PBOC',name:'People’s Bank of China',sec:'gov',country:'China',lat:39.9075,lng:116.3972,mcap:0,rev:6200,prov:'E'},
   {id:'CNGOV',name:'PRC Government',sec:'gov',country:'China',lat:39.9059,lng:116.3914,mcap:0,rev:3900,prov:'E'},
@@ -197,7 +197,6 @@ export const FLOWS=[
   {f:'MSFT',t:'AVGO',v:4,p:'I',c:0.35,m:'Custom networking/accelerator silicon procurement. Inferred from datacenter buildout.',s:'Hyperscaler model'},
   {f:'GOOGL',t:'AVGO',v:9,p:'E',c:0.55,m:'Broadcom co-designs Google TPU; disclosed as major AI customer. Estimated revenue share.',s:'Broadcom AI customer disclosure'},
   {f:'SAMSUNG',t:'AAPL',v:8,p:'E',c:0.5,m:'Display + memory components supplied to Apple. Estimated from component cost structure.',s:'Component supply est.'},
-  {f:'SKHYNIX',t:'NVDA',v:0,p:'I',c:0.2,m:'Reverse of NVDA→SKHYNIX; placeholder for bidirectional netting in production.',s:'n/a'},
   {f:'NVDA',t:'UST',v:3.2,p:'E',c:0.5,m:'Corporate income tax modeled as revenue × sector margin (25%) × USA effective rate (21%). Not a disclosed line item.',s:'Tax-incidence model'},
   {f:'USHH',t:'NVDA',v:18.3,p:'E',c:0.45,m:'Household demand share of revenue, modeled from sector consumption coefficients (30% of NVDA revenue routed from US Households).',s:'BEA/OECD consumption I-O'},
   {f:'BRK',t:'NVDA',v:3.7,p:'I',c:0.3,m:'Domestic banking/credit relationship inferred: BRK as primary lender to NVDA, sized at ~6% of revenue in financing flow. Allocation heuristic.',s:'Banking-relationship model'},
@@ -516,9 +515,9 @@ export const FLOWS=[
   {f:'9984SOFTBANK',t:'JPGOV',v:3.4,p:'E',c:0.5,m:'Corporate income tax modeled as revenue × sector margin (25%) × Japan effective rate (30%). Not a disclosed line item.',s:'Tax-incidence model'},
   {f:'GLOBALHH',t:'9984SOFTBANK',v:13.8,p:'E',c:0.45,m:'Household demand share of revenue, modeled from sector consumption coefficients (30% of 9984SOFTBANK revenue routed from Global Households (RoW)).',s:'BEA/OECD consumption I-O'},
   {f:'8306MUFG',t:'9984SOFTBANK',v:2.8,p:'I',c:0.3,m:'Domestic banking/credit relationship inferred: 8306MUFG as primary lender to 9984SOFTBANK, sized at ~6% of revenue in financing flow. Allocation heuristic.',s:'Banking-relationship model'},
-  {f:'6861FANUC',t:'JPGOV',v:2.5,p:'E',c:0.5,m:'Corporate income tax modeled as revenue × sector margin (10%) × Japan effective rate (30%). Not a disclosed line item.',s:'Tax-incidence model'},
-  {f:'GLOBALHH',t:'6861FANUC',v:6.8,p:'E',c:0.45,m:'Household demand share of revenue, modeled from sector consumption coefficients (8% of 6861FANUC revenue routed from Global Households (RoW)).',s:'BEA/OECD consumption I-O'},
-  {f:'8306MUFG',t:'6861FANUC',v:5.1,p:'I',c:0.3,m:'Domestic banking/credit relationship inferred: 8306MUFG as primary lender to 6861FANUC, sized at ~6% of revenue in financing flow. Allocation heuristic.',s:'Banking-relationship model'},
+  {f:'HITACHI',t:'JPGOV',v:2.5,p:'E',c:0.5,m:'Corporate income tax modeled as revenue × sector margin (10%) × Japan effective rate (30%). Not a disclosed line item.',s:'Tax-incidence model'},
+  {f:'GLOBALHH',t:'HITACHI',v:6.8,p:'E',c:0.45,m:'Household demand share of revenue, modeled from sector consumption coefficients (8% of HITACHI revenue routed from Global Households (RoW)).',s:'BEA/OECD consumption I-O'},
+  {f:'8306MUFG',t:'HITACHI',v:5.1,p:'I',c:0.3,m:'Domestic banking/credit relationship inferred: 8306MUFG as primary lender to HITACHI, sized at ~6% of revenue in financing flow. Allocation heuristic.',s:'Banking-relationship model'},
   {f:'7267HONDA',t:'JPGOV',v:4.2,p:'E',c:0.5,m:'Corporate income tax modeled as revenue × sector margin (10%) × Japan effective rate (30%). Not a disclosed line item.',s:'Tax-incidence model'},
   {f:'GLOBALHH',t:'7267HONDA',v:77,p:'E',c:0.45,m:'Household demand share of revenue, modeled from sector consumption coefficients (55% of 7267HONDA revenue routed from Global Households (RoW)).',s:'BEA/OECD consumption I-O'},
   {f:'8306MUFG',t:'7267HONDA',v:8.4,p:'I',c:0.3,m:'Domestic banking/credit relationship inferred: 8306MUFG as primary lender to 7267HONDA, sized at ~6% of revenue in financing flow. Allocation heuristic.',s:'Banking-relationship model'},
@@ -648,6 +647,5 @@ export const FLOWS=[
 // connect remaining islands
 FLOWS.push({f:'PLTR',t:'UST',v:1.2,p:'E',c:0.45,m:'Palantir government revenue: a large share of its business is US government contracts. Modeled from disclosed government segment.',s:'PLTR 10-K segment'});
 FLOWS.push({f:'UST',t:'PLTR',v:1.5,p:'E',c:0.5,m:'US government contract payments to Palantir (defense/intelligence/civil). Estimated from federal contract data.',s:'USAspending.gov'});
-FLOWS.push({f:'DANGOTE',t:'BRGOV',v:0.0,p:'I',c:0.15,m:'Placeholder cross-border cement export; Dangote primarily serves African markets with limited disclosure.',s:'n/a'});
 FLOWS.push({f:'GLOBALHH',t:'DANGOTE',v:3.0,p:'I',c:0.3,m:'Consumer/construction demand for Dangote cement across African markets, inferred from regional consumption.',s:'Regional demand model'});
 FLOWS.push({f:'GLOBALHH',t:'CIB',v:2.0,p:'I',c:0.3,m:'Egyptian household banking deposits/fees to Commercial International Bank, inferred from retail banking base.',s:'Retail banking model'});

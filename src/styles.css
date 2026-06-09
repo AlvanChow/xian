@@ -1,7 +1,7 @@
 :root{
   --bg:#0a0e16; --bg2:#0d121d; --panel:#101725; --panel2:#0c121e; --line:#1c2536;
   --ocean:#0b1220; --ocean2:#0e1626; --land:#16203200; --landfill:#172238; --landln:#243454;
-  --txt:#e8eef7; --dim:#8a98ad; --mut:#586577;
+  --txt:#e8eef7; --dim:#8a98ad; --mut:#828fa6;
   --accent:#5b8cff; --glow:#6ea8ff;
   --reported:#3fd68a; --estimated:#f5b042; --inferred:#ff6b7a; --live:#2dd4e8;
   --tech:#5b8cff; --fin:#2dd4e8; --energy:#f5b042; --health:#3fd68a; --cons:#f472b6; --ind:#a78bfa;
@@ -138,3 +138,38 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 #dd{flex:1;cursor:grab}#dd:active{cursor:grabbing}
 .mft{padding:12px 20px;border-top:1px solid var(--line);color:var(--mut);font-size:11.5px;line-height:1.5}
 ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px}::-webkit-scrollbar-track{background:transparent}
+
+/* keyboard focus visibility (mouse clicks don't show it) */
+:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+.resrow:focus-visible,.leg:focus-visible,.flow:focus-visible,.chip:focus-visible{outline:2px solid var(--glow);outline-offset:-2px}
+.resrow,.leg,.flow{cursor:pointer}
+
+/* ---- responsive: keep the map (the whole product) usable below the 3-col desktop layout ---- */
+@media (max-width:1100px){
+  #app{grid-template-columns:212px 1fr 300px}
+}
+@media (max-width:860px){
+  html,body{height:auto;overflow-x:hidden;overflow-y:auto}
+  /* drop the fixed grid: stack header → map → panels and let the page scroll */
+  #app{display:flex;flex-direction:column;height:auto;min-height:100vh}
+  #top{order:0;position:sticky;top:0;z-index:20;height:auto;min-height:52px;flex-wrap:wrap;gap:12px;padding:8px 14px}
+  #top .hstat,#top .hsep{display:none}
+  #center{order:1;height:60vh;min-height:300px}
+  #left{order:2}
+  #right{order:3}
+  #left,#right{border-left:0;border-right:0;border-top:1px solid var(--line)}
+}
+@media (max-width:480px){
+  #timebar{bottom:14px;gap:8px;padding:7px 10px}
+  #scrub{width:120px}
+  .logo small{display:none}
+  /* keep the status readout from sliding under the zoom buttons */
+  #ctlTop{max-width:56%;font-size:10px;padding:5px 8px;line-height:1.35}
+  #zoom button{width:30px;height:30px}
+}
+
+/* honor the OS reduce-motion setting (JS also freezes the canvas flow pulse) */
+@media (prefers-reduced-motion: reduce){
+  .livedot.on i{animation:none}
+  .track i,#tip{transition:none}
+}
