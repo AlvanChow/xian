@@ -176,7 +176,7 @@ function render(){
   });
   // Skip the innerHTML write when nothing changed — this runs every frame and
   // the string only moves while zoom eases or a control flips.
-  const ctl=`<b>${live?'Feeds live · map '+PERIODS[ANCHOR]:PERIODS[tIdx]}</b> · ${sized.length} entities · ${fl.length} flows · sized by <b>${sizeBy==='mcap'?'market cap':'revenue'}</b> · zoom <b>${view.scale.toFixed(1)}×</b> · <span class="hon">${tIdx===ANCHOR?'flows modeled (E/I)':'flows = '+PERIODS[ANCHOR]+' figures ×'+TMUL[tIdx]}</span>`;
+  const ctl=`<b>${live?'Feeds live · map '+PERIODS[tIdx]:PERIODS[tIdx]}</b> · ${sized.length} entities · ${fl.length} flows · sized by <b>${sizeBy==='mcap'?'market cap':'revenue'}</b> · zoom <b>${view.scale.toFixed(1)}×</b> · <span class="hon">${tIdx===ANCHOR?'flows modeled (E/I)':'flows = '+PERIODS[ANCHOR]+' figures ×'+TMUL[tIdx]}</span>`;
   if(ctl!==ctlPrev)ctlTopEl.innerHTML=ctlPrev=ctl;
 }
 const ctlTopEl=document.getElementById('ctlTop');let ctlPrev='';

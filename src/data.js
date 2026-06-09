@@ -166,7 +166,7 @@ export const COMPANIES=[
   {id:'SAGOV',name:'Saudi Government',sec:'gov',country:'Saudi Arabia',lat:24.7136,lng:46.6753,mcap:0,rev:340,prov:'E'},
   {id:'BRGOV',name:'Brazil Government',sec:'gov',country:'Brazil',lat:-15.7939,lng:-47.8828,mcap:0,rev:600,prov:'E'},
   {id:'GLOBALHH',name:'Global Households (RoW)',sec:'cons',country:'Singapore',lat:1.3521,lng:103.8198,mcap:0,rev:20000,prov:'I'},
-  {id:'JPHH',name:'Japan Households',sec:'gov',country:'Japan',lat:36.4,lng:138.2,mcap:0,rev:2200,prov:'E'},
+  {id:'JPHH',name:'Japan Households',sec:'cons',country:'Japan',lat:36.4,lng:138.2,mcap:0,rev:2200,prov:'E'},
 ];
 
 export const FLOWS=[
