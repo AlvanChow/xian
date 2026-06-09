@@ -16,6 +16,28 @@ journalists second (clickable sources + export). Everything below serves that.
 
 ---
 
+## Accuracy architecture (from the 20-agent data interrogation, 2026-06)
+
+A full-dataset audit (every entity HQ web-verified, mcaps, non-SEC revenues, macro
+fiscal flows, curated corporate flows, point-in-polygon geometry) found ~45 errors —
+stale HQ moves (Chevron, Exxon, Gazprom, PDD→Dublin), a Jan-2025 mcap vintage that had
+drifted >35% on 13 names, FX errors on non-USD revenues, and macro flows that were
+2–3× off (including a Fed remittance shown as current despite being suspended since
+Sept 2022). All corrected. The structural lesson: **every hand-typed field is a
+liability** — the fix is generation plus drift detection:
+
+1. **Generate HQ + name from SEC EDGAR** — `data.sec.gov/submissions/CIK{n}.json`
+   carries the registrant business address; the CIK mapping in fetch-data.mjs already
+   exists. Geocode city-level via a cached offline gazetteer. (M)
+2. **Generate mcap** — XBRL `dei:EntityCommonStockSharesOutstanding` × a quote source;
+   tag with asOf date. Until then the UI labels mcap "point-in-time". (M)
+3. **Drift tests in CI** — data.js rev vs FACTS divergence >40% fails; curated lat/lng
+   >200 km from the EDGAR address fails (this alone catches the Chevron class). (S)
+4. **Per-field `asOf` metadata** on curated values, with a staleness linter (TTL per
+   field class: addresses/mcap monthly, flows 18 months). (M)
+5. **Replace coarse coastlines with Natural Earth 110m polygons** — fixes the 16
+   correct-but-"ocean" pins (Mumbai, Singapore, Basel, Taiwan, Dublin, Aventura). (M)
+
 ## Phase 0 — Quick fixes (bugs and integrity holes found during investigation)
 
 | Fix | Where | Effort |

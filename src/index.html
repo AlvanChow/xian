@@ -8,7 +8,7 @@
 <link rel="canonical" href="https://alvanchow.github.io/xian/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="ValueGrid · global capital-flow map">
-<meta property="og:description" content="Interactive world map of global capital flows — 163 entities, ~480 flows, every figure provenance-tagged. Company revenue verified against SEC filings.">
+<meta property="og:description" content="Interactive world map of global capital flows — 163 entities, ~480 flows, every figure provenance-tagged. Revenue SEC-verified for ~70 entities; flows are modeled estimates.">
 <meta property="og:url" content="https://alvanchow.github.io/xian/">
 <meta property="og:image" content="https://alvanchow.github.io/xian/og.png">
 <meta property="og:image:width" content="1200">
@@ -55,6 +55,7 @@
       <span><i style="background:var(--reported)"></i>Reported</span>
       <span><i class="pE" style="background:var(--estimated)"></i>Estimated</span>
       <span><i class="pI" style="background:var(--inferred)"></i>Inferred</span>
+      <span class="lnote">· flows mostly modeled</span>
     </div>
     <div class="ctl" id="hint">drag · scroll / pinch · click a node</div>
     <div id="timebar">
@@ -86,6 +87,10 @@
   <div class="abody">
     <p><b>ValueGrid is an illustrative visualization</b> of global capital flows. It mixes verified
     filings data with modeled estimates — and tags every figure so you can tell which is which.</p>
+    <p><b>What this is not:</b> not real-time market data, not audited, not investment advice.
+    Map pins mark <b>headquarters locations</b> (manually curated, periodically re-verified).
+    Market caps are point-in-time snapshots, not historical series. "Source quality" percentages
+    express relative source strength within this dataset, not statistical confidence intervals.</p>
     <h4>The provenance model</h4>
     <table class="abtab">
       <tr><td><span class="tag R">R</span></td><td><b>Reported.</b> Backed by a primary filing we actually fetched.
