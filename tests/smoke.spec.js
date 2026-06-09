@@ -302,6 +302,34 @@ test('clicking a flow row shows its methodology', async ({ page }) => {
   await expect(meth).toContainText('Source quality');
 });
 
+test('household regional breakdown collapses, expands, and explains itself', async ({ page }) => {
+  // US Households carries the largest breakdown: 51 rows, top 10 collapsed.
+  await page.fill('#srch', 'US Households');
+  await page.locator('#reslist .resrow').first().click();
+  await expect(page.locator('#inspector .ihead .nm')).toContainText('US Households');
+
+  const stateRows = page.locator('#inspector .flow[data-st]');
+  await expect(stateRows).toHaveCount(10);
+
+  // Expand to all 51, then a state row click fills the methodology block.
+  await page.locator('#sbToggle').click();
+  await expect(stateRows).toHaveCount(51);
+  await page.locator('#inspector .flow[data-st="TX"]').click();
+  const meth = page.locator('#methblock');
+  await expect(meth).toContainText('Texas');
+  await expect(meth).toContainText('Share of household total');
+
+  // Collapse back to the top 10.
+  await page.locator('#sbToggle').click();
+  await expect(stateRows).toHaveCount(10);
+
+  // Non-household nodes must not grow a breakdown section.
+  await page.fill('#srch', 'Apple');
+  await page.locator('#reslist .resrow').first().click();
+  await expect(page.locator('#inspector .ihead .nm')).toContainText('Apple');
+  await expect(page.locator('#inspector .flow[data-st]')).toHaveCount(0);
+});
+
 test('zoom in raises the zoom level and fit resets it', async ({ page }) => {
   const ctlTop = page.locator('#ctlTop');
 

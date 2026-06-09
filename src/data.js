@@ -21,7 +21,7 @@ export const COMPANIES=[
   {id:'TXN',name:'Texas Instruments',sec:'tech',country:'USA',lat:32.91,lng:-96.751,mcap:170,rev:15.6,prov:'R'},
   {id:'IBM',name:'IBM',sec:'tech',country:'USA',lat:41.1083,lng:-73.7197,mcap:200,rev:62.8,prov:'R'},
   {id:'NOW',name:'ServiceNow',sec:'tech',country:'USA',lat:37.408,lng:-121.945,mcap:200,rev:11,prov:'R'},
-  {id:'PLTR',name:'Palantir',sec:'tech',country:'USA',lat:25.957,lng:-80.139,mcap:424,rev:2.9,prov:'R'},
+  {id:'PLTR',name:'Palantir',sec:'tech',country:'USA',lat:39.74,lng:-104.99,mcap:424,rev:2.9,prov:'R'},
   {id:'MU',name:'Micron',sec:'tech',country:'USA',lat:43.5407,lng:-116.2461,mcap:321,rev:25.1,prov:'R'},
   {id:'JPM',name:'JPMorgan Chase',sec:'fin',country:'USA',lat:40.7557,lng:-73.9787,mcap:680,rev:158,prov:'R'},
   {id:'V',name:'Visa',sec:'fin',country:'USA',lat:37.7858,lng:-122.4064,mcap:600,rev:35.9,prov:'R'},
@@ -190,7 +190,6 @@ export const FLOWS=[
   {f:'WMT',t:'HONHAI',v:18,p:'I',c:0.4,m:'Electronics sourcing routed via retail COGS input-output coefficients.',s:'Retail I-O coeff.'},
   {f:'WMT',t:'BABA',v:5,p:'I',c:0.3,m:'Cross-border sourcing / marketplace overlap, inferred. Low confidence.',s:'Allocation heuristic'},
   {f:'JPM',t:'AAPL',v:1,p:'I',c:0.3,m:'Banking + custody relationship; dollar flow approximated from treasury services revenue share.',s:'Modeled'},
-  {f:'BLK',t:'AAPL',v:1,p:'I',c:0.3,m:'Dividend/distribution to BlackRock-managed funds, from ~6.6% ownership × Apple capital return.',s:'13-F + Apple 10-K'},
   {f:'V',t:'JPM',v:3,p:'I',c:0.35,m:'Interchange/network settlement flows between Visa and issuing bank. Inferred.',s:'Payment-network model'},
   {f:'MA',t:'BAC',v:2,p:'I',c:0.35,m:'Interchange settlement, Mastercard→issuer. Inferred from payment volumes.',s:'Payment-network model'},
   {f:'TM',t:'CATL',v:2,p:'I',c:0.3,m:'Toyota battery sourcing (partial; Toyota multi-sources). Inferred.',s:'EV supply model'},
@@ -646,7 +645,6 @@ export const FLOWS=[
   {f:'MSFT',t:'GS',v:1,p:'I',c:0.25,m:'Dividend/distribution flow to GS-managed funds from equity holdings in MSFT. Inferred from typical ownership share × payout.',s:'13-F holdings model'},
 ];
 // connect remaining islands
-FLOWS.push({f:'PLTR',t:'UST',v:1.2,p:'E',c:0.45,m:'Palantir government revenue: a large share of its business is US government contracts. Modeled from disclosed government segment.',s:'PLTR 10-K segment'});
 FLOWS.push({f:'UST',t:'PLTR',v:1.2,p:'E',c:0.55,m:'US government revenue disclosed by Palantir: ~$1.2B FY2024 (total government incl. allied nations was $1.57B).',s:'Palantir FY2024 earnings releases'});
 FLOWS.push({f:'GLOBALHH',t:'DANGOTE',v:3.0,p:'I',c:0.3,m:'Consumer/construction demand for Dangote cement across African markets, inferred from regional consumption.',s:'Regional demand model'});
 FLOWS.push({f:'GLOBALHH',t:'CIB',v:2.0,p:'I',c:0.3,m:'Egyptian household banking deposits/fees to Commercial International Bank, inferred from retail banking base.',s:'Retail banking model'});
@@ -680,6 +678,34 @@ FLOWS.push({f:'INGOV',t:'GLOBALHH',v:70,p:'E',c:0.4,m:'Indian government social 
 FLOWS.push({f:'GLOBALHH',t:'INGOV',v:120,p:'E',c:0.4,m:'Indian personal income tax receipts (~₹10T), paid by households inside the rest-of-world household node.',s:'India Union Budget receipts'});
 FLOWS.push({f:'BRGOV',t:'GLOBALHH',v:150,p:'E',c:0.4,m:'Brazilian social transfers to households — INSS pension benefits (~R$900B) plus Bolsa Família. Brazilian households are a subset of the rest-of-world household node.',s:'Brazil Tesouro Nacional'});
 FLOWS.push({f:'GLOBALHH',t:'BRGOV',v:90,p:'E',c:0.4,m:'Brazilian household income taxes and social-security contributions, paid by households inside the rest-of-world household node.',s:'Brazil Receita Federal'});
+
+// Wage inflows to households from the largest employers we track. Previously
+// households only received government transfers, so every household node read
+// as deeply net-negative — wages are the missing other half of the loop.
+// Values ≈ domestic headcount × average total compensation (incl. benefits).
+FLOWS.push({f:'WMT',t:'USHH',v:55,p:'E',c:0.4,m:'Wages and benefits to ~1.6M US associates (avg ~$34k total compensation). Largest US private employer.',s:'WMT 10-K headcount + BLS compensation'});
+FLOWS.push({f:'AMZN',t:'USHH',v:60,p:'E',c:0.4,m:'Wages and benefits to ~1.1M US employees across fulfillment and corporate (~$55k blended average).',s:'AMZN 10-K headcount + BLS compensation'});
+FLOWS.push({f:'MSFT',t:'USHH',v:28,p:'E',c:0.4,m:'Wages and benefits to ~125k US employees (~$220k blended average incl. stock compensation).',s:'MSFT 10-K headcount + levels data'});
+FLOWS.push({f:'GOOGL',t:'USHH',v:33,p:'E',c:0.4,m:'Wages and benefits to ~120k US employees (~$280k blended average incl. stock compensation).',s:'GOOGL 10-K headcount + levels data'});
+FLOWS.push({f:'AAPL',t:'USHH',v:15,p:'E',c:0.4,m:'Wages and benefits to ~90k US employees (retail-heavy mix, ~$170k blended average).',s:'AAPL 10-K headcount + BLS compensation'});
+FLOWS.push({f:'UNH',t:'USHH',v:32,p:'E',c:0.4,m:'Wages and benefits to ~400k employees, predominantly US (~$80k blended average).',s:'UNH 10-K headcount + BLS compensation'});
+FLOWS.push({f:'HD',t:'USHH',v:16,p:'E',c:0.4,m:'Wages and benefits to ~470k associates, predominantly US (~$34k blended average).',s:'HD 10-K headcount + BLS compensation'});
+FLOWS.push({f:'JPM',t:'USHH',v:24,p:'E',c:0.4,m:'Wages and benefits to ~200k US employees (~$120k blended average).',s:'JPM 10-K headcount + BLS compensation'});
+FLOWS.push({f:'TM',t:'JPHH',v:8,p:'E',c:0.4,m:'Wages and benefits to Toyota group employees in Japan (~100k domestic, ~¥12M average total compensation).',s:'Toyota annual report + MHLW wage statistics'});
+FLOWS.push({f:'SONY',t:'JPHH',v:4,p:'E',c:0.4,m:'Wages and benefits to Sony group employees in Japan (~50k domestic, ~¥12M average total compensation).',s:'Sony annual report + MHLW wage statistics'});
+
+// Government contract revenue for the remaining big US defense primes —
+// LMT and RTX already had their UST flows; BA and HON were asymmetric
+// (they paid tax but received no contract revenue).
+FLOWS.push({f:'UST',t:'BA',v:25,p:'E',c:0.6,m:'US government sales: Boeing Defense, Space & Security plus government share of Global Services — ~37% of revenue per 10-K customer concentration.',s:'BA 10-K + USAspending.gov'});
+FLOWS.push({f:'UST',t:'HON',v:4,p:'E',c:0.5,m:'US government sales: aerospace defense and federal solutions, ~10% of net sales per 10-K.',s:'HON 10-K + USAspending.gov'});
+
+// Missing supplier links between existing nodes (all directions: buyer pays).
+FLOWS.push({f:'INTC',t:'TSMC',v:6,p:'E',c:0.5,m:'External foundry wafer purchases — Intel sources compute tiles for Arrow Lake / Lunar Lake at TSMC N3.',s:'Earnings call disclosures + industry estimates'});
+FLOWS.push({f:'MEDIATEK',t:'TSMC',v:8,p:'E',c:0.55,m:'Foundry wafer purchases: MediaTek is fabless and fabs nearly all volume at TSMC (~half of COGS).',s:'MediaTek annual report + supply-chain estimates'});
+FLOWS.push({f:'AAPL',t:'AVGO',v:9,p:'E',c:0.6,m:'Wireless components and custom RF under multi-year supply agreements — Apple is ~20% of Broadcom revenue per customer concentration.',s:'AVGO 10-K customer concentration'});
+FLOWS.push({f:'MSFT',t:'MU',v:3,p:'I',c:0.35,m:'Server DRAM/HBM procurement for Azure data centers, inferred from data-center memory market share.',s:'Industry memory market estimates'});
+FLOWS.push({f:'AMZN',t:'MU',v:4,p:'I',c:0.35,m:'Server DRAM procurement for AWS data centers, inferred from data-center memory market share.',s:'Industry memory market estimates'});
 
 // Regional breakdown for household macro nodes, keyed by node id. Shares are
 // best-estimate allocations of the node's total annual outflows by regional

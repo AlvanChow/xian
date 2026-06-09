@@ -93,7 +93,9 @@ function annualEntries(conceptJson) {
   const byYear = new Map(); // calendar year -> {val, filed, end, fy}
   for (const e of usd) {
     if (e.fp !== 'FY' || !e.form || !(e.form.startsWith('10-K') || e.form.startsWith('20-F'))) continue;
-    if (!e.start || !e.end || typeof e.val !== 'number') continue;
+    // Reject non-positive values too: a $0 or restated-negative revenue fact
+    // would otherwise flow into facts.js and break sizing/provenance display.
+    if (!e.start || !e.end || typeof e.val !== 'number' || e.val <= 0) continue;
     const days = (Date.parse(e.end) - Date.parse(e.start)) / 86400000;
     // Positive-range check so NaN (unparseable dates) is rejected, not passed.
     if (!(days >= 330 && days <= 400)) continue; // annual periods only, not quarters
