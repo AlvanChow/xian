@@ -6,6 +6,8 @@ import assert from 'node:assert/strict';
 import { COMPANIES, FLOWS, STATE_SHARES } from '../../src/data.js';
 
 const PROVS = new Set(['R', 'E', 'I']);
+const SECS = new Set(['tech', 'fin', 'energy', 'health', 'cons', 'ind', 'gov', 'telecom', 'materials', 'utilities']);
+const VALID_KINDS = new Set(['tax', 'household', 'banking', 'energy', 'dividend', 'govt_transfer', 'govt_tax', 'central_bank', 'govt_procurement', 'wage', 'foundry', 'supply', 'payment_net', 'tac', 'cloud_spend', 'other']);
 const ids = new Set(COMPANIES.map((c) => c.id));
 
 test('COMPANIES have unique, non-empty ids', () => {
@@ -41,6 +43,7 @@ test('COMPANIES have name, country and sector', () => {
     assert.ok(typeof c.name === 'string' && c.name.length > 0, `${c.id}: name missing`);
     assert.ok(typeof c.country === 'string' && c.country.length > 0, `${c.id}: country missing`);
     assert.ok(typeof c.sec === 'string' && c.sec.length > 0, `${c.id}: sec missing`);
+    assert.ok(SECS.has(c.sec), `${c.id}: sec must be a known sector, got ${c.sec}`);
   }
 });
 
@@ -67,6 +70,14 @@ test('FLOWS have non-empty methodology and source strings', () => {
     const tag = `${fl.f}->${fl.t}`;
     assert.ok(typeof fl.m === 'string' && fl.m.length > 0, `${tag}: m must be a non-empty string`);
     assert.ok(typeof fl.s === 'string' && fl.s.length > 0, `${tag}: s must be a non-empty string`);
+  }
+});
+
+test('FLOWS with explicit k field use a valid kind', () => {
+  for (const fl of FLOWS) {
+    if (!('k' in fl)) continue;
+    const tag = `${fl.f}->${fl.t}`;
+    assert.ok(VALID_KINDS.has(fl.k), `${tag}: k must be a known kind, got ${fl.k}`);
   }
 });
 

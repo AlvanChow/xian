@@ -5,8 +5,8 @@ import { FACTS } from './facts.js';
 
 const C=COMPANIES, FL=FLOWS;
 const byId=Object.fromEntries(C.map(c=>[c.id,c]));
-const SEC={tech:'#5b8cff',fin:'#2dd4e8',energy:'#f5b042',health:'#3fd68a',cons:'#f472b6',ind:'#a78bfa',gov:'#e2e8f0'};
-const SECNAME={tech:'Technology',fin:'Finance',energy:'Energy',health:'Healthcare',cons:'Consumer',ind:'Industrials',gov:'Government / Central Bank'};
+const SEC={tech:'#5b8cff',fin:'#2dd4e8',energy:'#f5b042',health:'#3fd68a',cons:'#f472b6',ind:'#a78bfa',gov:'#e2e8f0',telecom:'#00d9ff',materials:'#ed8f00',utilities:'#1fb979'};
+const SECNAME={tech:'Technology',fin:'Finance',energy:'Energy',health:'Healthcare',cons:'Consumer',ind:'Industrials',gov:'Government / Central Bank',telecom:'Telecommunications',materials:'Materials',utilities:'Utilities'};
 const PCOL={R:'#3fd68a',E:'#f5b042',I:'#ff6b7a'}, PNAME={R:'Reported',E:'Estimated',I:'Inferred'};
 const CB=new Set(['FED','ECB','PBOC','BOJ']); // central banks: their scale figure is a balance-sheet stock, not an annual flow
 const PERIODS=['2019','2020','2021','2022','2023','2024'], TMUL=[.62,.60,.82,.95,.97,1.0];
@@ -31,6 +31,28 @@ const nProv=c=>hasFact(c)?'R':(c.prov==='R'?'E':c.prov);
 // a "Reported" flow is showing an estimate, and must degrade to E on screen.
 const ANCHOR=PERIODS.length-1;
 const fProv=e=>(e.p==='R'&&tIdx!==ANCHOR)?'E':e.p;
+// Flow kind: derived from the methodology string when the data doesn't carry an
+// explicit `k` field — 446/478 flows map mechanically from their source strings.
+const KIND_PATTERNS=[
+  [/Tax-incidence model/i,'tax'],
+  [/household demand share/i,'household'],
+  [/banking\/credit relationship/i,'banking'],
+  [/energy.intensity|Energy I-O/i,'energy'],
+  [/dividend\/distribution/i,'dividend'],
+  [/social benefits|social transfers|social protection/i,'govt_transfer'],
+  [/Household.*tax|income tax.*receipts|social.*contributions/i,'govt_tax'],
+  [/central.bank|SOMA|FX profits|payment to the national/i,'central_bank'],
+  [/government sales|gov.*procurement|USAspending/i,'govt_procurement'],
+  [/wages and benefits/i,'wage'],
+  [/foundry.*BOM|leading-edge silicon/i,'foundry'],
+  [/supplier.concentration|supply.*chain|COGS|procurement|battery.*sourcing|component.*supply|assembly.*manufacturing/i,'supply'],
+  [/interchange.*settlement|payment.*network/i,'payment_net'],
+  [/search.*placement|Traffic.*acquisition/i,'tac'],
+  [/cloud infrastructure.*spend/i,'cloud_spend'],
+  [/FX profits.*transfer/i,'central_bank'],
+];
+const kindOf=e=>e.k||KIND_PATTERNS.find(([re])=>re.test(e.m))?.[1]||'other';
+const KIND_LABEL={tax:'Corporate tax',household:'Household demand',banking:'Banking/credit',energy:'Energy input',dividend:'Dividends',govt_transfer:'Govt transfers',govt_tax:'Household taxes',central_bank:'Central bank',govt_procurement:'Govt procurement',wage:'Wages',foundry:'Foundry spend',supply:'Supply chain',payment_net:'Payment network',tac:'Traffic acquisition',cloud_spend:'Cloud spend',other:'Other'};
 // Respect the OS "reduce motion" setting: freeze the travelling flow-dot pulse.
 const reduceMotion=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
@@ -292,7 +314,7 @@ function selectNode(id,fly=true){const n=byId[id];if(!n)return;if(selected!==id)
   const sbMax=sbRows.length?Math.max(...sbRows.map(r=>r.sh)):1;
   const stateRow=r=>`<div class="flow" role="button" tabindex="0" data-st="${r.a}" aria-label="${esc(r.n)}, ${fmt(r.sh*revAt(n))}, ${(r.sh*100).toFixed(1)}% of total household outflows"><div class="r1"><div class="who"><span class="ar">◆</span><span>${esc(r.n)}</span><span class="tag ${sb.p}">${PNAME[sb.p][0]}</span></div><div class="amt">${fmt(r.sh*revAt(n))}</div></div><div class="bar"><i style="width:${Math.min(100,r.sh/sbMax*100)}%;background:${PCOL[sb.p]}"></i></div><div class="meth">${(r.sh*100).toFixed(1)}% of total household outflows</div></div>`;
   const stateSec=sb?`<div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Breakdown by ${sb.t} <span>${sbRows.length}</span></div><div style="color:var(--mut);font-size:11px;margin:-2px 0 8px">Estimated allocation of the household total by ${sb.t}-level consumption shares. Select a ${sb.t} for methodology.</div>${(sbOpen||sbRows.length<=10?sbRows:sbRows.slice(0,10)).map(stateRow).join('')}${sbRows.length>10?`<button class="ddbtn" id="sbToggle" style="margin:10px 0 4px;width:100%">${sbOpen?'Show top 10 only':'Show all '+sbRows.length+' '+sb.tp+' →'}</button>`:''}</div>`:'';
-  const flowRow=(e,dir)=>{const o=dir==='out'?e.t:e.f,oc=byId[o],fp=fProv(e);return `<div class="flow" role="button" tabindex="0" data-e="${e.f}|${e.t}" aria-label="${dir==='out'?'Outflow to':'Inflow from'} ${esc(oc.name)}, ${fmt(e.vv)}, ${PNAME[fp]}"><div class="r1"><div class="who"><span class="ar">${dir==='out'?'→':'←'}</span><span style="width:9px;height:9px;border-radius:50%;background:${SEC[oc.sec]};display:inline-block"></span><span class="cplink" data-go="${o}" title="Open ${esc(oc.name)}">${esc(oc.name)}</span><span class="tag ${fp}">${PNAME[fp][0]}</span></div><div class="amt">${fmt(e.vv)}</div></div><div class="bar"><i style="width:${Math.min(100,e.vv/mv*100)}%;background:${PCOL[fp]}"></i></div><div class="meth">source quality ${(e.c*100|0)}%</div></div>`;};
+  const flowRow=(e,dir)=>{const o=dir==='out'?e.t:e.f,oc=byId[o],fp=fProv(e),kd=kindOf(e);return `<div class="flow" role="button" tabindex="0" data-e="${e.f}|${e.t}" aria-label="${dir==='out'?'Outflow to':'Inflow from'} ${esc(oc.name)}, ${fmt(e.vv)}, ${PNAME[fp]}"><div class="r1"><div class="who"><span class="ar">${dir==='out'?'→':'←'}</span><span style="width:9px;height:9px;border-radius:50%;background:${SEC[oc.sec]};display:inline-block"></span><span class="cplink" data-go="${o}" title="Open ${esc(oc.name)}">${esc(oc.name)}</span><span class="tag ${fp}">${PNAME[fp][0]}</span></div><div class="amt">${fmt(e.vv)}</div></div><div class="bar"><i style="width:${Math.min(100,e.vv/mv*100)}%;background:${PCOL[fp]}"></i></div><div class="meth">${KIND_LABEL[kd]} · source quality ${(e.c*100|0)}%</div></div>`;};
   const html=`
    <div class="ihead"><div class="tk">${n.id}</div><div class="nm">${esc(n.name)}</div>
      <div class="meta"><span class="pill"><span class="d" style="background:${SEC[n.sec]}"></span>${SECNAME[n.sec]}</span><span class="pill" title="Pin marks the headquarters location (manually curated)">HQ · ${n.country}</span></div></div>

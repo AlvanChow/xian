@@ -6,7 +6,7 @@
   /* darker accent for white-text fills: #5b8cff gives only 3.2:1 on white text (AA fail) */
   --accent-fill:#3056c4; --accent-fill-hover:#3a63d8;
   --reported:#3fd68a; --estimated:#f5b042; --inferred:#ff6b7a; --live:#2dd4e8;
-  --tech:#5b8cff; --fin:#2dd4e8; --energy:#f5b042; --health:#3fd68a; --cons:#f472b6; --ind:#a78bfa;
+  --tech:#5b8cff; --fin:#2dd4e8; --energy:#f5b042; --health:#3fd68a; --cons:#f472b6; --ind:#a78bfa; --gov:#e2e8f0; --telecom:#00d9ff; --materials:#ed8f00; --utilities:#1fb979;
   --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --mono:ui-monospace,'SF Mono','Roboto Mono',Menlo,Consolas,monospace;
 }
