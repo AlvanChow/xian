@@ -10,3 +10,4 @@ npm-debug.log*
 _*.mjs
 _*.cjs
 _*.png
+.env
