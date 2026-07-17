@@ -47,12 +47,17 @@ export const CURATED_LISTINGS = {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+let lastYahoo = 0;
 async function yahooPrice(sym) {
   // v8 chart meta carries regularMarketPrice + currency and needs no crumb.
   const url = `${YAHOO}${encodeURIComponent(sym)}?range=1d&interval=1d`;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      await sleep(300); // stay far under Yahoo's informal rate limits
+      // Elapsed-based pacing (>=300ms between request starts) so requests
+      // already spaced by network latency don't pay an extra fixed sleep.
+      const wait = lastYahoo + 300 - Date.now();
+      if (wait > 0) await sleep(wait);
+      lastYahoo = Date.now();
       const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const meta = (await res.json())?.chart?.result?.[0]?.meta;
@@ -80,6 +85,14 @@ function freshDeiShares(conceptJson, nowMs) {
   if (!best) return null;
   const age = (nowMs - Date.parse(best.end)) / 86400000;
   if (!(age >= 0 && age <= MAX_DEI_AGE_DAYS)) return null;
+  // Multi-class registrants can carry one undimensioned fact PER CLASS with
+  // the same cover-page date; picking one row would silently understate the
+  // cap. Distinct values on the latest date -> ambiguous -> curated fallback
+  // (add the name to SHARES_OVERRIDE with the cross-class total instead).
+  const atEnd = new Set(units
+    .filter((e) => e.end === best.end && (e.form.startsWith('10-K') || e.form.startsWith('10-Q')) && typeof e.val === 'number' && e.val > 0)
+    .map((e) => e.val));
+  if (atEnd.size > 1) return null;
   return best.val;
 }
 
@@ -94,6 +107,17 @@ export async function buildMcaps({ companies, facts, tickerOf, getJSON }) {
   const MCAP_ASOF = new Date(nowMs).toISOString().slice(0, 10);
   const MCAPS = {};
   const dropped = [];
+
+  // Sanity-band anchor: prefer last run's generated value (facts.js is read
+  // before this run overwrites it). Anchoring month-over-month lets real caps
+  // walk arbitrarily far from the hand-curated data.js snapshot over the
+  // years without ever tripping the band, while still catching sudden
+  // share-unit / ADR-ratio mistakes; the curated value is only the first-run
+  // anchor.
+  let prevMcaps = {};
+  try {
+    prevMcaps = (await import('../src/facts.js')).MCAPS || {};
+  } catch { /* first run or malformed facts.js -> curated anchors */ }
 
   let fx = {};
   try {
@@ -128,9 +152,10 @@ export async function buildMcaps({ companies, facts, tickerOf, getJSON }) {
     const usd = toUSD(q.price * shares, q.currency);
     if (usd == null) { dropped.push(`${c.id} (${sym}: no FX for ${q.currency})`); continue; }
     const vB = Math.round(usd / 1e8) / 10; // $B, 1dp
-    const ratio = c.mcap > 0 ? vB / c.mcap : 1;
+    const anchor = prevMcaps[c.id]?.v ?? (c.mcap > 0 ? c.mcap : null);
+    const ratio = anchor ? vB / anchor : 1;
     if (!(ratio >= 0.2 && ratio <= 5)) {
-      dropped.push(`${c.id} (${sym}: ${vB} vs curated ${c.mcap} — outside 0.2x-5x sanity band)`);
+      dropped.push(`${c.id} (${sym}: ${vB} vs anchor ${anchor} — outside 0.2x-5x sanity band)`);
       continue;
     }
     MCAPS[c.id] = { v: vB, src };

@@ -262,6 +262,20 @@ test('time scrubber changes the period and revenue figure', async ({ page }) => 
   await expect(revenueStatValue(page)).not.toHaveText(revBefore);
 });
 
+test('Escape and the fit button clear the selection back to the full network', async ({ page }) => {
+  // Boot auto-selects NVDA; deselection must be reachable so the user can
+  // see the whole flow network, not just one ego-network.
+  await expect(page.locator('#inspector .ihead .nm')).toContainText('NVIDIA');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#inspector .ins-empty')).toBeVisible();
+  // Re-select, then the fit control must also clear.
+  await page.fill('#srch', 'Apple');
+  await page.locator('#reslist .resrow').first().click();
+  await expect(page.locator('#inspector .ihead .nm')).toContainText('Apple');
+  await page.locator('#zfit').click();
+  await expect(page.locator('#inspector .ins-empty')).toBeVisible();
+});
+
 test('year axis defaults to the latest period and labels flow vintage honestly', async ({ page }) => {
   const latest = PERIODS[PERIODS.length - 1];
   // Default period is the last entry of the shared year axis, and boot code

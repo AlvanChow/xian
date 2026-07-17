@@ -14,11 +14,14 @@ const SEC={tech:'#5b8cff',fin:'#2dd4e8',energy:'#f5b042',health:'#3fd68a',cons:'
 const SECNAME={tech:'Technology',fin:'Finance',energy:'Energy',health:'Healthcare',cons:'Consumer',ind:'Industrials',gov:'Government / Central Bank',telecom:'Telecommunications',materials:'Materials',utilities:'Utilities'};
 const PCOL={R:'#3fd68a',E:'#f5b042',I:'#ff6b7a'}, PNAME={R:'Reported',E:'Estimated',I:'Inferred'};
 const CB=new Set(['FED','ECB','PBOC','BOJ']); // central banks: their scale figure is a balance-sheet stock, not an annual flow
-// Per-year global multiplier vs the flow-vintage year. 2019–2024 are the
-// original curated estimates; later years come from YEAR_MULT (computed by the
-// fetch pipeline from aggregate SEC-reported revenue growth), defaulting to 1.
-const TMUL_HIST={2019:.62,2020:.60,2021:.82,2022:.95,2023:.97,2024:1};
-const TMUL=PERIODS.map(p=>TMUL_HIST[p]??YEAR_MULT[p]??1);
+// Per-year global multiplier vs the flow-vintage year. 2019–2023 are the
+// original curated estimates AND are ratios against FLOW_VINTAGE '2024' —
+// if the vintage ever moves, this table must be re-derived, not kept. Later
+// years come from YEAR_MULT (computed by the fetch pipeline from aggregate
+// SEC-reported revenue growth). The vintage year itself is structurally 1.
+const VINTAGE=String(FLOW_VINTAGE);
+const TMUL_HIST={2019:.62,2020:.60,2021:.82,2022:.95,2023:.97};
+const TMUL=PERIODS.map(p=>p===VINTAGE?1:TMUL_HIST[p]??YEAR_MULT[p]??1);
 let sizeBy='mcap',secOn={},layerOn={R:1,E:1,I:1},tIdx=PERIODS.length-1,playing=false,live=false,selected=null,hover=null;
 Object.keys(SEC).forEach(s=>secOn[s]=1);
 const fmt=v=>v>=1000?'$'+(v/1000).toFixed(2)+'T':(v>=1?'$'+v.toFixed(0)+'B':'$'+(v*1000).toFixed(0)+'M');
@@ -42,7 +45,10 @@ const mcapOf=c=>(MCAPS[c.id]&&MCAPS[c.id].v)||c.mcap;
 // Flow display provenance: flow values are anchored to the vintage year and
 // scaled by the global multiplier when scrubbed — so off the anchor year even
 // a "Reported" flow is showing an estimate, and must degrade to E on screen.
-const ANCHOR=PERIODS.indexOf(FLOW_VINTAGE);
+// String() tolerates a numeric FLOW_VINTAGE; membership in PERIODS is
+// enforced by a unit test (the refresh workflow's deploy gate), since an
+// out-of-axis vintage would make this -1 and break provenance display.
+const ANCHOR=PERIODS.indexOf(VINTAGE);
 const fProv=e=>(e.p==='R'&&tIdx!==ANCHOR)?'E':e.p;
 // Flow kind: derived from the methodology string when the data doesn't carry an
 // explicit `k` field — 446/478 flows map mechanically from their source strings.
@@ -133,11 +139,14 @@ function render(){
     let bLng=B.lng; if(Math.abs(bLng-A.lng)>180)bLng+=bLng<A.lng?360:-360;
     const a=proj(A.lng,A.lat),b=proj(bLng,B.lat);
     const hot=selected&&(e.f===selected||e.t===selected);
-    if(selected&&!hot)return;
+    // Selection focuses its ego-network but keeps the rest of the graph
+    // faintly visible — hiding it entirely made "the map only has 3 flows"
+    // a common misread, since boot auto-selects a node.
+    const dim=selected&&!hot;
     const fp=fProv(e),col=PCOL[fp];
     const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1,lift=Math.min(180*DPR,len*0.3);
     const mxp=(a.x+b.x)/2,myp=(a.y+b.y)/2,cx=mxp-dy/len*lift,cy=myp+dx/len*lift-lift*0.3;
-    mx.globalAlpha=hot?0.95:0.34;
+    mx.globalAlpha=hot?0.95:dim?0.09:0.34;
     mx.setLineDash(fp==='R'?[]:(fp==='E'?[8*DPR,6*DPR]:[2*DPR,7*DPR]));
     mx.lineWidth=Math.max(1,Math.log(e.vv+1)*0.6)*(hot?1.7:1)*DPR;
     if(hot){mx.shadowBlur=12*DPR;mx.shadowColor=col;}
@@ -234,7 +243,7 @@ let panning=false,last={x:0,y:0},moved=false,pinch0=null;
 const ptrs=new Map(); // active pointers over the map: id -> CSS-px position
 // Touch pointers get a larger hit target: small pins are ~8 CSS px, well under
 // fingertip size, so floor the effective radius and widen the slop for touch.
-function pick(px,py,touch){const dpr=DPR;px*=dpr;py*=dpr;let best=null,bd=1e9;for(const p of lastDrawn){const eff=touch?Math.max(p.r,12*dpr)+8*dpr:p.r+5*dpr;const d=Math.hypot(px-p.x,py-p.y);if(d<=eff&&d<bd){bd=d;best=p.c;}}return best;}
+function pick(px,py,touch){const dpr=DPR;px*=dpr;py*=dpr;let best=null,bd=1e9;for(const p of lastDrawn){const eff=touch?Math.max(p.r,12*dpr)+8*dpr:Math.max(p.r,5*dpr)+5*dpr;const d=Math.hypot(px-p.x,py-p.y);if(d<=eff&&d<bd){bd=d;best=p.c;}}return best;}
 const hideTip=()=>{const tp=document.getElementById('tip');if(tp)tp.style.opacity=0;};
 function zoomAbout(px,py,scale){ // rescale while keeping the (CSS-px) point fixed on screen
   const before=unproj(px*DPR,py*DPR);
@@ -256,7 +265,9 @@ map.addEventListener('pointermove',e=>{
     zoomAbout((a.x+b.x)/2,(a.y+b.y)/2,pinch0.scale*(Math.hypot(a.x-b.x,a.y-b.y)/pinch0.d));
     moved=true;return;
   }
-  if(panning){const dx=px-last.x,dy=py-last.y;if(Math.abs(dx)+Math.abs(dy)>2)moved=true;const s=pxPerDeg()/DPR;target.cx-=dx/s;target.cy+=dy/(s*0.95);view.cx=target.cx;view.cy=target.cy;last={x:px,y:py};hideTip();return;}
+  // Click-slop: 2px cancelled taps/clicks constantly at high zoom, where pins
+  // are small and a little hand jitter is normal — especially on touch.
+  if(panning){const dx=px-last.x,dy=py-last.y;if(Math.abs(dx)+Math.abs(dy)>(e.pointerType==='mouse'?5:10))moved=true;const s=pxPerDeg()/DPR;target.cx-=dx/s;target.cy+=dy/(s*0.95);view.cx=target.cx;view.cy=target.cy;last={x:px,y:py};hideTip();return;}
   if(e.pointerType!=='mouse')return; // hover/tooltip is a mouse-only affordance
   const c=pick(px,py);hover=c;const tip=document.getElementById('tip');if(!tip)return;
   if(c){const isGov=c.mcap===0,np=nProv(c);tip.innerHTML=`<div class="t">${esc(c.name)}</div><div class="s">${SECNAME[c.sec]} · HQ ${esc(c.country)}</div><div class="s">${isGov?(CB.has(c.id)?'Balance sheet ~':'Annual flows ~')+fmt(revAt(c)):'Cap '+fmt(mcapOf(c))+' · Rev '+fmt(revAt(c))}</div><div class="pv"><i style="background:${PCOL[np]}"></i>${PNAME[np]} ${isGov?'(modeled)':(hasFact(c)?'revenue (SEC filing)':'revenue')}</div>`;tip.style.left=Math.min(px+16,map.clientWidth-248)+'px';tip.style.top=Math.min(py+16,map.clientHeight-100)+'px';tip.style.opacity=1;map.style.cursor='pointer';}
@@ -265,7 +276,7 @@ function endPointer(e){
   if(!ptrs.delete(e.pointerId))return;
   if(ptrs.size===1){pinch0=null;const[a]=ptrs.values();panning=true;moved=true;last={x:a.x,y:a.y};} // pinch ended: remaining finger keeps panning
   else if(ptrs.size===0){
-    if(panning&&!moved&&e.type==='pointerup'){const c=pick(e.offsetX,e.offsetY,e.pointerType!=='mouse');if(c)selectNode(c.id);}
+    if(panning&&!moved&&e.type==='pointerup'){const c=pick(e.offsetX,e.offsetY,e.pointerType!=='mouse');if(c)selectNode(c.id);else if(selected)clearSelection();}
     panning=false;pinch0=null;
     if(e.pointerType!=='mouse')hideTip(); // touch never gets a pointerleave to clear it
   }
@@ -298,7 +309,10 @@ map.addEventListener('keydown',e=>{
   else return;
   e.preventDefault();
 });
-function fitView(){target={cx:10,cy:25,scale:1};selected=null;renderInspectorEmpty();syncHash(true);}
+// Single deselection path (empty-map click, Escape, fit): show the whole
+// flow network again and reset the inspector.
+function clearSelection(){selected=null;hover=null;renderInspectorEmpty();syncHash(true);}
+function fitView(){target={cx:10,cy:25,scale:1};clearSelection();}
 document.getElementById('zin').onclick=()=>target.scale=Math.min(80,target.scale*1.6);
 document.getElementById('zout').onclick=()=>target.scale=Math.max(0.8,target.scale/1.6);
 document.getElementById('zfit').onclick=fitView;
@@ -522,7 +536,7 @@ aboutModal.addEventListener('keydown',e=>{
 });
 
 // Escape closes whichever overlay is open, otherwise clears the map selection.
-window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(aboutModal.classList.contains('show'))closeAbout();else if(modal.classList.contains('show'))closeDrill();else if(selected){selected=null;renderInspectorEmpty();syncHash(true);}});
+window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(aboutModal.classList.contains('show'))closeAbout();else if(modal.classList.contains('show'))closeDrill();else if(selected)clearSelection();});
 
 /* ---- shareable URL state ----
    #node=NVDA&t=2022&hide=fin,energy&layers=RE&size=rev — every interesting
