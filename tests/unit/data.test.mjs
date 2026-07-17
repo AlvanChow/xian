@@ -3,7 +3,13 @@
 // runner: `npm run test:unit` (node --test tests/unit/).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import { COMPANIES, FLOWS, STATE_SHARES } from '../../src/data.js';
+import { MIN_YEAR as YEAR_MIN, MAX_YEAR as YEAR_MAX, PERIODS } from '../../src/years.js';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const PROVS = new Set(['R', 'E', 'I']);
 const SECS = new Set(['tech', 'fin', 'energy', 'health', 'cons', 'ind', 'gov', 'telecom', 'materials', 'utilities']);
@@ -147,9 +153,6 @@ try {
   // module absent — facts tests below will be skipped
 }
 
-const YEAR_MIN = 2019;
-const YEAR_MAX = 2024;
-
 // Normalizes a revT series into [year, value] pairs. Supported shapes:
 //   { 2019: 10, 2020: 12 }                      — year-keyed map
 //   [[2019, 10], [2020, 12]]                    — array of pairs
@@ -197,4 +200,30 @@ test('FACTS keys are COMPANIES ids with valid revT series (skipped if src/facts.
         `${id}: revT value for ${year} must be a finite positive number, got ${value}`);
     }
   }
+});
+
+// --- year-axis integrity (src/years.js is the single source of truth) ------
+
+test('year axis is not stale (calendar tripwire)', () => {
+  // By July 1 of MAX_YEAR+2, a full fiscal year newer than MAX_YEAR has been
+  // filed by every issuer (even May/June-FYE stragglers like ORCL). If this
+  // fires: bump MAX_YEAR in src/years.js, re-run scripts/fetch-data.mjs,
+  // rebuild, and review the regenerated data.
+  assert.ok(Date.now() < Date.UTC(YEAR_MAX + 2, 6, 1),
+    `year axis is stale: MAX_YEAR=${YEAR_MAX} but it is now past ${YEAR_MAX + 2}-07-01 — bump src/years.js and rerun the pipeline`);
+});
+
+test('src/index.html year copy matches src/years.js', () => {
+  // The static scrubber attributes are a no-JS fallback and the About modal
+  // states the covered range — both must track the real axis.
+  const html = readFileSync(join(ROOT, 'src/index.html'), 'utf8');
+  const last = String(PERIODS.length - 1);
+  assert.ok(html.includes(`max="${last}" value="${last}"`),
+    `scrubber max/value must be ${last} (PERIODS.length-1)`);
+  assert.ok(html.includes(`(${YEAR_MIN}–${YEAR_MAX})`),
+    `scrubber aria-label must state (${YEAR_MIN}–${YEAR_MAX})`);
+  assert.ok(html.includes(`FY${YEAR_MIN}–${YEAR_MAX}`),
+    `About copy must state FY${YEAR_MIN}–${YEAR_MAX}`);
+  assert.ok(html.includes(`id="period">${PERIODS[PERIODS.length - 1]}<`),
+    `#period fallback text must be ${PERIODS[PERIODS.length - 1]}`);
 });

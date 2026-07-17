@@ -2,6 +2,9 @@
    Provenance: R reported · E estimated (model/disclosure) · I inferred (allocation).
    Generated flows derive from sector margins, tax rates, consumption I-O, banking,
    energy intensity, tech BOM, and ownership models — each tagged and confidence-scored. */
+// Every flow's `v` is the annual value for this vintage year; other years are
+// displayed by scaling with the per-year multiplier (see TMUL in app.js).
+export const FLOW_VINTAGE='2024';
 export const COMPANIES=[
   {id:'NVDA',name:'NVIDIA',sec:'tech',country:'USA',lat:37.371,lng:-121.955,mcap:3300,rev:60.9,prov:'R'},
   {id:'AAPL',name:'Apple',sec:'tech',country:'USA',lat:37.3349,lng:-122.009,mcap:3950,rev:391,prov:'R'},
