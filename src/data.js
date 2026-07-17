@@ -649,6 +649,10 @@ export const FLOWS=[
 ];
 // connect remaining islands
 FLOWS.push({f:'UST',t:'PLTR',v:1.2,p:'E',c:0.55,m:'US government revenue disclosed by Palantir: ~$1.2B FY2024 (total government incl. allied nations was $1.57B).',s:'Palantir FY2024 earnings releases'});
+// PLTR was a one-edge node; give it the outbound side of its P&L so the
+// ego-network is not just a single government arrow.
+FLOWS.push({f:'PLTR',t:'USHH',v:1.3,p:'I',c:0.35,m:'Wages, benefits and stock-based comp to ~3.2k US employees (headcount × comp estimate; Palantir is unusually SBC-heavy, ~$0.7B FY2024).',s:'PLTR 10-K headcount + compensation model',k:'wage'});
+FLOWS.push({f:'PLTR',t:'AMZN',v:0.4,p:'I',c:0.3,m:'Cloud hosting for Foundry/Gotham/AIP deployments; AWS is a primary provider alongside Azure. Inferred from infrastructure share of cost of revenue.',s:'Cloud cost allocation model',k:'cloud_spend'});
 FLOWS.push({f:'GLOBALHH',t:'DANGOTE',v:3.0,p:'I',c:0.3,m:'Consumer/construction demand for Dangote cement across African markets, inferred from regional consumption.',s:'Regional demand model'});
 FLOWS.push({f:'GLOBALHH',t:'CIB',v:2.0,p:'I',c:0.3,m:'Egyptian household banking deposits/fees to Commercial International Bank, inferred from retail banking base.',s:'Retail banking model'});
 
