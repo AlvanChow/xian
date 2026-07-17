@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { pathToFileURL, fileURLToPath } from 'url';
 import { resolve } from 'path';
+import { PERIODS } from '../src/years.js';
+import { FLOW_VINTAGE } from '../src/data.js';
 
 // Load the BUILT, self-contained repo-root index.html over file:// — this is the
 // exact artifact GitHub Pages serves, so passing tests prove the deployable file
@@ -249,7 +251,7 @@ test('time scrubber changes the period and revenue figure', async ({ page }) => 
   await page.locator('#reslist .resrow').first().click();
   await expect(page.locator('#inspector .ihead .nm')).toContainText('Apple');
 
-  // Capture the revenue value at the default period (2024).
+  // Capture the revenue value at the default period (the latest year).
   const revBefore = (await revenueStatValue(page).innerText()).trim();
 
   // Scrub back to index 1 -> 2020. Set the value and fire the input event.
@@ -258,6 +260,25 @@ test('time scrubber changes the period and revenue figure', async ({ page }) => 
 
   // The revenue figure is time-multiplied, so it must have changed.
   await expect(revenueStatValue(page)).not.toHaveText(revBefore);
+});
+
+test('year axis defaults to the latest period and labels flow vintage honestly', async ({ page }) => {
+  const latest = PERIODS[PERIODS.length - 1];
+  // Default period is the last entry of the shared year axis, and boot code
+  // (not the static HTML fallback) drives the scrubber range.
+  await expect(page.locator('#period')).toHaveText(latest);
+  await expect(page.locator('#scrub')).toHaveAttribute('max', String(PERIODS.length - 1));
+  await expect(page.locator('#scrub')).toHaveValue(String(PERIODS.length - 1));
+
+  // Off the flow-vintage year the header must disclose that flows are scaled
+  // vintage figures; on it, the plain "modeled" honesty note returns.
+  const ctl = page.locator('#ctlTop');
+  if (latest !== FLOW_VINTAGE) {
+    await expect(ctl).toContainText(`flows = ${FLOW_VINTAGE} figures`);
+  }
+  await page.locator('#scrub').fill(String(PERIODS.indexOf(FLOW_VINTAGE)));
+  await expect(page.locator('#period')).toHaveText(FLOW_VINTAGE);
+  await expect(ctl).toContainText('flows modeled (E/I)');
 });
 
 test('sector toggle drops entities and clears the chip', async ({ page }) => {

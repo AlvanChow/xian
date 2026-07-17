@@ -11,7 +11,7 @@ Live site: **https://alvanchow.github.io/xian/**
 - **164 nodes** — public companies (sized by market cap or revenue), plus macro nodes: treasuries, central banks (Fed, ECB, PBOC, BOJ), governments, and household sectors.
 - **~510 flow edges** — supplier payments, corporate tax, household consumption, banking/credit, energy input-output, foundry bill-of-materials, dividends, central-bank remittances, and government transfers.
 - **A force-directed drill-down graph** for any node's ego-network.
-- **Time scrubbing** (2019–2024) and a simulated **live feed** panel.
+- **Time scrubbing** (2019–2025) and a simulated **live feed** panel.
 - **An inspector** that breaks down every node's inflows/outflows and shows the methodology + source behind each figure.
 - **Mouse, touch, and keyboard control** — drag/scroll-wheel on desktop; one-finger pan, pinch-zoom, and tap-select on touch devices; arrow keys pan, `+`/`−` zoom, and `0` resets when the map is focused.
 
@@ -39,7 +39,7 @@ The figures are drawn from / modeled on a mix of public sources, including:
 - Central-bank annual financial statements and **Treasury / Eurostat** outlay & receipt tables for transfers and remittances.
 - Tax-incidence modeling (sector margin × jurisdiction effective rate) for corporate tax flows.
 
-> **Note:** This is an illustrative visualization. Company revenue is **real where we can prove it**: `scripts/fetch-data.mjs` pulls reported annual revenue (FY2019–2024) from SEC XBRL filings (10-K / 20-F) into a generated `src/facts.js`, and only those figures display the **R (Reported)** tag — with a "Verify at SEC" link in the inspector. Everything not backed by a fetched filing is shown as **E (Estimated)** or **I (Inferred)** and should be treated as directional, not audited. Flow edges are modeled throughout. The "Market feeds" panel mixes real quotes (ECB FX via Frankfurter, BTC/gold via CoinGecko, fetched only while Live is on) with simulated series — each row is labeled `live` or `sim`.
+> **Note:** This is an illustrative visualization. Company revenue is **real where we can prove it**: `scripts/fetch-data.mjs` pulls reported annual revenue (FY2019–2025) from SEC XBRL filings (10-K / 20-F) into a generated `src/facts.js`, and only those figures display the **R (Reported)** tag — with a "Verify at SEC" link in the inspector. Everything not backed by a fetched filing is shown as **E (Estimated)** or **I (Inferred)** and should be treated as directional, not audited. Flow edges are modeled throughout. The "Market feeds" panel mixes real quotes (ECB FX via Frankfurter, BTC/gold via CoinGecko, fetched only while Live is on) with simulated series — each row is labeled `live` or `sim`.
 
 ## Project structure
 

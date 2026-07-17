@@ -1,19 +1,24 @@
 #!/usr/bin/env node
 /* Build-time pipeline: fetch REAL reported annual revenue from SEC XBRL
-   (companyconcept API, 10-K / 20-F filings) and generate src/facts.js.
+   (companyconcept API, 10-K / 20-F filings), generate market caps
+   (price × shares outstanding — scripts/mcaps.mjs), compute the per-year
+   flow multiplier, and write it all to src/facts.js.
+   Year range comes from src/years.js — bump MAX_YEAR there, never here.
    Zero npm deps — Node 18+ global fetch only.
    Usage: node scripts/fetch-data.mjs */
 
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { COMPANIES } from '../src/data.js';
+import { COMPANIES, FLOW_VINTAGE } from '../src/data.js';
+import { MIN_YEAR, MAX_YEAR } from '../src/years.js';
+import { buildMcaps } from './mcaps.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 // SEC's fair-access policy requires "Name contact-email" in the User-Agent.
 // Requests without an email — or with a URL in the string — are 403-rejected.
 const UA = 'ValueGrid research alvan.chow0@gmail.com';
-const MIN_YEAR = 2019, MAX_YEAR = 2024, MIN_YEARS = 3;
+const MIN_YEARS = 3;
 // RevenuesNetOfInterestExpense is the top-line tag used by banks/brokers
 // (GS, MS, WFC) that don't report a plain Revenues concept.
 const GAAP_TAGS = ['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax', 'SalesRevenueNet', 'RevenuesNetOfInterestExpense'];
@@ -40,6 +45,25 @@ const ALIAS = {
 /* Ids whose exact-ticker match is KNOWN-CORRECT even though the SEC company
    title shares no obvious token with our display name. */
 const NAME_CHECK_OVERRIDE = new Set(['IBM', 'AMD', 'GE', 'TD', 'FMX', 'TSMC', 'BP']); // BP: 2-letter name is shorter than the token filter
+
+/* Tickers whose company_tickers.json row points at a registrant that carries
+   no XBRL facts. As of 2026, "XOM" resolves to ExxonMobil Holdings Corp
+   (CIK 2115436, a holding-company shell with zero companyconcept data) while
+   every filing fact still lives under the operating company. Pin the CIK
+   that actually files; drop the pin if facts migrate to the new registrant. */
+const CIK_OVERRIDE = { XOM: { cik: 34088, title: 'EXXON MOBIL CORP' } };
+
+/* Companies whose generic tag order would pick a narrow sub-line instead of
+   the headline top line. These are tried FIRST; the default list then only
+   gap-fills years they leave uncovered.
+   - BLK: its `Revenues` concept carries a sub-schedule (~$11-13B) while
+     RevenueFromContractWithCustomer... is total revenue ($17.9B -> $24.2B).
+   - AXP: headline is "total revenues net of interest expense" ($65.9B in
+     FY2024), not the $38.8B contract-revenue subset. */
+const TAG_OVERRIDE = {
+  BLK: [['us-gaap', 'RevenueFromContractWithCustomerExcludingAssessedTax']],
+  AXP: [['us-gaap', 'RevenuesNetOfInterestExpense']],
+};
 
 /* Generic tokens that must not, on their own, validate a ticker collision
    (e.g. our "Int'l Holding Co" vs Independence Holding Co on ticker IHC). */
@@ -128,6 +152,7 @@ async function main() {
   const macroSkipped = COMPANIES.length - candidates.length;
 
   const facts = {}; // id -> {cik, tag, asOf, url, revT}
+  const tickerOf = {}; // id -> SEC-matched US ticker (quote symbol for mcaps)
   const skipped = { 'no CIK match (not an SEC reporter / delisted)': [], 'ticker collision rejected': [],
     'fetch failed': [], 'no annual USD revenue facts (likely non-USD or 40-F filer)': [],
     [`fewer than ${MIN_YEARS} years in ${MIN_YEAR}-${MAX_YEAR}`]: [] };
@@ -136,10 +161,11 @@ async function main() {
   for (const c of candidates) {
     // --- map id -> CIK ---
     let hit = null, collided = null;
-    for (const t of tickerCandidates(c.id)) {
+    if (CIK_OVERRIDE[c.id]) { hit = CIK_OVERRIDE[c.id]; tickerOf[c.id] = ALIAS[c.id] || c.id; }
+    else for (const t of tickerCandidates(c.id)) {
       const m = byTicker.get(t.toUpperCase());
       if (!m) continue;
-      if (NAME_CHECK_OVERRIDE.has(c.id) || namesAgree(c.name, m.title)) { hit = m; break; }
+      if (NAME_CHECK_OVERRIDE.has(c.id) || namesAgree(c.name, m.title)) { hit = m; tickerOf[c.id] = t.toUpperCase(); break; }
       collided = `${t} -> "${m.title}"`;
     }
     if (!hit) {
@@ -156,7 +182,16 @@ async function main() {
     // win on conflicts; later tags only fill years the earlier ones missed.
     const merged = new Map();
     let primary = null, anyData = false, hardError = null;
-    const tryTags = [...GAAP_TAGS.map((t) => ['us-gaap', t]), ['ifrs-full', 'Revenue']];
+    // IFRS filers switch top-line concepts too: UBS's `Revenue` series died
+    // after FY2021 when it moved to RevenueAndOperatingIncome; TotalEnergies
+    // uses RevenueFromContractsWithCustomers. The merge below only gap-fills,
+    // so adding tags never changes years an earlier-priority tag covered.
+    const baseTags = [...GAAP_TAGS.map((t) => ['us-gaap', t]),
+      ['ifrs-full', 'Revenue'],
+      ['ifrs-full', 'RevenueFromContractsWithCustomers'],
+      ['ifrs-full', 'RevenueAndOperatingIncome']];
+    const pre = TAG_OVERRIDE[c.id] || [];
+    const tryTags = [...pre, ...baseTags.filter(([ns, t]) => !pre.some(([n2, t2]) => n2 === ns && t2 === t))];
     for (const [ns, tag] of tryTags) {
       const url = `https://data.sec.gov/api/xbrl/companyconcept/CIK${cik10}/${ns}/${tag}.json`;
       const r = await getJSON(url);
@@ -192,15 +227,39 @@ async function main() {
     process.stdout.write(`  ${c.id.padEnd(12)} ${primary.tag.padEnd(52)} ${years.map((y) => `${y}:${revT[y]}`).join(' ')}\n`);
   }
 
+  // --- year multiplier: aggregate reported growth vs the flow-vintage year ---
+  // Drives the app's TMUL for years after FLOW_VINTAGE (flow values are stored
+  // at vintage and scaled). Computed over ids reporting BOTH years so the
+  // ratio is growth, not coverage drift.
+  const YEAR_MULT = {};
+  for (let y = Number(FLOW_VINTAGE) + 1; y <= MAX_YEAR; y++) {
+    let cur = 0, vint = 0;
+    for (const f of Object.values(facts)) {
+      if (f.revT[y] != null && f.revT[FLOW_VINTAGE] != null) { cur += f.revT[y]; vint += f.revT[FLOW_VINTAGE]; }
+    }
+    if (vint > 0) YEAR_MULT[y] = Math.round((cur / vint) * 1000) / 1000;
+  }
+
+  // --- market caps: price × shares outstanding, one dated snapshot ---
+  console.log('\nGenerating market caps (price × shares outstanding) ...');
+  const { MCAPS, MCAP_ASOF, dropped } = await buildMcaps({ companies: candidates, facts, tickerOf, getJSON });
+
   // --- emit src/facts.js ---
   const ident = (k) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(k) ? k : `'${k}'`);
   const lines = Object.entries(facts).map(([id, f]) => {
     const rt = Object.entries(f.revT).map(([y, v]) => `${y}:${v}`).join(',');
     return ` ${ident(id)}:{cik:${f.cik},tag:'${f.tag}',asOf:'${f.asOf}',url:'${f.url}',revT:{${rt}}},`;
   });
+  const mcapLines = Object.entries(MCAPS).map(([id, m]) => ` ${ident(id)}:{v:${m.v},src:'${m.src}'},`);
+  const multLines = Object.entries(YEAR_MULT).map(([y, m]) => `${y}:${m}`).join(',');
   const out = `// GENERATED by scripts/fetch-data.mjs — do not edit by hand.\n` +
-    `// Real annual revenue ($B) from SEC XBRL companyconcept (10-K / 20-F filings).\n` +
-    `export const FACTS={\n${lines.join('\n')}\n};\n`;
+    `// FACTS: real annual revenue ($B) from SEC XBRL companyconcept (10-K / 20-F filings).\n` +
+    `// MCAPS: market cap ($B) = price × shares outstanding as of MCAP_ASOF (see scripts/mcaps.mjs).\n` +
+    `// YEAR_MULT: aggregate reported revenue growth vs FY${FLOW_VINTAGE} (scales flow display).\n` +
+    `export const FACTS={\n${lines.join('\n')}\n};\n` +
+    `export const MCAP_ASOF='${MCAP_ASOF}';\n` +
+    `export const MCAPS={\n${mcapLines.join('\n')}\n};\n` +
+    `export const YEAR_MULT={${multLines}};\n`;
   writeFileSync(join(ROOT, 'src/facts.js'), out);
 
   // --- coverage summary ---
@@ -215,6 +274,9 @@ async function main() {
   for (const [reason, ids] of Object.entries(skipped)) {
     if (ids.length) console.log(`  ${reason} (${ids.length}): ${ids.join(', ')}`);
   }
+  console.log(`Market caps generated:            ${Object.keys(MCAPS).length} (as of ${MCAP_ASOF})`);
+  if (dropped.length) console.log(`  mcap dropped (kept curated fallback): ${dropped.join('; ')}`);
+  console.log(`Year multipliers vs FY${FLOW_VINTAGE}:       ${JSON.stringify(YEAR_MULT)}`);
   console.log(`\nWrote src/facts.js with ${Object.keys(facts).length} companies.`);
 }
 

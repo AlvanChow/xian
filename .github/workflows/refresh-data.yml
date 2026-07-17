@@ -1,6 +1,9 @@
-# Periodically re-fetches real reported revenue from SEC XBRL (scripts/fetch-data.mjs),
-# regenerates src/facts.js, rebuilds the single-file site, and commits the result.
-# Under Pages deploy-from-branch, that commit IS the deploy.
+# Periodically re-fetches real reported revenue from SEC XBRL, regenerates
+# market caps (price × shares outstanding) and the year multiplier
+# (scripts/fetch-data.mjs), validates the result, rebuilds the single-file
+# site, and commits. Under Pages deploy-from-branch, that commit IS the deploy.
+# Market caps move every run, so a healthy run always commits — if this job
+# starts reporting "No data changes." month after month, the pipeline is stuck.
 name: Refresh data
 on:
   workflow_dispatch:
@@ -19,6 +22,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/fetch-data.mjs
+      # Gate the deploy on the data-quality guards: drift vs curated anchors,
+      # mcap sanity band, year-multiplier bounds, freshness of mega-cap FACTS.
+      - run: npm run test:unit
       - run: npm run build
       - name: Commit refreshed data if changed
         run: |
@@ -26,5 +32,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/facts.js index.html
           git diff --cached --quiet && echo "No data changes." && exit 0
-          git commit -m "chore: refresh SEC revenue facts"
+          git commit -m "chore: refresh SEC facts and market caps"
           git push
