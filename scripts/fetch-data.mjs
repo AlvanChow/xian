@@ -200,7 +200,12 @@ async function main() {
       anyData = true;
       const byYear = annualEntries(r.json);
       if (byYear.size === 0) continue;
-      if (!primary || byYear.size > primary.count) primary = { tag, url, count: byYear.size };
+      // An override tag with data is pinned as primary: its values win the
+      // merge, so the emitted tag/url ("Verify at SEC") must describe it even
+      // if a lower-priority tag happens to cover more years.
+      if (!primary || (byYear.size > primary.count && !primary.pinned)) {
+        primary = { tag, url, count: byYear.size, pinned: pre.some(([, t2]) => t2 === tag) };
+      }
       for (const [y, v] of byYear) if (!merged.has(y)) merged.set(y, v);
       if (merged.size >= MAX_YEAR - MIN_YEAR + 1) break; // full coverage — stop
     }
@@ -232,12 +237,19 @@ async function main() {
   // at vintage and scaled). Computed over ids reporting BOTH years so the
   // ratio is growth, not coverage drift.
   const YEAR_MULT = {};
+  const vintageIds = Object.values(facts).filter((f) => f.revT[FLOW_VINTAGE] != null).length;
   for (let y = Number(FLOW_VINTAGE) + 1; y <= MAX_YEAR; y++) {
-    let cur = 0, vint = 0;
+    let cur = 0, vint = 0, n = 0;
     for (const f of Object.values(facts)) {
-      if (f.revT[y] != null && f.revT[FLOW_VINTAGE] != null) { cur += f.revT[y]; vint += f.revT[FLOW_VINTAGE]; }
+      if (f.revT[y] != null && f.revT[FLOW_VINTAGE] != null) { cur += f.revT[y]; vint += f.revT[FLOW_VINTAGE]; n++; }
     }
-    if (vint > 0) YEAR_MULT[y] = Math.round((cur / vint) * 1000) / 1000;
+    // Coverage floor: right after an annual MAX_YEAR bump only a handful of
+    // off-cycle early filers cover the new year, and a sum ratio over that
+    // cohort is a few mega-caps' growth, not a global multiplier. Below half
+    // coverage, omit the year — the app falls back to 1 (honest "no data yet")
+    // and the multiplier appears once enough issuers have filed.
+    if (vint > 0 && n >= vintageIds / 2) YEAR_MULT[y] = Math.round((cur / vint) * 1000) / 1000;
+    else if (vint > 0) console.log(`  YEAR_MULT[${y}] skipped: only ${n}/${vintageIds} issuers cover both ${y} and ${FLOW_VINTAGE}`);
   }
 
   // --- market caps: price × shares outstanding, one dated snapshot ---

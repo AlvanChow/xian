@@ -14,11 +14,14 @@ const SEC={tech:'#5b8cff',fin:'#2dd4e8',energy:'#f5b042',health:'#3fd68a',cons:'
 const SECNAME={tech:'Technology',fin:'Finance',energy:'Energy',health:'Healthcare',cons:'Consumer',ind:'Industrials',gov:'Government / Central Bank',telecom:'Telecommunications',materials:'Materials',utilities:'Utilities'};
 const PCOL={R:'#3fd68a',E:'#f5b042',I:'#ff6b7a'}, PNAME={R:'Reported',E:'Estimated',I:'Inferred'};
 const CB=new Set(['FED','ECB','PBOC','BOJ']); // central banks: their scale figure is a balance-sheet stock, not an annual flow
-// Per-year global multiplier vs the flow-vintage year. 2019–2024 are the
-// original curated estimates; later years come from YEAR_MULT (computed by the
-// fetch pipeline from aggregate SEC-reported revenue growth), defaulting to 1.
-const TMUL_HIST={2019:.62,2020:.60,2021:.82,2022:.95,2023:.97,2024:1};
-const TMUL=PERIODS.map(p=>TMUL_HIST[p]??YEAR_MULT[p]??1);
+// Per-year global multiplier vs the flow-vintage year. 2019–2023 are the
+// original curated estimates AND are ratios against FLOW_VINTAGE '2024' —
+// if the vintage ever moves, this table must be re-derived, not kept. Later
+// years come from YEAR_MULT (computed by the fetch pipeline from aggregate
+// SEC-reported revenue growth). The vintage year itself is structurally 1.
+const VINTAGE=String(FLOW_VINTAGE);
+const TMUL_HIST={2019:.62,2020:.60,2021:.82,2022:.95,2023:.97};
+const TMUL=PERIODS.map(p=>p===VINTAGE?1:TMUL_HIST[p]??YEAR_MULT[p]??1);
 let sizeBy='mcap',secOn={},layerOn={R:1,E:1,I:1},tIdx=PERIODS.length-1,playing=false,live=false,selected=null,hover=null;
 Object.keys(SEC).forEach(s=>secOn[s]=1);
 const fmt=v=>v>=1000?'$'+(v/1000).toFixed(2)+'T':(v>=1?'$'+v.toFixed(0)+'B':'$'+(v*1000).toFixed(0)+'M');
@@ -42,7 +45,10 @@ const mcapOf=c=>(MCAPS[c.id]&&MCAPS[c.id].v)||c.mcap;
 // Flow display provenance: flow values are anchored to the vintage year and
 // scaled by the global multiplier when scrubbed — so off the anchor year even
 // a "Reported" flow is showing an estimate, and must degrade to E on screen.
-const ANCHOR=PERIODS.indexOf(FLOW_VINTAGE);
+// String() tolerates a numeric FLOW_VINTAGE; membership in PERIODS is
+// enforced by a unit test (the refresh workflow's deploy gate), since an
+// out-of-axis vintage would make this -1 and break provenance display.
+const ANCHOR=PERIODS.indexOf(VINTAGE);
 const fProv=e=>(e.p==='R'&&tIdx!==ANCHOR)?'E':e.p;
 // Flow kind: derived from the methodology string when the data doesn't carry an
 // explicit `k` field — 446/478 flows map mechanically from their source strings.
