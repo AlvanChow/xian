@@ -227,3 +227,69 @@ test('src/index.html year copy matches src/years.js', () => {
   assert.ok(html.includes(`id="period">${PERIODS[PERIODS.length - 1]}<`),
     `#period fallback text must be ${PERIODS[PERIODS.length - 1]}`);
 });
+
+// --- generated-data quality guards (skipped if src/facts.js absent) ---------
+// These enforce the accuracy architecture from ROADMAP.md: hand-typed values
+// must not drift from generated truth, and generated values must stay sane.
+
+let GEN = null;
+try {
+  GEN = await import('../../src/facts.js');
+} catch { /* module absent — guards below skip */ }
+const { FLOW_VINTAGE } = await import('../../src/data.js');
+
+// Known, documented divergences between the curated rev anchor and the
+// FY-vintage reported figure. Empty today; add `id: 'reason'` only with a
+// source comment, never to silence a failure you have not investigated.
+const DRIFT_ALLOWLIST = {};
+
+test('curated rev anchors track reported flow-vintage revenue (<=40% drift)', (t) => {
+  if (!GEN?.FACTS) { t.skip('src/facts.js not present'); return; }
+  for (const c of COMPANIES) {
+    const ref = GEN.FACTS[c.id]?.revT?.[FLOW_VINTAGE];
+    if (ref == null || DRIFT_ALLOWLIST[c.id]) continue;
+    const drift = Math.abs(c.rev - ref) / ref;
+    assert.ok(drift <= 0.4,
+      `${c.id}: curated rev ${c.rev} drifts ${(drift * 100).toFixed(0)}% from reported FY${FLOW_VINTAGE} ${ref} — resync data.js (see scripts/fetch-data.mjs) or allowlist with a reason`);
+  }
+});
+
+test('MCAPS are sane: known ids, positive, within 0.2x-5x of curated', (t) => {
+  if (!GEN?.MCAPS) { t.skip('MCAPS not generated'); return; }
+  assert.match(GEN.MCAP_ASOF ?? '', /^\d{4}-\d{2}-\d{2}$/, 'MCAP_ASOF must be an ISO date');
+  const byIdMap = new Map(COMPANIES.map((c) => [c.id, c]));
+  for (const [id, m] of Object.entries(GEN.MCAPS)) {
+    const c = byIdMap.get(id);
+    assert.ok(c, `MCAPS key is not a COMPANIES id: ${id}`);
+    assert.ok(Number.isFinite(m.v) && m.v > 0, `${id}: mcap must be finite positive, got ${m.v}`);
+    if (c.mcap > 0) {
+      const ratio = m.v / c.mcap;
+      assert.ok(ratio >= 0.2 && ratio <= 5,
+        `${id}: generated mcap ${m.v} is ${ratio.toFixed(2)}x the curated ${c.mcap} — check shares/ADR ratio in scripts/mcaps.mjs`);
+    }
+  }
+});
+
+test('YEAR_MULT covers post-vintage years with plausible multipliers', (t) => {
+  if (!GEN?.YEAR_MULT) { t.skip('YEAR_MULT not generated'); return; }
+  for (const [y, m] of Object.entries(GEN.YEAR_MULT)) {
+    const year = Number(y);
+    assert.ok(Number.isInteger(year) && year > Number(FLOW_VINTAGE) && year <= YEAR_MAX,
+      `YEAR_MULT key out of range (${FLOW_VINTAGE}, ${YEAR_MAX}]: ${y}`);
+    assert.ok(Number.isFinite(m) && m >= 0.5 && m <= 2,
+      `YEAR_MULT[${y}] implausible: ${m} (expected 0.5-2 aggregate growth vs FY${FLOW_VINTAGE})`);
+  }
+});
+
+test('FACTS are fresh: staggered-FYE mega-caps all report MAX_YEAR', (t) => {
+  // The anti-recurrence guard: AAPL (Sep FYE), NVDA (Jan), JPM and XOM (Dec)
+  // all file their MAX_YEAR 10-K well before the calendar tripwire fires, so
+  // if this fails the pipeline has stopped ingesting new filings — exactly
+  // the failure mode that silently froze the dataset at FY2024 for 18 months.
+  // Deliberately excludes June-FYE names (MSFT) whose MAX_YEAR slot files late.
+  if (!GEN?.FACTS) { t.skip('src/facts.js not present'); return; }
+  for (const id of ['AAPL', 'NVDA', 'JPM', 'XOM']) {
+    assert.ok(GEN.FACTS[id]?.revT?.[YEAR_MAX] != null,
+      `${id} has no reported revenue for ${YEAR_MAX} — rerun scripts/fetch-data.mjs (and check its skip report)`);
+  }
+});
