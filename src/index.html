@@ -38,9 +38,9 @@
       <div class="seg" id="sizeBy"><button data-by="mcap" class="on">Market cap</button><button data-by="rev">Revenue</button></div>
     </div>
     <div class="hgrp v-rents">
-      <div class="hstat">Signals <b id="hRN">—</b></div>
-      <div class="hstat">Rent pool <b id="hRP">—</b></div>
-      <div class="hstat">Median relief <b id="hRT">—</b></div>
+      <div class="hstat"><b id="hRN">—</b> things</div>
+      <div class="hstat"><b id="hRP">—</b> a year in excess</div>
+      <div class="hstat">typically eases in <b id="hRT">—</b></div>
     </div>
     <div class="hright">
       <button class="tbtn" id="aboutBtn">About the data</button>
@@ -57,11 +57,11 @@
       <div class="sec" style="border:0"><h4>Provenance mix</h4><div id="provmix"></div></div>
     </div>
     <div class="v-rents" id="leftRents">
-      <div class="sec"><h4>Search</h4><input class="srch" id="rsrch" placeholder="Signal, supplier, or barrier" aria-label="Search scarcity signals"></div>
-      <div class="sec"><h4>Rank by</h4><div id="rsort"></div></div>
-      <div class="sec"><h4>Categories</h4><div id="rcats"></div></div>
-      <div class="sec"><h4>Barriers</h4><div id="rbars"></div></div>
-      <div class="sec" style="border:0"><h4>Provenance mix</h4><div id="rprovmix"></div></div>
+      <div class="sec"><input class="srch" id="rsrch" placeholder="Search signals, suppliers" aria-label="Search scarcity signals"></div>
+      <div class="sec"><h4 class="plain">Order by</h4><div class="chipwrap" id="rsort"></div></div>
+      <div class="sec"><h4 class="plain">Show</h4><div class="chipwrap" id="rcats"></div></div>
+      <div class="sec"><details class="fold"><summary>Why supply is stuck <span class="cv" id="rbarcv"></span></summary><div class="chipwrap" id="rbars"></div></details></div>
+      <div class="sec" style="border:0"><details class="fold"><summary>How solid are these numbers?</summary><div id="rprovmix"></div></details></div>
     </div>
   </div>
 
@@ -91,12 +91,6 @@
           <div class="rttl">The Scarcity Board</div>
           <div class="rsub" id="rsub">Where price is asking for supply that does not exist yet.</div>
         </div>
-        <button class="tbtn" id="rscatToggle" aria-pressed="true" aria-controls="rscatWrap">Hide plot</button>
-      </div>
-      <div id="rscatWrap">
-        <canvas id="rscatter" role="img" aria-label="Scarcity signals plotted by months to relief against rent multiple"></canvas>
-        <div id="rsctip"></div>
-        <div class="rsclegend" id="rsclegend"></div>
       </div>
       <div id="rlist" role="listbox" aria-label="Ranked scarcity signals"></div>
     </div>

@@ -548,7 +548,7 @@ window.addEventListener('keydown',e=>{
   if(rentModal.classList.contains('show'))closeDossier();
   else if(aboutModal.classList.contains('show'))closeAbout();
   else if(modal.classList.contains('show'))closeDrill();
-  else if(tab==='rents'){if(rSel){rSel=null;renderRentEmpty();buildRentList();drawScatter();syncHash(true);}}
+  else if(tab==='rents'){if(rSel){rSel=null;renderRentEmpty();buildRentList();;syncHash(true);}}
   else if(selected)clearSelection();
 });
 
@@ -566,10 +566,11 @@ const rnum=v=>v>=10000?Math.round(v).toLocaleString('en-US'):v>=100?v.toFixed(0)
 const rmo=m=>m>=24?(m/12).toFixed(m%12?1:0)+' yr':m+' mo';
 const rpct=v=>(v*100).toFixed(0)+'%';
 
-let tab='map',rCatOn={},rBarOn={},rSort='score',rSel=null,rQ='',rScatOpen=true;
+let tab='map',rCatOn={},rBarOn={},rSort='score',rSel=null,rQ='';
 Object.keys(CATS).forEach(k=>rCatOn[k]=1);
 Object.keys(BARS).forEach(k=>rBarOn[k]=1);
-const RSORTS={score:'Rank score',mult:'Rent multiple',pool:'Rent pool',ttr:'Time to relief',gm:'Incumbent margin'};
+// Sort keys stay stable for the hash; only the labels are plain-language.
+const RSORTS={score:'Worst overall',mult:'Most overpriced',pool:'Most money',ttr:'Slowest to fix',gm:'Fattest margins'};
 const rSortVal=(e,k)=>k==='mult'?rMult(e):k==='pool'?e.pool.v:k==='ttr'?e.ttr.mo:k==='gm'?e.gm.v:rentScore(e);
 
 function rMatch(e,q){
@@ -596,7 +597,7 @@ function setTab(v,push){
   document.querySelectorAll('#viewTab button').forEach(b=>{const on=b.dataset.v===tab;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false');});
   document.getElementById('logoSub').textContent=tab==='rents'?'· the scarcity board':'· global capital-flow map';
   if(tab==='map'){startMapLoop();}
-  else{stopMapLoop();buildRentBoard();drawScatter();}
+  else{stopMapLoop();buildRentBoard();;}
   if(push!==null)syncHash(push);
 }
 document.querySelectorAll('#viewTab button').forEach(b=>b.onclick=()=>setTab(b.dataset.v,true));
@@ -605,31 +606,58 @@ function buildRentBoard(){buildRentFilters();buildRentList();refreshRentStats();
 
 function buildRentFilters(){
   document.getElementById('rsort').innerHTML=Object.keys(RSORTS).map(k=>
-    `<button class="chip ${rSort===k?'on':''}" data-rs="${k}"${rSort===k?' style="background:rgba(91,140,255,.12);border-color:rgba(91,140,255,.45)"':''}><span class="l">${RSORTS[k]}</span></button>`).join('');
+    `<button class="chip ${rSort===k?'on':''}" data-rs="${k}"${rSort===k?' style="background:rgba(91,140,255,.12);border-color:rgba(91,140,255,.45)"':''}><span class="l"><span class="t">${RSORTS[k]}</span></span></button>`).join('');
   const cc={};RENTS.forEach(e=>cc[e.cat]=(cc[e.cat]||0)+1);
   document.getElementById('rcats').innerHTML=Object.keys(CATS).map(k=>
-    `<button class="chip ${rCatOn[k]?'on':''}" data-rc="${k}" aria-pressed="${rCatOn[k]?'true':'false'}"${rCatOn[k]?` style="background:${RCAT[k]}1a;border-color:${RCAT[k]}66"`:''}><span class="l"><span class="d" style="background:${RCAT[k]}"></span>${esc(CATS[k])}</span><span class="ct">${cc[k]||0}</span></button>`).join('');
+    `<button class="chip ${rCatOn[k]?'on':''}" data-rc="${k}" aria-pressed="${rCatOn[k]?'true':'false'}" title="${esc(CATS[k])}"${rCatOn[k]?` style="background:${RCAT[k]}1a;border-color:${RCAT[k]}66"`:''}><span class="l"><span class="d" style="background:${RCAT[k]}"></span><span class="t">${esc(CATS[k])}</span></span><span class="ct">${cc[k]||0}</span></button>`).join('');
   const bc={};RENTS.forEach(e=>e.bar.forEach(b=>bc[b]=(bc[b]||0)+1));
   document.getElementById('rbars').innerHTML=Object.keys(BARS).map(k=>
-    `<button class="chip ${rBarOn[k]?'on':''}" data-rb="${k}" aria-pressed="${rBarOn[k]?'true':'false'}"><span class="l">${esc(BARS[k])}</span><span class="ct">${bc[k]||0}</span></button>`).join('');
-  document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{rSort=b.dataset.rs;buildRentBoard();drawScatter();syncHash(false);});
-  document.querySelectorAll('[data-rc]').forEach(b=>b.onclick=()=>{rCatOn[b.dataset.rc]=!rCatOn[b.dataset.rc];buildRentBoard();drawScatter();syncHash(false);});
-  document.querySelectorAll('[data-rb]').forEach(b=>b.onclick=()=>{rBarOn[b.dataset.rb]=!rBarOn[b.dataset.rb];buildRentBoard();drawScatter();syncHash(false);});
+    `<button class="chip ${rBarOn[k]?'on':''}" data-rb="${k}" aria-pressed="${rBarOn[k]?'true':'false'}" title="${esc(BARS[k])}"><span class="l"><span class="t">${esc(BARS[k])}</span></span><span class="ct">${bc[k]||0}</span></button>`).join('');
+  // The fold is closed by default, so the summary has to say when something
+  // inside is actually filtering — otherwise a narrowed board looks unexplained.
+  // Every barrier starts on, so "all on" is the neutral state and stays quiet.
+  const off=Object.keys(BARS).filter(k=>!rBarOn[k]).length;
+  const cv=document.getElementById('rbarcv');
+  cv.textContent=off?`${off} off`:`${Object.keys(BARS).length}`;
+  cv.style.color=off?'var(--accent)':'';
+  document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{rSort=b.dataset.rs;buildRentBoard();;syncHash(false);});
+  document.querySelectorAll('[data-rc]').forEach(b=>b.onclick=()=>{rCatOn[b.dataset.rc]=!rCatOn[b.dataset.rc];buildRentBoard();;syncHash(false);});
+  document.querySelectorAll('[data-rb]').forEach(b=>b.onclick=()=>{rBarOn[b.dataset.rb]=!rBarOn[b.dataset.rb];buildRentBoard();;syncHash(false);});
 }
 
+/* The row reads as a sentence, and every clause of it is derived — nothing here
+   is a second copy of a number that could drift from the one in the dossier.
+   The only prose the data file carries is `pn`, the plain name; the rest is
+   assembled from the same fields the score and the inspector read. */
+const WORD=['no','one','two','three','four','five','six','seven','eight','nine','ten'];
+const nWord=n=>WORD[n]||String(n);
+// Snapshot month plus months-to-relief, rounded to the year. Deliberately
+// hedged in the copy ("around 2029") — ttr is an estimate on most entries and
+// a bare year would read as a promise.
+function reliefYear(e){
+  const [y,m]=RENT_ASOF.split('-').map(Number);
+  const t=new Date(Date.UTC(y,m-1+e.ttr.mo,1));
+  return t.getUTCFullYear();
+}
+// The facts line. The row's *prose* is the entry's own thesis — 26 sentences of
+// the same shape read as a mail merge, and each entry already carries a written
+// one. This stays a terse run of derived figures underneath it.
+function rFacts(e){
+  const sup=nWord(e.conc.sup.length),who=e.conc.sup.length===1?'supplier holds':'suppliers hold';
+  const relief=e.ttr.mo>=96?'no fix in sight':`eases around ${reliefYear(e)}`;
+  return `${fmt(e.pool.v)} a year in excess · ${sup} ${who} ${rpct(e.conc.top3)} · ${relief}`;
+}
 function buildRentList(){
   const rows=rVis(),rank=rRankAll(),el=document.getElementById('rlist');
-  if(!rows.length){el.innerHTML='<div class="rempty">No signals match these filters.<br>Widen a category or barrier to bring the board back.</div>';return;}
-  const mx2=Math.max(...rows.map(rentScore));
+  if(!rows.length){el.innerHTML='<div class="rempty">Nothing matches those filters.<br>Switch a category back on to bring the board back.</div>';return;}
   el.innerHTML=rows.map(e=>{
-    const p=rProv(e),sc2=rentScore(e);
-    return `<div class="rrow ${rSel===e.id?'on':''}" role="option" tabindex="0" aria-selected="${rSel===e.id?'true':'false'}" data-r="${e.id}" aria-label="Rank ${rank[e.id]}, ${esc(e.n)}, ${rMult(e).toFixed(1)} times baseline, ${PNAME[p]}">
+    const p=rProv(e);
+    return `<div class="rrow ${rSel===e.id?'on':''}" role="option" tabindex="0" aria-selected="${rSel===e.id?'true':'false'}" data-r="${e.id}" aria-label="Number ${rank[e.id]}, ${esc(e.pn)}, costs ${rMult(e).toFixed(1)} times what it used to, ${rFacts(e)}">
       <div class="rk">${rank[e.id]}</div>
       <div class="rbody">
-        <div class="r1"><span class="rcdot" style="background:${RCAT[e.cat]}"></span><span class="rn">${esc(e.n)}</span><span class="tag ${p}">${PNAME[p][0]}</span><span class="rmult">${rMult(e).toFixed(1)}×</span></div>
-        <div class="rmeta"><span>${esc(CATS[e.cat])}</span><span>Rent pool ${fmt(e.pool.v)}/yr</span><span>Relief ${rmo(e.ttr.mo)}</span><span>Top-3 ${rpct(e.conc.top3)}</span></div>
-        <div class="rbars">${e.bar.map(b=>`<span class="rbchip">${esc(BARS[b])}</span>`).join('')}</div>
-        <div class="track"><i style="width:${sc2/mx2*100}%;background:${RCAT[e.cat]}"></i></div>
+        <div class="r1"><span class="rn">${esc(e.pn)}</span><span class="rmult" title="Price now against the baseline it is priced over">${rMult(e).toFixed(1)}× <span class="u">what it used to</span></span></div>
+        <div class="rsay">${esc(e.th)}</div>
+        <div class="rfoot"><span class="rcdot" style="background:${RCAT[e.cat]}"></span>${esc(rFacts(e))}${p==='R'?'':` · ${p==='E'?'estimated' :'modelled'} figures`}</div>
       </div></div>`;}).join('');
   el.querySelectorAll('[data-r]').forEach(r=>{const go=()=>selectRent(r.dataset.r,true);r.onclick=go;r.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
 }
@@ -640,7 +668,7 @@ function refreshRentStats(){
   document.getElementById('hRP').textContent=fmt(rows.reduce((a,e)=>a+e.pool.v,0));
   const mos=rows.map(e=>e.ttr.mo).sort((a,b)=>a-b);
   document.getElementById('hRT').textContent=mos.length?rmo(mos[mos.length>>1]):'—';
-  document.getElementById('rsub').textContent=`${RENTS.length} signals scored, ${ARCHIVE.length} reverted signals archived. Snapshot ${RENT_ASOF}.`;
+  document.getElementById('rsub').textContent=`Things that cost far more than they should, because nobody can make more of them yet. ${RENTS.length} of them, ranked worst first. ${ARCHIVE.length} more have already come back down.`;
   // Same idea as the map's provenance mix: what share of the money on screen
   // rests on figures we could actually verify.
   const mix={R:0,E:0,I:0};rows.forEach(e=>mix[rProv(e)]+=e.pool.v);
@@ -651,7 +679,7 @@ function refreshRentStats(){
 }
 
 function renderRentEmpty(){
-  document.getElementById('rinspector').innerHTML='<div class="ins-empty"><div class="big" aria-hidden="true">△</div>Select a signal to inspect its price, the baseline it is priced against, who collects the difference, why supply cannot respond, and what would end it.<div class="note" style="margin-top:12px">Rank score = rent multiple, rent pool, persistence, concentration and incumbent margin — computed from the data, not typed. <a href="#about" id="rabLink" style="color:var(--accent)">Method</a></div></div>';
+  document.getElementById('rinspector').innerHTML='<div class="ins-empty"><div class="big" aria-hidden="true">△</div>Pick one to see what it costs now, what it used to cost, who is collecting the difference, why nobody can simply make more, and what would bring the price back down.<div class="note" style="margin-top:12px">The order is worked out from the numbers, not chosen by hand. <a href="#about" id="rabLink" style="color:var(--accent)">How it is ranked</a></div></div>';
   const l=document.getElementById('rabLink');if(l)l.onclick=ev=>{ev.preventDefault();openAbout();};
 }
 
@@ -662,34 +690,34 @@ function selectRent(id,push){
   const supRow=s=>{const c=s.id&&byId[s.id];
     return `<div class="rsup"><span style="width:9px;height:9px;border-radius:50%;background:${c?SEC[c.sec]:'var(--mut)'};display:inline-block"></span>${c?`<span class="cplink" data-go="${s.id}" role="button" tabindex="0" title="Show ${esc(c.name)} on the map">${esc(c.name)}</span>`:`<span class="plain">${esc(s.n||s.id)}</span>`}<span class="sh">${rpct(s.sh)}</span></div>`;};
   document.getElementById('rinspector').innerHTML=`
-   <div class="ihead"><div class="tk">RANK ${rank} OF ${RENTS.length}</div><div class="nm">${esc(e.n)}</div>
+   <div class="ihead"><div class="tk">No. ${rank} of ${RENTS.length}</div><div class="nm">${esc(e.n)}</div>
      <div class="meta"><span class="pill"><span class="d" style="background:${RCAT[e.cat]}"></span>${esc(CATS[e.cat])}</span><span class="pill" title="Unit the price is quoted in">${esc(e.u)}</span></div></div>
    <div class="stats">
-     <div class="stat"><div class="k">RENT MULTIPLE</div><div class="v">${mult.toFixed(1)}×<span class="tag ${e.px.p}">${e.px.p}</span></div><div class="k" style="margin-top:2px">${rnum(e.px.v)} vs ${rnum(e.base.v)} baseline</div></div>
-     <div class="stat"><div class="k">RENT POOL</div><div class="v">${fmt(e.pool.v)}<span class="tag ${e.pool.p}">${e.pool.p}</span></div><div class="k" style="margin-top:2px">per year, excess over baseline</div></div>
-     <div class="stat"><div class="k">TIME TO RELIEF</div><div class="v">${rmo(e.ttr.mo)}<span class="tag ${e.ttr.p}">${e.ttr.p}</span></div></div>
-     <div class="stat"><div class="k">TOP-3 SHARE</div><div class="v">${rpct(e.conc.top3)}<span class="tag ${e.conc.p}">${e.conc.p}</span></div></div>
-     <div class="stat"><div class="k">INCUMBENT MARGIN</div><div class="v">${rpct(e.gm.v)}<span class="tag ${e.gm.p}">${e.gm.p}</span></div><div class="k" style="margin-top:2px">${esc(e.gm.who)}</div></div>
-     <div class="stat"><div class="k">RANK SCORE</div><div class="v">${rentScore(e).toFixed(0)}</div><div class="k" style="margin-top:2px">source quality ${(rConf(e)*100|0)}%</div></div>
+     <div class="stat"><div class="k">Costs this much more</div><div class="v">${mult.toFixed(1)}×<span class="tag ${e.px.p}">${e.px.p}</span></div><div class="k" style="margin-top:2px">${rnum(e.px.v)} now, ${rnum(e.base.v)} before</div></div>
+     <div class="stat"><div class="k">Excess paid every year</div><div class="v">${fmt(e.pool.v)}<span class="tag ${e.pool.p}">${e.pool.p}</span></div><div class="k" style="margin-top:2px">above what it used to cost</div></div>
+     <div class="stat"><div class="k">Until it eases</div><div class="v">${rmo(e.ttr.mo)}<span class="tag ${e.ttr.p}">${e.ttr.p}</span></div></div>
+     <div class="stat"><div class="k">Held by the top three</div><div class="v">${rpct(e.conc.top3)}<span class="tag ${e.conc.p}">${e.conc.p}</span></div></div>
+     <div class="stat"><div class="k">Their gross margin</div><div class="v">${rpct(e.gm.v)}<span class="tag ${e.gm.p}">${e.gm.p}</span></div><div class="k" style="margin-top:2px">${esc(e.gm.who)}</div></div>
+     <div class="stat"><div class="k">Score</div><div class="v">${rentScore(e).toFixed(0)}</div><div class="k" style="margin-top:2px">source quality ${(rConf(e)*100|0)}%</div></div>
    </div>
-   <div class="nsw"><div class="k">PRICE · ${esc(e.u)}</div><canvas id="rspark" aria-label="Price history for ${esc(e.n)}"></canvas><div class="yrs"><span>${esc(e.ser[0].t)}</span><span>${esc(e.ser[e.ser.length-1].t)}</span></div></div>
+   <div class="nsw"><div class="k">Price · ${esc(e.u)}</div><canvas id="rspark" aria-label="Price history for ${esc(e.n)}"></canvas><div class="yrs"><span>${esc(e.ser[0].t)}</span><span>${esc(e.ser[e.ser.length-1].t)}</span></div></div>
    <button class="ddbtn" id="openDossier">Full dossier →</button>
-   ${p==='R'?`<div class="verdict ok">✓ Every headline figure on this signal is anchored to a published source. Rare on this board — most scarcity prices are bilateral and never quoted.</div>`
-      :`<div class="verdict warn">⚠ Weakest figure behind this signal is tagged ${PNAME[p]}. ${esc(e.pool.m)} Treat the rank as directional.</div>`}
-   <div class="flowsec"><div class="lbl">Thesis</div><div style="font-size:12.5px;line-height:1.6;color:var(--dim)">${esc(e.th)}</div></div>
+   ${p==='R'?`<div class="verdict ok">✓ Every headline number here comes from a published source. That is rare on this board — most of these things are sold under private contracts and the prices are never printed anywhere.</div>`
+      :`<div class="verdict warn">⚠ The softest number here is ${p==='E'?'an estimate':'a model'}, not something published. ${esc(e.pool.m)} So read the position on this list as a rough guide, not a measurement.</div>`}
+   <div class="flowsec"><div class="lbl">What is going on</div><div style="font-size:12.5px;line-height:1.6;color:var(--dim)">${esc(e.th)}</div></div>
    <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Who collects it <span>${e.conc.sup.length}</span></div>${e.conc.sup.map(supRow).join('')}
      <div class="meth" style="color:var(--mut);font-size:11px;margin-top:8px">${esc(e.conc.s)}. Named suppliers already on the map are clickable.</div></div>
-   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Why supply can't respond <span>${e.bar.length}</span></div>
+   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Why nobody can just make more <span>${e.bar.length}</span></div>
      ${e.bar.map(b=>`<div class="rkv"><span class="k">${esc(BARS[b])}</span></div>`).join('')}
      <div class="meth" style="color:var(--mut);font-size:11px;margin-top:8px">${esc(e.ttr.m)}</div></div>
-   ${an?`<div class="mblock"><div class="lbl">Historical analogue</div><div class="rkv"><span class="k">${esc(an.n)}</span><span class="v">${rnum(an.peak.v)} → ${rnum(an.trough.v)}</span></div><div class="prov-txt"><b>Lesson.</b> ${esc(an.lesson)}</div></div>`:''}`;
+   ${an?`<div class="mblock"><div class="lbl">It happened before</div><div class="rkv"><span class="k">${esc(an.n)}</span><span class="v">${rnum(an.peak.v)} → ${rnum(an.trough.v)}</span></div><div class="prov-txt"><b>Lesson.</b> ${esc(an.lesson)}</div></div>`:''}`;
   const b=document.getElementById('openDossier');if(b)b.onclick=()=>openDossier(id);
   // Skip the tab's own hash write and let selectNode push the one entry — so a
   // single Back returns to this signal on the board, not to a half-state.
   document.querySelectorAll('#rinspector .cplink').forEach(s=>{const go=()=>{setTab('map',null);selectNode(s.dataset.go);};s.onclick=go;s.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
   drawRSpark(e);
   buildRentList();
-  drawScatter();
+  
   syncHash(push);
 }
 
@@ -713,84 +741,10 @@ function drawRSpark(e){
   g.textAlign='left';g.fillStyle=PCOL.E;g.fillText('baseline '+rnum(e.base.v),10,Math.min(h-2,Y(e.base.v)+11));
 }
 
-/* ---- scatter: months-to-relief (x) vs rent multiple (y), bubble = rent pool ----
-   Drawn on demand rather than on a RAF — nothing here animates, so a render
-   loop would burn frames for a static plot. */
-const rsc=document.getElementById('rscatter'),rsx=rsc.getContext('2d');
-let rsPts=[],rsRAF=null;
-const scheduleScatter=()=>{if(rsRAF===null)rsRAF=requestAnimationFrame(()=>{rsRAF=null;drawScatter();});};
-function drawScatter(){
-  if(tab!=='rents'||!rScatOpen)return;
-  const w=rsc.clientWidth,h=rsc.clientHeight;
-  if(!w||!h)return;
-  const cw=Math.round(w*DPR),ch=Math.round(h*DPR);
-  if(rsc.width!==cw||rsc.height!==ch){rsc.width=cw;rsc.height=ch;}
-  rsx.setTransform(DPR,0,0,DPR,0,0);rsx.clearRect(0,0,w,h);
-  // Padding leaves room for the largest bubble (radius 22 plus its provenance
-  // marker) at every edge — without it, a signal sitting on the 10-year clamp
-  // gets sliced by the right-hand edge.
-  const L=48,R=32,T=28,B=30,pw=w-L-R,ph=h-T-B;
-  if(pw<40||ph<40)return;
-  const rows=rVis();
-  const XM=120,YM=8; // 10 years of relief, 8x multiple — both clamp
-  const X=mo=>L+Math.min(mo,XM)/XM*pw;
-  const Y=m=>T+ph-(Math.log(Math.max(1,Math.min(m,YM)))/Math.log(YM))*ph;
-  rsx.strokeStyle='rgba(90,120,170,.16)';rsx.lineWidth=1;
-  rsx.font='10px Inter,-apple-system,Segoe UI,Roboto,sans-serif';rsx.fillStyle='#828fa6';
-  rsx.textAlign='center';
-  [0,24,48,72,96,120].forEach(mo=>{const x=X(mo);rsx.beginPath();rsx.moveTo(x,T);rsx.lineTo(x,T+ph);rsx.stroke();rsx.fillText(mo?mo/12+'y':'now',x,T+ph+14);});
-  rsx.textAlign='right';
-  [1,2,3,5,8].forEach(m=>{const y=Y(m);rsx.beginPath();rsx.moveTo(L,y);rsx.lineTo(L+pw,y);rsx.stroke();rsx.fillText(m+'×',L-6,y+3);});
-  const mp=Math.max(1,...rows.map(e=>e.pool.v));
-  rsPts=rows.map(e=>({e,x:X(e.ttr.mo),y:Y(rMult(e)),r:5+Math.sqrt(e.pool.v/mp)*17}));
-  // Big bubbles first so small ones stay clickable on top.
-  rsPts.slice().sort((a,b)=>b.r-a.r).forEach(({e,x,y,r})=>{
-    const sel=e.id===rSel;
-    rsx.beginPath();rsx.arc(x,y,r,0,6.28);
-    rsx.fillStyle=RCAT[e.cat];rsx.globalAlpha=sel?0.95:0.42;rsx.fill();rsx.globalAlpha=1;
-    rsx.lineWidth=sel?2.2:1;rsx.strokeStyle=sel?'#fff':RCAT[e.cat];rsx.stroke();
-    const p=rProv(e);rsx.fillStyle=PCOL[p];rsx.strokeStyle='#0a0e16';rsx.lineWidth=1.2;
-    provDot(rsx,x+r*0.72,y-r*0.72,3,p);
-  });
-  // Label pass: biggest bubbles win, skip anything that would collide.
-  const placed=[];rsx.textAlign='center';rsx.lineJoin='round';
-  rsPts.slice().sort((a,b)=>b.r-a.r).forEach(({e,x,y,r})=>{
-    const sel=e.id===rSel;
-    if(r<11&&!sel)return;
-    rsx.font=(sel?'700 ':'600 ')+'10px Inter,-apple-system,Segoe UI,Roboto,sans-serif';
-    const tw=rsx.measureText(e.id).width,ly=y+r+11;
-    const box={x:x-tw/2-2,y:ly-10,w:tw+4,h:14};
-    if(!sel&&placed.some(q=>!(box.x+box.w<q.x||box.x>q.x+q.w||box.y+box.h<q.y||box.y>q.y+q.h)))return;
-    placed.push(box);
-    rsx.lineWidth=3;rsx.strokeStyle='rgba(8,12,20,.92)';rsx.strokeText(e.id,x,ly);
-    rsx.fillStyle=sel?'#fff':'#c9d4e3';rsx.fillText(e.id,x,ly);
-  });
-  const seen=[...new Set(rows.map(e=>e.cat))];
-  document.getElementById('rsclegend').innerHTML=
-    '<span>x · time to relief</span><span>y · rent multiple</span><span>bubble · rent pool</span>'+
-    seen.map(k=>`<span><i style="background:${RCAT[k]}"></i>${esc(CATS[k])}</span>`).join('');
-}
-const rsHit=(px,py)=>{let best=null,bd=1e9;for(const p of rsPts){const d=Math.hypot(px-p.x,py-p.y);if(d<=Math.max(p.r,10)&&d<bd){bd=d;best=p;}}return best;};
-rsc.addEventListener('pointermove',ev=>{
-  const t=document.getElementById('rsctip'),p=rsHit(ev.offsetX,ev.offsetY);
-  if(!t)return;
-  if(p){const e=p.e;t.innerHTML=`<div class="t">${esc(e.n)}</div><div class="s">${rMult(e).toFixed(1)}× baseline · ${fmt(e.pool.v)}/yr</div><div class="s">relief ${rmo(e.ttr.mo)} · ${esc(CATS[e.cat])}</div>`;
-    t.style.left=Math.min(ev.offsetX+14,rsc.clientWidth-236)+'px';t.style.top=Math.min(ev.offsetY+14,rsc.clientHeight-84)+'px';t.style.opacity=1;rsc.style.cursor='pointer';}
-  else{t.style.opacity=0;rsc.style.cursor='crosshair';}
-});
-rsc.addEventListener('pointerleave',()=>{const t=document.getElementById('rsctip');if(t)t.style.opacity=0;});
-rsc.addEventListener('click',ev=>{const p=rsHit(ev.offsetX,ev.offsetY);if(p)selectRent(p.e.id,true);});
-window.addEventListener('resize',()=>{scheduleScatter();if(rSel&&RBY[rSel])drawRSpark(RBY[rSel]);});
-document.getElementById('rscatToggle').onclick=function(){
-  rScatOpen=!rScatOpen;
-  document.getElementById('rscatWrap').classList.toggle('off',!rScatOpen);
-  this.textContent=rScatOpen?'Hide plot':'Show plot';
-  this.setAttribute('aria-pressed',rScatOpen?'true':'false');
-  if(rScatOpen)scheduleScatter();
-};
+window.addEventListener('resize',()=>{if(rSel&&RBY[rSel])drawRSpark(RBY[rSel]);});
 const rsrch=document.getElementById('rsrch');
-rsrch.oninput=()=>{rQ=rsrch.value.toLowerCase().trim();buildRentList();refreshRentStats();drawScatter();};
-rsrch.onkeydown=ev=>{if(ev.key==='Escape'){ev.stopPropagation();rsrch.value='';rQ='';buildRentList();refreshRentStats();drawScatter();}};
+rsrch.oninput=()=>{rQ=rsrch.value.toLowerCase().trim();buildRentList();refreshRentStats();;};
+rsrch.onkeydown=ev=>{if(ev.key==='Escape'){ev.stopPropagation();rsrch.value='';rQ='';buildRentList();refreshRentStats();;}};
 
 /* ---- dossier modal (the long-form breakdown) ---- */
 const rentModal=document.getElementById('rentModal');
@@ -902,7 +856,6 @@ function applyHash(){
     const rid=(p.get('r')||'').toUpperCase();
     if(rid&&RBY[rid]){selectRent(rid,false);sel=true;}
     else{rSel=null;buildRentBoard();}
-    scheduleScatter();
   }
   const nid=(p.get('node')||'').toUpperCase(); // ids are uppercase; accept #node=aapl
   if(nid&&byId[nid]){selectNode(nid);sel=true;}
