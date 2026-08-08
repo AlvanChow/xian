@@ -53,6 +53,27 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .chip .d{width:9px;height:9px;border-radius:3px}
 .chip .ct{color:var(--mut);font-size:11px;font-variant-numeric:tabular-nums}
 .chip.on .ct{color:var(--dim)}
+/* Compact variant for the board rail. Three filter groups stacked as full-width
+   rows ran to ~870px of buttons before anything else got a look in; wrapping
+   them two-up keeps every control reachable in roughly a third the height. */
+.chipwrap{display:flex;flex-wrap:wrap;gap:6px}
+/* Chips size to their own label and pack: "Labor" and "Defense" pair up on one
+   row, "Compute & semiconductors" takes its own. Forcing a 50% column instead
+   truncated two thirds of the category names, which reads worse than the wall
+   it replaced. */
+.chipwrap .chip{width:auto;flex:0 1 auto;margin:0;padding:6px 9px;gap:7px;font-size:11.5px;border-radius:7px}
+.chipwrap .chip .l{gap:7px;min-width:0}
+.chipwrap .chip .l .t{white-space:nowrap}
+.chipwrap .chip .d{width:8px;height:8px;border-radius:2.5px;flex-shrink:0}
+.chipwrap .chip .ct{flex-shrink:0;font-size:10.5px}
+/* Barriers are a power-user cut — collapsed until asked for. */
+.fold{border:0;padding:0;margin:0}
+.fold>summary{list-style:none;cursor:pointer;margin:0 0 11px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);display:flex;justify-content:space-between;align-items:center}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary:hover{color:var(--dim)}
+.fold>summary .cv{font-size:10px;letter-spacing:0;text-transform:none}
+.fold[open]>summary .cv{opacity:.55}
+.fold>summary:focus-visible{outline:2px solid var(--glow);outline-offset:2px;border-radius:4px}
 
 .leg{display:flex;gap:10px;padding:6px 0;cursor:pointer;align-items:flex-start}
 .leg:hover .ttl{color:var(--txt)}.leg.off{opacity:.4}
@@ -185,8 +206,6 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .rrow .rn{font-weight:600;font-size:13.5px}
 .rrow .rmult{margin-left:auto;font-weight:680;font-variant-numeric:tabular-nums;white-space:nowrap}
 .rrow .rmeta{color:var(--mut);font-size:11px;margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 10px}
-.rrow .rbars{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
-.rbchip{font-size:10px;padding:1px 7px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
 .rrow .track{margin-top:7px}
 .rcdot{width:9px;height:9px;border-radius:3px;flex-shrink:0;align-self:center}
 .rempty{padding:28px 18px;text-align:center;color:var(--mut);line-height:1.65}

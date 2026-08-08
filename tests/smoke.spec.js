@@ -532,6 +532,39 @@ test('board filters narrow the list and the hash deep-links a signal', async ({ 
   await expect(page).toHaveURL(/r=COCOA/);
 });
 
+test('the barrier fold stays shut until asked for, then filters and says so', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  const bars = page.locator('#rbars button[data-rb="capex"]');
+  const cv = page.locator('#rbarcv');
+
+  // Collapsed by default — the chips exist but are not on screen, and the
+  // summary reads as the neutral count rather than a filter.
+  await expect(bars).toBeHidden();
+  await expect(cv).toHaveText(/^\d+$/);
+
+  await page.locator('#leftRents .fold > summary').click();
+  await expect(bars).toBeVisible();
+
+  // Turning one off is announced on the summary and in the hash, so a board
+  // narrowed from inside a shut fold still explains itself.
+  await bars.click();
+  await expect(cv).toHaveText('1 off');
+  await expect(page).toHaveURL(/rbar=capex/);
+
+  // The filter is ANY-match, so one barrier off drops nothing on its own — an
+  // entry survives while any of its other barriers is still selected. Clearing
+  // the whole set is what empties the board, and proves the chips inside the
+  // fold are really wired to the list.
+  const rows = page.locator('#rlist .rrow');
+  expect(await rows.count()).toBeGreaterThan(0);
+  for (const k of ['physics', 'permit', 'labor', 'export', 'ip', 'feedstock', 'grid', 'capital']) {
+    await page.locator(`#rbars button[data-rb="${k}"]`).click();
+  }
+  await expect(rows).toHaveCount(0);
+  await expect(page.locator('#rlist .rempty')).toBeVisible();
+  await expect(cv).toHaveText('9 off');
+});
+
 test('a deep link boots straight into the board with the signal selected', async ({ page }) => {
   await page.goto(`${PAGE_URL}#view=rents&r=HBM`);
   await page.waitForFunction(() => !!document.querySelector('#rinspector .ihead'));

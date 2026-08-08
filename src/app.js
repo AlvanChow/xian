@@ -605,13 +605,20 @@ function buildRentBoard(){buildRentFilters();buildRentList();refreshRentStats();
 
 function buildRentFilters(){
   document.getElementById('rsort').innerHTML=Object.keys(RSORTS).map(k=>
-    `<button class="chip ${rSort===k?'on':''}" data-rs="${k}"${rSort===k?' style="background:rgba(91,140,255,.12);border-color:rgba(91,140,255,.45)"':''}><span class="l">${RSORTS[k]}</span></button>`).join('');
+    `<button class="chip ${rSort===k?'on':''}" data-rs="${k}"${rSort===k?' style="background:rgba(91,140,255,.12);border-color:rgba(91,140,255,.45)"':''}><span class="l"><span class="t">${RSORTS[k]}</span></span></button>`).join('');
   const cc={};RENTS.forEach(e=>cc[e.cat]=(cc[e.cat]||0)+1);
   document.getElementById('rcats').innerHTML=Object.keys(CATS).map(k=>
-    `<button class="chip ${rCatOn[k]?'on':''}" data-rc="${k}" aria-pressed="${rCatOn[k]?'true':'false'}"${rCatOn[k]?` style="background:${RCAT[k]}1a;border-color:${RCAT[k]}66"`:''}><span class="l"><span class="d" style="background:${RCAT[k]}"></span>${esc(CATS[k])}</span><span class="ct">${cc[k]||0}</span></button>`).join('');
+    `<button class="chip ${rCatOn[k]?'on':''}" data-rc="${k}" aria-pressed="${rCatOn[k]?'true':'false'}" title="${esc(CATS[k])}"${rCatOn[k]?` style="background:${RCAT[k]}1a;border-color:${RCAT[k]}66"`:''}><span class="l"><span class="d" style="background:${RCAT[k]}"></span><span class="t">${esc(CATS[k])}</span></span><span class="ct">${cc[k]||0}</span></button>`).join('');
   const bc={};RENTS.forEach(e=>e.bar.forEach(b=>bc[b]=(bc[b]||0)+1));
   document.getElementById('rbars').innerHTML=Object.keys(BARS).map(k=>
-    `<button class="chip ${rBarOn[k]?'on':''}" data-rb="${k}" aria-pressed="${rBarOn[k]?'true':'false'}"><span class="l">${esc(BARS[k])}</span><span class="ct">${bc[k]||0}</span></button>`).join('');
+    `<button class="chip ${rBarOn[k]?'on':''}" data-rb="${k}" aria-pressed="${rBarOn[k]?'true':'false'}" title="${esc(BARS[k])}"><span class="l"><span class="t">${esc(BARS[k])}</span></span><span class="ct">${bc[k]||0}</span></button>`).join('');
+  // The fold is closed by default, so the summary has to say when something
+  // inside is actually filtering — otherwise a narrowed board looks unexplained.
+  // Every barrier starts on, so "all on" is the neutral state and stays quiet.
+  const off=Object.keys(BARS).filter(k=>!rBarOn[k]).length;
+  const cv=document.getElementById('rbarcv');
+  cv.textContent=off?`${off} off`:`${Object.keys(BARS).length}`;
+  cv.style.color=off?'var(--accent)':'';
   document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{rSort=b.dataset.rs;buildRentBoard();drawScatter();syncHash(false);});
   document.querySelectorAll('[data-rc]').forEach(b=>b.onclick=()=>{rCatOn[b.dataset.rc]=!rCatOn[b.dataset.rc];buildRentBoard();drawScatter();syncHash(false);});
   document.querySelectorAll('[data-rb]').forEach(b=>b.onclick=()=>{rBarOn[b.dataset.rb]=!rBarOn[b.dataset.rb];buildRentBoard();drawScatter();syncHash(false);});
@@ -627,8 +634,7 @@ function buildRentList(){
       <div class="rk">${rank[e.id]}</div>
       <div class="rbody">
         <div class="r1"><span class="rcdot" style="background:${RCAT[e.cat]}"></span><span class="rn">${esc(e.n)}</span><span class="tag ${p}">${PNAME[p][0]}</span><span class="rmult">${rMult(e).toFixed(1)}×</span></div>
-        <div class="rmeta"><span>${esc(CATS[e.cat])}</span><span>Rent pool ${fmt(e.pool.v)}/yr</span><span>Relief ${rmo(e.ttr.mo)}</span><span>Top-3 ${rpct(e.conc.top3)}</span></div>
-        <div class="rbars">${e.bar.map(b=>`<span class="rbchip">${esc(BARS[b])}</span>`).join('')}</div>
+        <div class="rmeta"><span>${esc(CATS[e.cat])}</span><span>Rent pool ${fmt(e.pool.v)}/yr</span><span>Relief ${rmo(e.ttr.mo)}</span></div>
         <div class="track"><i style="width:${sc2/mx2*100}%;background:${RCAT[e.cat]}"></i></div>
       </div></div>`;}).join('');
   el.querySelectorAll('[data-r]').forEach(r=>{const go=()=>selectRent(r.dataset.r,true);r.onclick=go;r.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
@@ -747,10 +753,16 @@ function drawScatter(){
   rsPts.slice().sort((a,b)=>b.r-a.r).forEach(({e,x,y,r})=>{
     const sel=e.id===rSel;
     rsx.beginPath();rsx.arc(x,y,r,0,6.28);
-    rsx.fillStyle=RCAT[e.cat];rsx.globalAlpha=sel?0.95:0.42;rsx.fill();rsx.globalAlpha=1;
-    rsx.lineWidth=sel?2.2:1;rsx.strokeStyle=sel?'#fff':RCAT[e.cat];rsx.stroke();
-    const p=rProv(e);rsx.fillStyle=PCOL[p];rsx.strokeStyle='#0a0e16';rsx.lineWidth=1.2;
-    provDot(rsx,x+r*0.72,y-r*0.72,3,p);
+    rsx.fillStyle=RCAT[e.cat];rsx.globalAlpha=sel?0.95:0.5;rsx.fill();rsx.globalAlpha=1;
+    // Only the selected bubble gets an outline. A dozen signals land in the
+    // 3-5 year band at 2-3x, and same-colour rims on every one of them turned
+    // that cluster into a tangle — unstroked, the overlaps read as depth.
+    if(sel){rsx.lineWidth=2.2;rsx.strokeStyle='#fff';rsx.stroke();}
+    // Provenance markers go on bubbles with room to carry one, same threshold
+    // as the labels. In the cluster they were noise on top of noise, and every
+    // row already carries the same tag.
+    if(r>=11||sel){const p=rProv(e);rsx.fillStyle=PCOL[p];rsx.strokeStyle='#0a0e16';rsx.lineWidth=1.2;
+      provDot(rsx,x+r*0.72,y-r*0.72,3,p);}
   });
   // Label pass: biggest bubbles win, skip anything that would collide.
   const placed=[];rsx.textAlign='center';rsx.lineJoin='round';
@@ -765,10 +777,11 @@ function drawScatter(){
     rsx.lineWidth=3;rsx.strokeStyle='rgba(8,12,20,.92)';rsx.strokeText(e.id,x,ly);
     rsx.fillStyle=sel?'#fff':'#c9d4e3';rsx.fillText(e.id,x,ly);
   });
-  const seen=[...new Set(rows.map(e=>e.cat))];
+  // Only the axis encodings here. The colour key used to be repeated under the
+  // plot, but the rail's category chips already carry the same swatches — two
+  // legends for one scale was the single noisiest thing on the board.
   document.getElementById('rsclegend').innerHTML=
-    '<span>x · time to relief</span><span>y · rent multiple</span><span>bubble · rent pool</span>'+
-    seen.map(k=>`<span><i style="background:${RCAT[k]}"></i>${esc(CATS[k])}</span>`).join('');
+    '<span>x · time to relief</span><span>y · rent multiple</span><span>bubble · rent pool</span><span>colour · category, keyed in the rail</span>';
 }
 const rsHit=(px,py)=>{let best=null,bd=1e9;for(const p of rsPts){const d=Math.hypot(px-p.x,py-p.y);if(d<=Math.max(p.r,10)&&d<bd){bd=d;best=p;}}return best;};
 rsc.addEventListener('pointermove',ev=>{
