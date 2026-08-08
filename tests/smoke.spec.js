@@ -481,8 +481,10 @@ test('selecting a signal fills the inspector and opens its dossier', async ({ pa
   const ins = page.locator('#rinspector');
   await expect(ins.locator('.ihead .nm')).not.toHaveText('');
   await expect(ins.locator('.stats .stat')).toHaveCount(6);
-  await expect(ins).toContainText('RENT MULTIPLE');
-  await expect(ins).toContainText('TIME TO RELIEF');
+  // Labels read as English, not as field names off the schema.
+  await expect(ins).toContainText('Costs this much more');
+  await expect(ins).toContainText('Until it eases');
+  await expect(ins).not.toContainText('RENT MULTIPLE');
 
   // The dossier is the long-form breakdown, and Escape must close it.
   await page.locator('#openDossier').click();
@@ -542,7 +544,7 @@ test('the barrier fold stays shut until asked for, then filters and says so', as
   await expect(bars).toBeHidden();
   await expect(cv).toHaveText(/^\d+$/);
 
-  await page.locator('#leftRents .fold > summary').click();
+  await page.locator('#leftRents .fold:has(#rbars) > summary').click();
   await expect(bars).toBeVisible();
 
   // Turning one off is announced on the summary and in the hash, so a board
@@ -580,25 +582,27 @@ test('a deep link boots straight into the board with the signal selected', async
   await expect(page).toHaveURL(/r=HBM/);
 });
 
-test('the scatter plot toggles and every bubble is reachable as a row', async ({ page }) => {
+test('every row reads as plain language, not a spec sheet', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
 
-  const wrap = page.locator('#rscatWrap');
-  await expect(wrap).toBeVisible();
-  // The plot draws real pixels, not an empty canvas.
-  const painted = await page.locator('#rscatter').evaluate((c) => {
-    const g = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-    for (let i = 3; i < g.length; i += 4) if (g[i] > 0) return true;
-    return false;
-  });
-  expect(painted).toBe(true);
+  // The plot is gone entirely — not hidden behind a toggle.
+  await expect(page.locator('#rscatWrap')).toHaveCount(0);
+  await expect(page.locator('#rscatter')).toHaveCount(0);
 
-  const toggle = page.locator('#rscatToggle');
-  await toggle.click();
-  await expect(wrap).toBeHidden();
-  await expect(toggle).toHaveText('Show plot');
-  await toggle.click();
-  await expect(wrap).toBeVisible();
+  const top = page.locator('#rlist .rrow').first();
+  // Headline is the plain name, and the part number is NOT in the row.
+  await expect(top.locator('.rn')).toHaveText('Stacked memory for AI chips');
+  await expect(top).not.toContainText('HBM3E');
+
+  // The prose is the entry's own thesis, so consecutive rows do not repeat a
+  // template sentence — that was the tell that made the list read as generated.
+  const says = await page.locator('#rlist .rrow .rsay').allTextContents();
+  expect(new Set(says).size).toBe(says.length);
+
+  // Derived facts line: money, who holds it, and when it eases.
+  await expect(top.locator('.rfoot')).toContainText('a year in excess');
+  await expect(top.locator('.rfoot')).toContainText('suppliers hold');
+  await expect(top.locator('.rfoot')).toContainText(/eases around \d{4}|no fix in sight/);
 });
 
 test('one back press returns from a supplier jump to the board', async ({ page }) => {

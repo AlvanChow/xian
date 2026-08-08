@@ -38,6 +38,10 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 #left{border-right:1px solid var(--line)}#right{border-left:1px solid var(--line)}
 .sec{padding:16px 16px;border-bottom:1px solid var(--line)}
 .sec h4{margin:0 0 11px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);display:flex;justify-content:space-between;align-items:center}
+/* Sentence-case rail headings for the board. The map keeps its uppercase
+   micro-labels; on a board meant to be read rather than monitored they were
+   the loudest thing in the panel. */
+.sec h4.plain{font-size:13px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--dim);margin-bottom:9px}
 .srch{width:100%;padding:9px 11px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--txt);font-family:var(--sans);font-size:13px;outline:none}
 .srch:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,140,255,.12)}
 .reslist{margin-top:8px;max-height:200px;overflow-y:auto}
@@ -68,10 +72,10 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .chipwrap .chip .ct{flex-shrink:0;font-size:10.5px}
 /* Barriers are a power-user cut — collapsed until asked for. */
 .fold{border:0;padding:0;margin:0}
-.fold>summary{list-style:none;cursor:pointer;margin:0 0 11px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);display:flex;justify-content:space-between;align-items:center}
+.fold>summary{list-style:none;cursor:pointer;margin:0 0 9px;font-size:13px;font-weight:600;color:var(--dim);display:flex;justify-content:space-between;align-items:center;gap:10px}
 .fold>summary::-webkit-details-marker{display:none}
 .fold>summary:hover{color:var(--dim)}
-.fold>summary .cv{font-size:10px;letter-spacing:0;text-transform:none}
+.fold>summary .cv{font-size:11.5px;font-weight:400;color:var(--mut);flex-shrink:0}
 .fold[open]>summary .cv{opacity:.55}
 .fold>summary:focus-visible{outline:2px solid var(--glow);outline-offset:2px;border-radius:4px}
 
@@ -180,9 +184,9 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 #centerMap,#centerRents{position:absolute;inset:0}
 #centerRents{display:flex;flex-direction:column;background:var(--bg)}
 
-.rhead{display:flex;align-items:flex-start;gap:14px;padding:14px 18px 12px;border-bottom:1px solid var(--line)}
-.rttl{font-size:15px;font-weight:680}
-.rsub{color:var(--mut);font-size:11.5px;margin-top:3px;line-height:1.5}
+.rhead{display:flex;align-items:flex-start;gap:14px;padding:28px 26px 20px;border-bottom:1px solid var(--line)}
+.rttl{font-size:24px;font-weight:600;letter-spacing:-.02em}
+.rsub{color:var(--mut);font-size:13.5px;margin-top:7px;line-height:1.6;max-width:56ch}
 .rhead .tbtn{margin-left:auto;flex-shrink:0}
 
 #rscatWrap{position:relative;flex-shrink:0;display:flex;flex-direction:column;border-bottom:1px solid var(--line)}
@@ -197,18 +201,32 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .rsclegend i{width:8px;height:8px;border-radius:50%}
 
 #rlist{flex:1;overflow-y:auto;padding:6px 0 18px}
-.rrow{display:flex;gap:12px;align-items:flex-start;padding:11px 18px;border-bottom:1px solid var(--line);cursor:pointer}
+/* Editorial rows. The old layout stacked four bands of micro-type per entry and
+   read like a terminal; this one is a headline, a sentence, and a quiet
+   footnote, at sizes a person reads rather than scans. */
+.rrow{display:flex;gap:16px;align-items:baseline;padding:20px 26px;border-bottom:1px solid var(--line);cursor:pointer}
 .rrow:hover{background:var(--panel2)}
 .rrow.on{background:var(--panel);box-shadow:inset 3px 0 0 var(--accent)}
-.rrow .rk{font-family:var(--mono);font-size:12px;color:var(--mut);width:26px;flex-shrink:0;text-align:right;padding-top:2px;font-variant-numeric:tabular-nums}
+.rrow .rk{font-size:13px;color:var(--mut);width:22px;flex-shrink:0;text-align:right;font-variant-numeric:tabular-nums}
 .rrow .rbody{flex:1;min-width:0}
-.rrow .r1{display:flex;align-items:baseline;gap:8px}
-.rrow .rn{font-weight:600;font-size:13.5px}
-.rrow .rmult{margin-left:auto;font-weight:680;font-variant-numeric:tabular-nums;white-space:nowrap}
-.rrow .rmeta{color:var(--mut);font-size:11px;margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 10px}
-.rrow .track{margin-top:7px}
+.rrow .r1{display:flex;align-items:baseline;gap:14px}
+.rrow .rn{font-weight:600;font-size:18px;letter-spacing:-.01em;line-height:1.3}
+.rrow .rmult{margin-left:auto;font-weight:600;font-size:18px;font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--dim);text-align:right}
+.rrow .rmult .u{display:block;font-size:11px;font-weight:400;color:var(--mut);letter-spacing:0;margin-top:2px}
+.rrow.on .rmult{color:var(--txt)}
+.rrow .rsay{font-size:14.5px;line-height:1.65;color:var(--dim);margin-top:7px;max-width:60ch}
+.rrow .rfoot{font-size:12px;color:var(--mut);margin-top:9px;display:flex;align-items:center;gap:7px}
+.rrow .rfoot .rcdot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .rcdot{width:9px;height:9px;border-radius:3px;flex-shrink:0;align-self:center}
 .rempty{padding:28px 18px;text-align:center;color:var(--mut);line-height:1.65}
+/* The board's inspector drops the map's uppercase letterspaced micro-labels.
+   Scoped to #rinspector so the map keeps the instrument look it wants. */
+#rinspector .ihead .tk{font-family:var(--sans);font-size:12px;letter-spacing:0}
+#rinspector .ihead .nm{font-size:19px;letter-spacing:-.01em;line-height:1.35}
+#rinspector .stat .k{font-size:11.5px;letter-spacing:0}
+#rinspector .flowsec .lbl,#rinspector .mblock .lbl{font-size:13px;letter-spacing:0;text-transform:none;color:var(--dim)}
+#rinspector .nsw .k{font-size:11px;letter-spacing:0;text-transform:none}
+#rinspector .ins-empty{font-size:13.5px;line-height:1.7}
 
 /* board inspector (right rail) */
 #rinspector .ins-empty{padding:30px 18px}

@@ -127,6 +127,7 @@ export const RENTS = [
   {
     id: 'HBM',
     n: 'HBM3E / HBM4 stacked memory',
+    pn: 'Stacked memory for AI chips',
     cat: 'compute',
     u: '$ per GB of stacked DRAM',
     th: 'AI accelerators cannot ship without stacked memory, and stacking capacity is a scarcer, separate constraint from DRAM bits themselves.',
@@ -153,6 +154,7 @@ export const RENTS = [
   {
     id: 'DDR5',
     n: 'Server DDR5 conventional DRAM',
+    pn: 'Server memory',
     cat: 'compute',
     u: '$ per GB, contract',
     th: 'Diverting wafers to HBM starved the commodity market that funds the fabs, so ordinary server memory re-priced without any new demand shock.',
@@ -179,6 +181,7 @@ export const RENTS = [
   {
     id: 'COWOS',
     n: 'CoWoS / SoIC advanced packaging slots',
+    pn: 'Advanced chip packaging',
     cat: 'compute',
     u: '$ per 300 mm interposer-equivalent wafer',
     th: 'The binding constraint on AI silicon is not the logic wafer but the packaging step that bonds it to memory — one supplier, allocated by relationship.',
@@ -205,6 +208,7 @@ export const RENTS = [
   {
     id: 'HIGHNA',
     n: 'High-NA EUV lithography scanners',
+    pn: 'The machines that print the finest chips',
     cat: 'compute',
     u: '$ per tool',
     th: 'A single vendor sells the only machine capable of the next node, at a price set by what the node is worth rather than what the tool costs.',
@@ -231,6 +235,7 @@ export const RENTS = [
   {
     id: 'NEARLINE',
     n: 'Nearline enterprise HDD',
+    pn: 'High-capacity storage drives',
     cat: 'compute',
     u: '$ per TB',
     th: 'AI datasets re-priced the storage nobody was building: three suppliers spent a decade cutting HDD capacity, then demand for cold bulk capacity inverted.',
@@ -257,6 +262,7 @@ export const RENTS = [
   {
     id: 'XFMR',
     n: 'Large power transformers (HV/EHV)',
+    pn: 'Grid transformers',
     cat: 'power',
     u: '$ per MVA',
     th: 'Every electrification story routes through one component nobody built capacity for, and the lead time is now longer than most projects can finance.',
@@ -284,6 +290,7 @@ export const RENTS = [
   {
     id: 'GASTURB',
     n: 'Heavy-duty gas turbine slots',
+    pn: 'Large gas turbines',
     cat: 'power',
     u: '$ per kW installed',
     th: 'Datacenter load wants firm power this decade, and the three vendors who make large frames sold their delivery slots through the end of it.',
@@ -310,6 +317,7 @@ export const RENTS = [
   {
     id: 'SWU',
     n: 'Uranium enrichment (SWU)',
+    pn: 'Enriched uranium for reactors',
     cat: 'power',
     u: '$ per separative work unit',
     th: 'Sanctioning the largest enricher removed a third of Western supply from a market with no spare centrifuge capacity and a decade-long build cycle.',
@@ -336,6 +344,7 @@ export const RENTS = [
   {
     id: 'DCPOWER',
     n: 'Datacenter-ready grid capacity',
+    pn: 'Grid power for datacenters',
     cat: 'power',
     u: '$ per MW-day, capacity auction',
     th: 'The scarce thing is not electricity but an interconnection that already exists — and the auctions that price it went vertical when datacenters started bidding.',
@@ -363,6 +372,7 @@ export const RENTS = [
   {
     id: 'COPPER',
     n: 'Copper cathode',
+    pn: 'Copper',
     cat: 'materials',
     u: '$ per tonne',
     th: 'Electrification demand meets a decade of underinvestment and falling ore grades; every new mine takes longer to permit than to build.',
@@ -390,6 +400,7 @@ export const RENTS = [
   {
     id: 'NDPR',
     n: 'NdPr oxide (magnet rare earths)',
+    pn: 'Magnet metals for motors',
     cat: 'materials',
     u: '$ per kg',
     th: 'One country refines almost all of it and has demonstrated willingness to use that as policy; every motor, turbine and actuator depends on the output.',
@@ -417,6 +428,7 @@ export const RENTS = [
   {
     id: 'ANTIMONY',
     n: 'Antimony',
+    pn: 'Antimony',
     cat: 'materials',
     u: '$ per tonne',
     th: 'A small market nobody watched, controlled by one exporter, used in ammunition primers and flame retardants — export controls re-priced it by multiples in months.',
@@ -443,6 +455,7 @@ export const RENTS = [
   {
     id: 'HELIUM',
     n: 'Grade-A helium',
+    pn: 'Helium',
     cat: 'materials',
     u: '$ per thousand cubic feet',
     th: 'A by-product of natural gas processing with no synthetic route, sold into semiconductor and MRI demand that cannot substitute at any price.',
@@ -469,6 +482,7 @@ export const RENTS = [
   {
     id: 'FILLFINISH',
     n: 'Sterile fill-finish CDMO capacity',
+    pn: 'Filling injectable drugs into vials',
     cat: 'pharma',
     u: '$ per sterile vial-equivalent',
     th: 'The last step of every injectable drug runs through a small number of qualified aseptic lines, and the GLP-1 wave consumed the slack.',
@@ -496,6 +510,7 @@ export const RENTS = [
   {
     id: 'ISOTOPE',
     n: 'Ac-225 and Lu-177 medical isotopes',
+    pn: 'Isotopes for cancer treatment',
     cat: 'pharma',
     u: '$ per mCi (Ac-225 basis)',
     th: 'Radioligand therapy works, and the isotopes it needs are made in a handful of reactors and accelerators worldwide with no commercial-scale alternative.',
@@ -523,6 +538,7 @@ export const RENTS = [
   {
     id: 'ATC',
     n: 'Air traffic controllers',
+    pn: 'Air traffic controllers',
     cat: 'labor',
     u: '$ per fully-loaded controller-year',
     th: 'A single-employer labor market with a multi-year academy pipeline, a hard medical washout rate, and a mandatory retirement age it cannot recruit ahead of.',
@@ -550,6 +566,7 @@ export const RENTS = [
   {
     id: 'WELDERS',
     n: 'Nuclear-qualified and pipe welders',
+    pn: 'Certified welders',
     cat: 'labor',
     u: '$ per hour, fully loaded',
     th: 'Every reindustrialization plan — reactors, LNG trains, shipyards, fabs — needs the same certified welders, and the certification takes years.',
@@ -577,6 +594,7 @@ export const RENTS = [
   {
     id: 'DCELEC',
     n: 'Datacenter electricians',
+    pn: 'Datacenter electricians',
     cat: 'labor',
     u: '$ per hour, fully loaded',
     th: 'Datacenter construction is electrically dense and geographically clustered, so a national trade shortage shows up as a local bidding war.',
@@ -603,6 +621,7 @@ export const RENTS = [
   {
     id: 'NARROWBODY',
     n: 'Narrowbody aircraft delivery slots',
+    pn: 'A delivery slot for a new airliner',
     cat: 'logistics',
     u: '$M premium per near-term delivery slot',
     th: 'Two manufacturers, both supply-constrained, with order books stretching a decade — so a slot in the next two years trades well above list economics.',
@@ -630,6 +649,7 @@ export const RENTS = [
   {
     id: 'ENGINEMRO',
     n: 'LEAP / GTF engine shop-visit slots',
+    pn: 'Jet engine overhauls',
     cat: 'logistics',
     u: '$M per shop visit',
     th: 'New-generation engines are going to the shop earlier and staying longer than planned, against an MRO network sized for the old schedule.',
@@ -657,6 +677,7 @@ export const RENTS = [
   {
     id: 'DCSHELL',
     n: 'Powered datacenter shell',
+    pn: 'A powered, ready-to-fit-out datacenter',
     cat: 'infra',
     u: '$ per kW of critical IT load',
     th: 'The scarce asset is a building with power already contracted; everything else about a datacenter can be bought, and this cannot.',
@@ -684,6 +705,7 @@ export const RENTS = [
   {
     id: 'COCOA',
     n: 'Cocoa',
+    pn: 'Cocoa',
     cat: 'agri',
     u: '$ per tonne',
     th: 'Two countries grow most of it on aging trees hit by disease and weather, and a cocoa tree takes five years to bear — the textbook inelastic supply shock.',
@@ -711,6 +733,7 @@ export const RENTS = [
   {
     id: 'SHELLS155',
     n: '155 mm artillery shells',
+    pn: 'Artillery shells',
     cat: 'defense',
     u: '$ per round',
     th: 'Peacetime procurement sized a wartime consumable, and the energetics chain behind it was allowed to shrink to a single-digit number of plants.',
@@ -738,6 +761,7 @@ export const RENTS = [
   {
     id: 'SRM',
     n: 'Solid rocket motors',
+    pn: 'Rocket motors',
     cat: 'defense',
     u: '$ per tactical motor',
     th: 'Consolidation left two suppliers for a component every interceptor and tactical missile needs, at exactly the moment interceptor demand went vertical.',
@@ -765,6 +789,7 @@ export const RENTS = [
   {
     id: 'CDR',
     n: 'Durable carbon removal',
+    pn: 'Permanent carbon removal',
     cat: 'regulated',
     u: '$ per tonne CO2 removed',
     th: 'Corporate and regulatory demand for permanent removal exists; permanent removal capacity barely does, so the price is set by the cost of the few plants running.',
@@ -792,6 +817,7 @@ export const RENTS = [
   {
     id: 'SPECTRUM',
     n: 'Mid-band spectrum licenses',
+    pn: 'Mobile spectrum licences',
     cat: 'regulated',
     u: '$ per MHz-POP',
     th: 'Supply is created by an act of government and by nothing else; when the auction pipeline stops, the secondary market prices the shortage.',

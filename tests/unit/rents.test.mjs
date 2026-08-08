@@ -239,3 +239,32 @@ test('every barrier has an explanation the dossier can render', async () => {
     assert.ok(BAR_KEYS.has(k), `BARWHY has an entry for unknown barrier "${k}"`);
   }
 });
+
+test('every entry carries a plain-language name the board can lead with', () => {
+  const seen = new Set();
+  for (const e of RENTS) {
+    assert.ok(typeof e.pn === 'string' && e.pn.length > 0, `${e.id} has no plain name (pn)`);
+    // The board headline replaces the technical name, but only where there was
+    // something to translate: "Copper" and "Cocoa" are already plain English and
+    // are allowed to repeat. A name carrying digits, a slash, or an acronym is
+    // a spec string and has to be rewritten.
+    if (/\d|\/|[A-Z]{3,}/.test(e.n)) {
+      assert.notStrictEqual(e.pn, e.n, `${e.id}'s plain name is just a copy of its technical name`);
+    }
+    // A plain name is a phrase, not a spec string. These are the tells: unit
+    // slashes, version numbers, and bare capitalised acronyms.
+    assert.ok(!/\d{2,}|\bmm\b|\//.test(e.pn), `${e.id}'s plain name "${e.pn}" still reads as a part number`);
+    assert.ok(e.pn.length <= 46, `${e.id}'s plain name is too long for a headline: "${e.pn}"`);
+    assert.ok(!seen.has(e.pn), `two entries share the plain name "${e.pn}"`);
+    seen.add(e.pn);
+  }
+});
+
+test('the thesis carries each row prose, so no two rows read alike', () => {
+  const seen = new Set();
+  for (const e of RENTS) {
+    assert.ok(typeof e.th === 'string' && e.th.length > 40, `${e.id} has no usable thesis for its row`);
+    assert.ok(!seen.has(e.th), `two entries share a thesis — the list would read as generated`);
+    seen.add(e.th);
+  }
+});

@@ -30,9 +30,14 @@ gap implies, who collects it, why supply is stuck, when relief arrives, **what s
 requires**, and what would kill the trade. Named suppliers that exist on the map are clickable —
 one click jumps to that entity's flow network.
 
-- **A ranked list plus a scatter** — x = time to relief, y = rent multiple, bubble = rent pool,
-  color = category.
-- **A dossier per signal** — the long-form breakdown, including a per-figure provenance table.
+- **A ranked list, read as prose** — each row leads with a plain-language name (`pn`), carries the
+  entry's own written thesis as its sentence, and closes on a line of derived figures: excess per
+  year, who holds it, and roughly when it eases. Nothing in a row is retyped — the only prose the
+  data file stores is the plain name and the thesis; the rest is assembled from the same fields the
+  score reads. A scatter plot sat above the list until it was cut: it was the most technical thing
+  on the page and the bubbles piled up in the 3–5 year band.
+- **A dossier per signal** — the long-form breakdown, including a per-figure provenance table. The
+  technical name, the unit, and the barrier taxonomy live here rather than in the row.
 - **A reverted-signals archive** — DRAM 2018, container freight 2021, lithium 2022, travel nurses
   2021, GLP-1 2023, SiC 2023, TTF gas 2022, LCD panels 2021, NYC taxi medallions 2013. Every one
   of them was, at its peak, as compelling as anything currently on the board. Rents decay; the
