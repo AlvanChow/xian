@@ -189,16 +189,8 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .rsub{color:var(--mut);font-size:13.5px;margin-top:7px;line-height:1.6;max-width:56ch}
 .rhead .tbtn{margin-left:auto;flex-shrink:0}
 
-#rscatWrap{position:relative;flex-shrink:0;display:flex;flex-direction:column;border-bottom:1px solid var(--line)}
-#rscatWrap.off{display:none}
-#rscatter{display:block;width:100%;height:210px;cursor:crosshair}
-#rsctip{position:absolute;pointer-events:none;background:rgba(13,19,30,.96);border:1px solid var(--line);padding:8px 11px;border-radius:9px;font-size:11.5px;line-height:1.5;opacity:0;transition:opacity .1s;max-width:230px;box-shadow:0 8px 28px rgba(0,0,0,.5);z-index:6;backdrop-filter:blur(8px)}
-#rsctip .t{font-weight:650;font-size:12.5px}#rsctip .s{color:var(--dim)}
 /* Legend sits below the plot rather than over it — overlaid, it collided with
    the x-axis tick labels as soon as more than six categories were visible. */
-.rsclegend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--mut);padding:0 14px 9px}
-.rsclegend span{display:inline-flex;align-items:center;gap:5px}
-.rsclegend i{width:8px;height:8px;border-radius:50%}
 
 #rlist{flex:1;overflow-y:auto;padding:6px 0 18px}
 /* Editorial rows. The old layout stacked four bands of micro-type per entry and
@@ -297,7 +289,6 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   #app[data-view="rents"] #center{height:auto;min-height:calc(100svh - 60px)}
   #app[data-view="rents"] #left{order:3}
   #app[data-view="rents"] #right{order:2}
-  #rscatter{height:180px}
 }
 @media (max-width:480px){
   #timebar{bottom:14px;gap:8px;padding:7px 10px}
