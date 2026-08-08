@@ -7,6 +7,7 @@ import { COMPANIES, FLOWS, STATE_SHARES, FLOW_VINTAGE } from './data.js';
 import * as GEN from './facts.js';
 const FACTS=GEN.FACTS, MCAPS=GEN.MCAPS||{}, MCAP_ASOF=GEN.MCAP_ASOF||null, YEAR_MULT=GEN.YEAR_MULT||{};
 import { PERIODS } from './years.js';
+import { RENTS, ARCHIVE, CATS, BARS, BARWHY, RENT_ASOF, rMult, rentScore, rentProv, rentConf } from './rents.js';
 
 const C=COMPANIES, FL=FLOWS;
 const byId=Object.fromEntries(C.map(c=>[c.id,c]));
@@ -106,8 +107,13 @@ function frame(now){
   view.cx=Math.max(-220,Math.min(220,view.cx)); view.cy=Math.max(-92,Math.min(98,view.cy));
   pulse=(pulse+(reduceMotion?0:(live?0.018:0.008))*dt)%1;
   render();
-  requestAnimationFrame(frame);
+  mapRAF=requestAnimationFrame(frame);
 }
+// The map loop is suspended entirely while the Scarcity tab is showing — the
+// canvas is display:none, so every frame would be pure waste.
+let mapRAF=null;
+function startMapLoop(){if(mapRAF===null){t0=performance.now();mapRAF=requestAnimationFrame(frame);}}
+function stopMapLoop(){if(mapRAF!==null){cancelAnimationFrame(mapRAF);mapRAF=null;}}
 function render(){
   DPR=Math.min(window.devicePixelRatio||1,2);
   // Only reallocate the canvas backing store when the size actually changes —
@@ -535,8 +541,316 @@ aboutModal.addEventListener('keydown',e=>{
   else if(!e.shiftKey&&(cur===last||!f.includes(cur))){e.preventDefault();first.focus();}
 });
 
-// Escape closes whichever overlay is open, otherwise clears the map selection.
-window.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if(aboutModal.classList.contains('show'))closeAbout();else if(modal.classList.contains('show'))closeDrill();else if(selected)clearSelection();});
+// Escape closes whichever overlay is open, otherwise clears the active view's
+// selection — which selection that is depends on the tab you are looking at.
+window.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  if(rentModal.classList.contains('show'))closeDossier();
+  else if(aboutModal.classList.contains('show'))closeAbout();
+  else if(modal.classList.contains('show'))closeDrill();
+  else if(tab==='rents'){if(rSel){rSel=null;renderRentEmpty();buildRentList();drawScatter();syncHash(true);}}
+  else if(selected)clearSelection();
+});
+
+/* ---- scarcity board ----
+   The second tab. Subject: scarcity rents — things whose price has diverged far
+   above the cost of new supply because supply cannot respond. Same provenance
+   machinery as the map (PCOL / PNAME / .tag), different question. */
+const RCAT={compute:'#5b8cff',power:'#f5b042',materials:'#ed8f00',pharma:'#3fd68a',labor:'#f472b6',logistics:'#a78bfa',infra:'#2dd4e8',agri:'#1fb979',defense:'#ff6b7a',regulated:'#e2e8f0'};
+const RBY=Object.fromEntries(RENTS.map(e=>[e.id,e])),ABY=Object.fromEntries(ARCHIVE.map(a=>[a.id,a]));
+// rMult / rentScore / rentProv / rentConf live in rents.js beside the data, so
+// the unit tests score exactly what the board scores.
+const rProv=rentProv,rConf=rentConf;
+// Prices here span $/GB to $M/tool, so significant digits scale with magnitude.
+const rnum=v=>v>=10000?Math.round(v).toLocaleString('en-US'):v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2);
+const rmo=m=>m>=24?(m/12).toFixed(m%12?1:0)+' yr':m+' mo';
+const rpct=v=>(v*100).toFixed(0)+'%';
+
+let tab='map',rCatOn={},rBarOn={},rSort='score',rSel=null,rQ='',rScatOpen=true;
+Object.keys(CATS).forEach(k=>rCatOn[k]=1);
+Object.keys(BARS).forEach(k=>rBarOn[k]=1);
+const RSORTS={score:'Rank score',mult:'Rent multiple',pool:'Rent pool',ttr:'Time to relief',gm:'Incumbent margin'};
+const rSortVal=(e,k)=>k==='mult'?rMult(e):k==='pool'?e.pool.v:k==='ttr'?e.ttr.mo:k==='gm'?e.gm.v:rentScore(e);
+
+function rMatch(e,q){
+  if(!q)return true;
+  const hay=[e.id,e.n,e.th,CATS[e.cat],...e.bar.map(b=>BARS[b]),...e.conc.sup.map(s=>s.n||s.id||'')].join(' ').toLowerCase();
+  return hay.includes(q);
+}
+// Barrier filter is ANY-match: an entry stuck behind three barriers stays
+// visible while any one of them is still selected.
+const rVis=()=>RENTS.filter(e=>rCatOn[e.cat]&&e.bar.some(b=>rBarOn[b])&&rMatch(e,rQ))
+  .sort((a,b)=>rSortVal(b,rSort)-rSortVal(a,rSort));
+// Rank is always by score and always over the FULL set, so a filtered view
+// still shows each signal's true position on the board.
+const rRankAll=()=>{const o=[...RENTS].sort((a,b)=>rentScore(b)-rentScore(a));return Object.fromEntries(o.map((e,i)=>[e.id,i+1]));};
+
+const appEl=document.getElementById('app');
+// push: true pushes a history entry, false replaces in place, null skips the
+// hash write entirely — for a switch that is immediately followed by another
+// action that will push (e.g. a supplier jump calling selectNode). Replacing
+// there would overwrite the board entry the user needs to come back to.
+function setTab(v,push){
+  tab=v==='rents'?'rents':'map';
+  appEl.dataset.view=tab;
+  document.querySelectorAll('#viewTab button').forEach(b=>{const on=b.dataset.v===tab;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false');});
+  document.getElementById('logoSub').textContent=tab==='rents'?'· the scarcity board':'· global capital-flow map';
+  if(tab==='map'){startMapLoop();}
+  else{stopMapLoop();buildRentBoard();drawScatter();}
+  if(push!==null)syncHash(push);
+}
+document.querySelectorAll('#viewTab button').forEach(b=>b.onclick=()=>setTab(b.dataset.v,true));
+
+function buildRentBoard(){buildRentFilters();buildRentList();refreshRentStats();if(!rSel)renderRentEmpty();}
+
+function buildRentFilters(){
+  document.getElementById('rsort').innerHTML=Object.keys(RSORTS).map(k=>
+    `<button class="chip ${rSort===k?'on':''}" data-rs="${k}"${rSort===k?' style="background:rgba(91,140,255,.12);border-color:rgba(91,140,255,.45)"':''}><span class="l">${RSORTS[k]}</span></button>`).join('');
+  const cc={};RENTS.forEach(e=>cc[e.cat]=(cc[e.cat]||0)+1);
+  document.getElementById('rcats').innerHTML=Object.keys(CATS).map(k=>
+    `<button class="chip ${rCatOn[k]?'on':''}" data-rc="${k}" aria-pressed="${rCatOn[k]?'true':'false'}"${rCatOn[k]?` style="background:${RCAT[k]}1a;border-color:${RCAT[k]}66"`:''}><span class="l"><span class="d" style="background:${RCAT[k]}"></span>${esc(CATS[k])}</span><span class="ct">${cc[k]||0}</span></button>`).join('');
+  const bc={};RENTS.forEach(e=>e.bar.forEach(b=>bc[b]=(bc[b]||0)+1));
+  document.getElementById('rbars').innerHTML=Object.keys(BARS).map(k=>
+    `<button class="chip ${rBarOn[k]?'on':''}" data-rb="${k}" aria-pressed="${rBarOn[k]?'true':'false'}"><span class="l">${esc(BARS[k])}</span><span class="ct">${bc[k]||0}</span></button>`).join('');
+  document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{rSort=b.dataset.rs;buildRentBoard();drawScatter();syncHash(false);});
+  document.querySelectorAll('[data-rc]').forEach(b=>b.onclick=()=>{rCatOn[b.dataset.rc]=!rCatOn[b.dataset.rc];buildRentBoard();drawScatter();syncHash(false);});
+  document.querySelectorAll('[data-rb]').forEach(b=>b.onclick=()=>{rBarOn[b.dataset.rb]=!rBarOn[b.dataset.rb];buildRentBoard();drawScatter();syncHash(false);});
+}
+
+function buildRentList(){
+  const rows=rVis(),rank=rRankAll(),el=document.getElementById('rlist');
+  if(!rows.length){el.innerHTML='<div class="rempty">No signals match these filters.<br>Widen a category or barrier to bring the board back.</div>';return;}
+  const mx2=Math.max(...rows.map(rentScore));
+  el.innerHTML=rows.map(e=>{
+    const p=rProv(e),sc2=rentScore(e);
+    return `<div class="rrow ${rSel===e.id?'on':''}" role="option" tabindex="0" aria-selected="${rSel===e.id?'true':'false'}" data-r="${e.id}" aria-label="Rank ${rank[e.id]}, ${esc(e.n)}, ${rMult(e).toFixed(1)} times baseline, ${PNAME[p]}">
+      <div class="rk">${rank[e.id]}</div>
+      <div class="rbody">
+        <div class="r1"><span class="rcdot" style="background:${RCAT[e.cat]}"></span><span class="rn">${esc(e.n)}</span><span class="tag ${p}">${PNAME[p][0]}</span><span class="rmult">${rMult(e).toFixed(1)}×</span></div>
+        <div class="rmeta"><span>${esc(CATS[e.cat])}</span><span>Rent pool ${fmt(e.pool.v)}/yr</span><span>Relief ${rmo(e.ttr.mo)}</span><span>Top-3 ${rpct(e.conc.top3)}</span></div>
+        <div class="rbars">${e.bar.map(b=>`<span class="rbchip">${esc(BARS[b])}</span>`).join('')}</div>
+        <div class="track"><i style="width:${sc2/mx2*100}%;background:${RCAT[e.cat]}"></i></div>
+      </div></div>`;}).join('');
+  el.querySelectorAll('[data-r]').forEach(r=>{const go=()=>selectRent(r.dataset.r,true);r.onclick=go;r.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
+}
+
+function refreshRentStats(){
+  const rows=rVis();
+  document.getElementById('hRN').textContent=rows.length;
+  document.getElementById('hRP').textContent=fmt(rows.reduce((a,e)=>a+e.pool.v,0));
+  const mos=rows.map(e=>e.ttr.mo).sort((a,b)=>a-b);
+  document.getElementById('hRT').textContent=mos.length?rmo(mos[mos.length>>1]):'—';
+  document.getElementById('rsub').textContent=`${RENTS.length} signals scored, ${ARCHIVE.length} reverted signals archived. Snapshot ${RENT_ASOF}.`;
+  // Same idea as the map's provenance mix: what share of the money on screen
+  // rests on figures we could actually verify.
+  const mix={R:0,E:0,I:0};rows.forEach(e=>mix[rProv(e)]+=e.pool.v);
+  const tot=mix.R+mix.E+mix.I||1;
+  document.getElementById('rprovmix').innerHTML=['R','E','I'].map(k=>
+    `<div class="mixrow"><div class="h"><b style="color:${PCOL[k]}">${PNAME[k]}</b><span>${(mix[k]/tot*100).toFixed(0)}%</span></div><div class="track"><i style="width:${mix[k]/tot*100}%;background:${PCOL[k]}"></i></div></div>`).join('')+
+    `<div class="note">Share of visible rent pool by the weakest figure behind each signal. Contract prices for packaging slots, CDMO lines and bilateral isotope supply are not publicly quoted — most of this board is modeled, and says so.</div>`;
+}
+
+function renderRentEmpty(){
+  document.getElementById('rinspector').innerHTML='<div class="ins-empty"><div class="big" aria-hidden="true">△</div>Select a signal to inspect its price, the baseline it is priced against, who collects the difference, why supply cannot respond, and what would end it.<div class="note" style="margin-top:12px">Rank score = rent multiple, rent pool, persistence, concentration and incumbent margin — computed from the data, not typed. <a href="#about" id="rabLink" style="color:var(--accent)">Method</a></div></div>';
+  const l=document.getElementById('rabLink');if(l)l.onclick=ev=>{ev.preventDefault();openAbout();};
+}
+
+function selectRent(id,push){
+  const e=RBY[id];if(!e)return;
+  rSel=id;
+  const p=rProv(e),rank=rRankAll()[id],mult=rMult(e),an=e.an?ABY[e.an]:null;
+  const supRow=s=>{const c=s.id&&byId[s.id];
+    return `<div class="rsup"><span style="width:9px;height:9px;border-radius:50%;background:${c?SEC[c.sec]:'var(--mut)'};display:inline-block"></span>${c?`<span class="cplink" data-go="${s.id}" role="button" tabindex="0" title="Show ${esc(c.name)} on the map">${esc(c.name)}</span>`:`<span class="plain">${esc(s.n||s.id)}</span>`}<span class="sh">${rpct(s.sh)}</span></div>`;};
+  document.getElementById('rinspector').innerHTML=`
+   <div class="ihead"><div class="tk">RANK ${rank} OF ${RENTS.length}</div><div class="nm">${esc(e.n)}</div>
+     <div class="meta"><span class="pill"><span class="d" style="background:${RCAT[e.cat]}"></span>${esc(CATS[e.cat])}</span><span class="pill" title="Unit the price is quoted in">${esc(e.u)}</span></div></div>
+   <div class="stats">
+     <div class="stat"><div class="k">RENT MULTIPLE</div><div class="v">${mult.toFixed(1)}×<span class="tag ${e.px.p}">${e.px.p}</span></div><div class="k" style="margin-top:2px">${rnum(e.px.v)} vs ${rnum(e.base.v)} baseline</div></div>
+     <div class="stat"><div class="k">RENT POOL</div><div class="v">${fmt(e.pool.v)}<span class="tag ${e.pool.p}">${e.pool.p}</span></div><div class="k" style="margin-top:2px">per year, excess over baseline</div></div>
+     <div class="stat"><div class="k">TIME TO RELIEF</div><div class="v">${rmo(e.ttr.mo)}<span class="tag ${e.ttr.p}">${e.ttr.p}</span></div></div>
+     <div class="stat"><div class="k">TOP-3 SHARE</div><div class="v">${rpct(e.conc.top3)}<span class="tag ${e.conc.p}">${e.conc.p}</span></div></div>
+     <div class="stat"><div class="k">INCUMBENT MARGIN</div><div class="v">${rpct(e.gm.v)}<span class="tag ${e.gm.p}">${e.gm.p}</span></div><div class="k" style="margin-top:2px">${esc(e.gm.who)}</div></div>
+     <div class="stat"><div class="k">RANK SCORE</div><div class="v">${rentScore(e).toFixed(0)}</div><div class="k" style="margin-top:2px">source quality ${(rConf(e)*100|0)}%</div></div>
+   </div>
+   <div class="nsw"><div class="k">PRICE · ${esc(e.u)}</div><canvas id="rspark" aria-label="Price history for ${esc(e.n)}"></canvas><div class="yrs"><span>${esc(e.ser[0].t)}</span><span>${esc(e.ser[e.ser.length-1].t)}</span></div></div>
+   <button class="ddbtn" id="openDossier">Full dossier →</button>
+   ${p==='R'?`<div class="verdict ok">✓ Every headline figure on this signal is anchored to a published source. Rare on this board — most scarcity prices are bilateral and never quoted.</div>`
+      :`<div class="verdict warn">⚠ Weakest figure behind this signal is tagged ${PNAME[p]}. ${esc(e.pool.m)} Treat the rank as directional.</div>`}
+   <div class="flowsec"><div class="lbl">Thesis</div><div style="font-size:12.5px;line-height:1.6;color:var(--dim)">${esc(e.th)}</div></div>
+   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Who collects it <span>${e.conc.sup.length}</span></div>${e.conc.sup.map(supRow).join('')}
+     <div class="meth" style="color:var(--mut);font-size:11px;margin-top:8px">${esc(e.conc.s)}. Named suppliers already on the map are clickable.</div></div>
+   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Why supply can't respond <span>${e.bar.length}</span></div>
+     ${e.bar.map(b=>`<div class="rkv"><span class="k">${esc(BARS[b])}</span></div>`).join('')}
+     <div class="meth" style="color:var(--mut);font-size:11px;margin-top:8px">${esc(e.ttr.m)}</div></div>
+   ${an?`<div class="mblock"><div class="lbl">Historical analogue</div><div class="rkv"><span class="k">${esc(an.n)}</span><span class="v">${rnum(an.peak.v)} → ${rnum(an.trough.v)}</span></div><div class="prov-txt"><b>Lesson.</b> ${esc(an.lesson)}</div></div>`:''}`;
+  const b=document.getElementById('openDossier');if(b)b.onclick=()=>openDossier(id);
+  // Skip the tab's own hash write and let selectNode push the one entry — so a
+  // single Back returns to this signal on the board, not to a half-state.
+  document.querySelectorAll('#rinspector .cplink').forEach(s=>{const go=()=>{setTab('map',null);selectNode(s.dataset.go);};s.onclick=go;s.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
+  drawRSpark(e);
+  buildRentList();
+  drawScatter();
+  syncHash(push);
+}
+
+function drawRSpark(e){
+  const cv=document.getElementById('rspark');if(!cv||!e.ser.length)return;
+  const g=cv.getContext('2d'),w=cv.clientWidth||300,h=46;
+  cv.width=Math.round(w*DPR);cv.height=Math.round(h*DPR);g.setTransform(DPR,0,0,DPR,0,0);
+  const vs=e.ser.map(d=>d.v),lo=Math.min(...vs,e.base.v),hi=Math.max(...vs);
+  const X=i=>10+(e.ser.length===1?0.5:i/(e.ser.length-1))*(w-20),Y=v=>h-8-((v-lo)/((hi-lo)||1))*(h-18);
+  // Baseline first, as a dashed floor — the whole point is the gap above it.
+  g.strokeStyle=PCOL.E;g.globalAlpha=0.5;g.setLineDash([4,4]);g.lineWidth=1;
+  g.beginPath();g.moveTo(8,Y(e.base.v));g.lineTo(w-8,Y(e.base.v));g.stroke();
+  g.setLineDash([]);g.globalAlpha=1;
+  g.strokeStyle=RCAT[e.cat];g.lineWidth=1.8;g.beginPath();
+  e.ser.forEach((d,i)=>i?g.lineTo(X(i),Y(d.v)):g.moveTo(X(i),Y(d.v)));g.stroke();
+  g.fillStyle=RCAT[e.cat];e.ser.forEach((d,i)=>{g.beginPath();g.arc(X(i),Y(d.v),2,0,6.28);g.fill();});
+  const li=e.ser.length-1;
+  g.fillStyle='#fff';g.beginPath();g.arc(X(li),Y(e.ser[li].v),3.2,0,6.28);g.fill();
+  g.font='600 10px Inter,sans-serif';g.textAlign='right';g.fillStyle='#e8eef7';
+  g.fillText(rnum(e.ser[li].v),w-10,Math.max(10,Y(e.ser[li].v)-8));
+  g.textAlign='left';g.fillStyle=PCOL.E;g.fillText('baseline '+rnum(e.base.v),10,Math.min(h-2,Y(e.base.v)+11));
+}
+
+/* ---- scatter: months-to-relief (x) vs rent multiple (y), bubble = rent pool ----
+   Drawn on demand rather than on a RAF — nothing here animates, so a render
+   loop would burn frames for a static plot. */
+const rsc=document.getElementById('rscatter'),rsx=rsc.getContext('2d');
+let rsPts=[],rsRAF=null;
+const scheduleScatter=()=>{if(rsRAF===null)rsRAF=requestAnimationFrame(()=>{rsRAF=null;drawScatter();});};
+function drawScatter(){
+  if(tab!=='rents'||!rScatOpen)return;
+  const w=rsc.clientWidth,h=rsc.clientHeight;
+  if(!w||!h)return;
+  const cw=Math.round(w*DPR),ch=Math.round(h*DPR);
+  if(rsc.width!==cw||rsc.height!==ch){rsc.width=cw;rsc.height=ch;}
+  rsx.setTransform(DPR,0,0,DPR,0,0);rsx.clearRect(0,0,w,h);
+  // Padding leaves room for the largest bubble (radius 22 plus its provenance
+  // marker) at every edge — without it, a signal sitting on the 10-year clamp
+  // gets sliced by the right-hand edge.
+  const L=48,R=32,T=28,B=30,pw=w-L-R,ph=h-T-B;
+  if(pw<40||ph<40)return;
+  const rows=rVis();
+  const XM=120,YM=8; // 10 years of relief, 8x multiple — both clamp
+  const X=mo=>L+Math.min(mo,XM)/XM*pw;
+  const Y=m=>T+ph-(Math.log(Math.max(1,Math.min(m,YM)))/Math.log(YM))*ph;
+  rsx.strokeStyle='rgba(90,120,170,.16)';rsx.lineWidth=1;
+  rsx.font='10px Inter,-apple-system,Segoe UI,Roboto,sans-serif';rsx.fillStyle='#828fa6';
+  rsx.textAlign='center';
+  [0,24,48,72,96,120].forEach(mo=>{const x=X(mo);rsx.beginPath();rsx.moveTo(x,T);rsx.lineTo(x,T+ph);rsx.stroke();rsx.fillText(mo?mo/12+'y':'now',x,T+ph+14);});
+  rsx.textAlign='right';
+  [1,2,3,5,8].forEach(m=>{const y=Y(m);rsx.beginPath();rsx.moveTo(L,y);rsx.lineTo(L+pw,y);rsx.stroke();rsx.fillText(m+'×',L-6,y+3);});
+  const mp=Math.max(1,...rows.map(e=>e.pool.v));
+  rsPts=rows.map(e=>({e,x:X(e.ttr.mo),y:Y(rMult(e)),r:5+Math.sqrt(e.pool.v/mp)*17}));
+  // Big bubbles first so small ones stay clickable on top.
+  rsPts.slice().sort((a,b)=>b.r-a.r).forEach(({e,x,y,r})=>{
+    const sel=e.id===rSel;
+    rsx.beginPath();rsx.arc(x,y,r,0,6.28);
+    rsx.fillStyle=RCAT[e.cat];rsx.globalAlpha=sel?0.95:0.42;rsx.fill();rsx.globalAlpha=1;
+    rsx.lineWidth=sel?2.2:1;rsx.strokeStyle=sel?'#fff':RCAT[e.cat];rsx.stroke();
+    const p=rProv(e);rsx.fillStyle=PCOL[p];rsx.strokeStyle='#0a0e16';rsx.lineWidth=1.2;
+    provDot(rsx,x+r*0.72,y-r*0.72,3,p);
+  });
+  // Label pass: biggest bubbles win, skip anything that would collide.
+  const placed=[];rsx.textAlign='center';rsx.lineJoin='round';
+  rsPts.slice().sort((a,b)=>b.r-a.r).forEach(({e,x,y,r})=>{
+    const sel=e.id===rSel;
+    if(r<11&&!sel)return;
+    rsx.font=(sel?'700 ':'600 ')+'10px Inter,-apple-system,Segoe UI,Roboto,sans-serif';
+    const tw=rsx.measureText(e.id).width,ly=y+r+11;
+    const box={x:x-tw/2-2,y:ly-10,w:tw+4,h:14};
+    if(!sel&&placed.some(q=>!(box.x+box.w<q.x||box.x>q.x+q.w||box.y+box.h<q.y||box.y>q.y+q.h)))return;
+    placed.push(box);
+    rsx.lineWidth=3;rsx.strokeStyle='rgba(8,12,20,.92)';rsx.strokeText(e.id,x,ly);
+    rsx.fillStyle=sel?'#fff':'#c9d4e3';rsx.fillText(e.id,x,ly);
+  });
+  const seen=[...new Set(rows.map(e=>e.cat))];
+  document.getElementById('rsclegend').innerHTML=
+    '<span>x · time to relief</span><span>y · rent multiple</span><span>bubble · rent pool</span>'+
+    seen.map(k=>`<span><i style="background:${RCAT[k]}"></i>${esc(CATS[k])}</span>`).join('');
+}
+const rsHit=(px,py)=>{let best=null,bd=1e9;for(const p of rsPts){const d=Math.hypot(px-p.x,py-p.y);if(d<=Math.max(p.r,10)&&d<bd){bd=d;best=p;}}return best;};
+rsc.addEventListener('pointermove',ev=>{
+  const t=document.getElementById('rsctip'),p=rsHit(ev.offsetX,ev.offsetY);
+  if(!t)return;
+  if(p){const e=p.e;t.innerHTML=`<div class="t">${esc(e.n)}</div><div class="s">${rMult(e).toFixed(1)}× baseline · ${fmt(e.pool.v)}/yr</div><div class="s">relief ${rmo(e.ttr.mo)} · ${esc(CATS[e.cat])}</div>`;
+    t.style.left=Math.min(ev.offsetX+14,rsc.clientWidth-236)+'px';t.style.top=Math.min(ev.offsetY+14,rsc.clientHeight-84)+'px';t.style.opacity=1;rsc.style.cursor='pointer';}
+  else{t.style.opacity=0;rsc.style.cursor='crosshair';}
+});
+rsc.addEventListener('pointerleave',()=>{const t=document.getElementById('rsctip');if(t)t.style.opacity=0;});
+rsc.addEventListener('click',ev=>{const p=rsHit(ev.offsetX,ev.offsetY);if(p)selectRent(p.e.id,true);});
+window.addEventListener('resize',()=>{scheduleScatter();if(rSel&&RBY[rSel])drawRSpark(RBY[rSel]);});
+document.getElementById('rscatToggle').onclick=function(){
+  rScatOpen=!rScatOpen;
+  document.getElementById('rscatWrap').classList.toggle('off',!rScatOpen);
+  this.textContent=rScatOpen?'Hide plot':'Show plot';
+  this.setAttribute('aria-pressed',rScatOpen?'true':'false');
+  if(rScatOpen)scheduleScatter();
+};
+const rsrch=document.getElementById('rsrch');
+rsrch.oninput=()=>{rQ=rsrch.value.toLowerCase().trim();buildRentList();refreshRentStats();drawScatter();};
+rsrch.onkeydown=ev=>{if(ev.key==='Escape'){ev.stopPropagation();rsrch.value='';rQ='';buildRentList();refreshRentStats();drawScatter();}};
+
+/* ---- dossier modal (the long-form breakdown) ---- */
+const rentModal=document.getElementById('rentModal');
+let rdPrevFocus=null;
+function provRow(label,f,extra){
+  return `<tr><td>${esc(label)}</td><td><span class="tag ${f.p}">${PNAME[f.p]}</span> · source quality ${(f.c*100|0)}%${extra?' · '+esc(extra):''}<br>${f.m?'<b>Method.</b> '+esc(f.m)+'<br>':''}<b>Source.</b> ${esc(f.s)}${f.url?` · <a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">verify ↗</a>`:''}</td></tr>`;
+}
+function openDossier(id){
+  const e=RBY[id];if(!e)return;
+  rdPrevFocus=document.activeElement;
+  const an=e.an?ABY[e.an]:null;
+  document.getElementById('rdTitle').textContent=e.n;
+  document.getElementById('rdBody').innerHTML=`
+   <p style="color:var(--txt);font-size:13.5px;line-height:1.6;margin:0 0 14px">${esc(e.th)}</p>
+   <div class="dgrid">
+     <div class="dcell"><div class="k">Price now</div><div class="v">${rnum(e.px.v)}</div><div class="sub">${esc(e.u)} · as of ${esc(e.px.asOf)}</div></div>
+     <div class="dcell"><div class="k">Baseline</div><div class="v">${rnum(e.base.v)}</div><div class="sub">${esc(e.base.per)}</div></div>
+     <div class="dcell"><div class="k">Rent multiple</div><div class="v">${rMult(e).toFixed(1)}×</div><div class="sub">price ÷ baseline, derived</div></div>
+     <div class="dcell"><div class="k">Rent pool</div><div class="v">${fmt(e.pool.v)}</div><div class="sub">per year of excess over baseline</div></div>
+   </div>
+   <h4>Why supply can't respond</h4>
+   <ul>${e.bar.map(b=>`<li><b>${esc(BARS[b])}.</b> ${esc(BARWHY[b])}</li>`).join('')}</ul>
+   <h4>Time to relief · ${rmo(e.ttr.mo)}</h4>
+   <p>${esc(e.ttr.m)}</p>
+   <p>${esc(e.build)}</p>
+   <h4>What solving it requires</h4>
+   <ul>${e.solve.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
+   <h4>What would kill this rent</h4>
+   <ul>${e.kill.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
+   <h4>Substitutes and adjacent routes</h4>
+   <p>${e.sub.map(esc).join(' · ')}</p>
+   <h4>Who collects it</h4>
+   <p>${e.conc.sup.map(s=>`${esc(s.n||(byId[s.id]?byId[s.id].name:s.id))} ${rpct(s.sh)}`).join(' · ')}<br>
+     <span style="color:var(--mut)">Top-3 share ${rpct(e.conc.top3)} · HHI ${e.conc.hhi} · incumbent gross margin ${rpct(e.gm.v)} (${esc(e.gm.who)})</span></p>
+   ${an?`<h4>Historical analogue · ${esc(an.n)}</h4>
+     <p>${rnum(an.peak.v)} (${esc(an.peak.t)}) → ${rnum(an.trough.v)} (${esc(an.trough.t)}). ${esc(an.why)}<br>
+     <b>Lesson.</b> ${esc(an.lesson)}</p>`:''}
+   <h4>Provenance, figure by figure</h4>
+   <table class="dtab">
+     ${provRow('Price',e.px,'as of '+e.px.asOf)}
+     ${provRow('Baseline',e.base,e.base.per)}
+     ${provRow('Rent pool',e.pool)}
+     ${provRow('Incumbent margin',e.gm,e.gm.who)}
+     ${provRow('Concentration',e.conc)}
+     ${provRow('Time to relief',e.ttr)}
+   </table>`;
+  document.getElementById('rdFoot').innerHTML=`Rank ${rRankAll()[id]} of ${RENTS.length} · score ${rentScore(e).toFixed(0)} = 30% rent multiple + 28% rent pool + 20% persistence + 12% concentration + 10% incumbent margin, computed from the fields above. Snapshot ${esc(RENT_ASOF)}. Estimated and Inferred figures are directional, not audited.`;
+  rentModal.classList.add('show');document.getElementById('rdClose').focus();
+}
+function closeDossier(){rentModal.classList.remove('show');if(rdPrevFocus&&rdPrevFocus.focus){try{rdPrevFocus.focus();}catch{/* element gone */}}}
+document.getElementById('rdClose').onclick=closeDossier;
+rentModal.addEventListener('mousedown',e=>{if(e.target===rentModal)closeDossier();});
+rentModal.addEventListener('keydown',e=>{
+  if(e.key!=='Tab'||!rentModal.classList.contains('show'))return;
+  const f=[...rentModal.querySelectorAll('button,a[href]')];
+  if(!f.length)return;
+  const first=f[0],last=f[f.length-1],cur=document.activeElement;
+  if(e.shiftKey&&(cur===first||!f.includes(cur))){e.preventDefault();last.focus();}
+  else if(!e.shiftKey&&(cur===last||!f.includes(cur))){e.preventDefault();first.focus();}
+});
 
 /* ---- shareable URL state ----
    #node=NVDA&t=2022&hide=fin,energy&layers=RE&size=rev — every interesting
@@ -551,6 +865,15 @@ function syncHash(push){
   const off=Object.keys(SEC).filter(s=>!secOn[s]);if(off.length)p.set('hide',off.join(','));
   const lay=['R','E','I'].filter(k=>layerOn[k]).join('');if(lay!=='REI')p.set('layers',lay);
   if(sizeBy!=='mcap')p.set('size',sizeBy);
+  // Board state rides in the same hash. It is only emitted while the board is
+  // the active view, so map links stay as short as they were.
+  if(tab==='rents'){
+    p.set('view','rents');
+    if(rSel)p.set('r',rSel);
+    const coff=Object.keys(CATS).filter(k=>!rCatOn[k]);if(coff.length)p.set('rcat',coff.join(','));
+    const boff=Object.keys(BARS).filter(k=>!rBarOn[k]);if(boff.length)p.set('rbar',boff.join(','));
+    if(rSort!=='score')p.set('rsort',rSort);
+  }
   const h=p.toString()?'#'+p.toString():'';
   if(h===location.hash)return;
   if(push)history.pushState(null,'',h||'#');
@@ -567,7 +890,20 @@ function applyHash(){
   if(p.has('layers')){const l=p.get('layers');['R','E','I'].forEach(k=>layerOn[k]=l.includes(k));}
   if(p.has('size')&&['mcap','rev'].includes(p.get('size'))){sizeBy=p.get('size');document.querySelectorAll('#sizeBy button').forEach(x=>x.classList.toggle('on',x.dataset.by===sizeBy));}
   buildSectors();buildLayers();refreshStats();
+  Object.keys(CATS).forEach(k=>rCatOn[k]=true);
+  if(p.has('rcat'))p.get('rcat').split(',').forEach(k=>{if(k in rCatOn)rCatOn[k]=false;});
+  Object.keys(BARS).forEach(k=>rBarOn[k]=true);
+  if(p.has('rbar'))p.get('rbar').split(',').forEach(k=>{if(k in rBarOn)rBarOn[k]=false;});
+  rSort=p.has('rsort')&&RSORTS[p.get('rsort')]?p.get('rsort'):'score';
+  const wantRents=p.get('view')==='rents';
+  setTab(wantRents?'rents':'map',false);
   let sel=false;
+  if(wantRents){
+    const rid=(p.get('r')||'').toUpperCase();
+    if(rid&&RBY[rid]){selectRent(rid,false);sel=true;}
+    else{rSel=null;buildRentBoard();}
+    scheduleScatter();
+  }
   const nid=(p.get('node')||'').toUpperCase(); // ids are uppercase; accept #node=aapl
   if(nid&&byId[nid]){selectNode(nid);sel=true;}
   restoring=false;
@@ -580,7 +916,9 @@ function applyHash(){
 scrub.max=String(PERIODS.length-1);scrub.value=String(tIdx);
 scrub.setAttribute('aria-label',`Time period (${PERIODS[0]}–${PERIODS[PERIODS.length-1]})`);
 document.getElementById('period').textContent=PERIODS[tIdx];
-buildSectors();buildLayers();refreshStats();tick();requestAnimationFrame(frame);
+buildSectors();buildLayers();refreshStats();tick();buildRentBoard();startMapLoop();
 const deepLinked=applyHash();
 window.addEventListener('hashchange',applyHash);
-if(!deepLinked&&location.hash!=='#about')setTimeout(()=>selectNode('NVDA'),400);
+// Demo-select only when we landed on the map with nothing asked for — a deep
+// link into the board must not get its hash rewritten 400ms later.
+if(!deepLinked&&tab==='map'&&location.hash!=='#about')setTimeout(()=>selectNode('NVDA'),400);
