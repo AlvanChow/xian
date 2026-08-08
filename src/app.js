@@ -586,6 +586,10 @@ const rVis=()=>RENTS.filter(e=>rCatOn[e.cat]&&e.bar.some(b=>rBarOn[b])&&rMatch(e
 const rRankAll=()=>{const o=[...RENTS].sort((a,b)=>rentScore(b)-rentScore(a));return Object.fromEntries(o.map((e,i)=>[e.id,i+1]));};
 
 const appEl=document.getElementById('app');
+// push: true pushes a history entry, false replaces in place, null skips the
+// hash write entirely — for a switch that is immediately followed by another
+// action that will push (e.g. a supplier jump calling selectNode). Replacing
+// there would overwrite the board entry the user needs to come back to.
 function setTab(v,push){
   tab=v==='rents'?'rents':'map';
   appEl.dataset.view=tab;
@@ -593,7 +597,7 @@ function setTab(v,push){
   document.getElementById('logoSub').textContent=tab==='rents'?'· the scarcity board':'· global capital-flow map';
   if(tab==='map'){startMapLoop();}
   else{stopMapLoop();buildRentBoard();drawScatter();}
-  syncHash(push);
+  if(push!==null)syncHash(push);
 }
 document.querySelectorAll('#viewTab button').forEach(b=>b.onclick=()=>setTab(b.dataset.v,true));
 
@@ -680,7 +684,9 @@ function selectRent(id,push){
      <div class="meth" style="color:var(--mut);font-size:11px;margin-top:8px">${esc(e.ttr.m)}</div></div>
    ${an?`<div class="mblock"><div class="lbl">Historical analogue</div><div class="rkv"><span class="k">${esc(an.n)}</span><span class="v">${rnum(an.peak.v)} → ${rnum(an.trough.v)}</span></div><div class="prov-txt"><b>Lesson.</b> ${esc(an.lesson)}</div></div>`:''}`;
   const b=document.getElementById('openDossier');if(b)b.onclick=()=>openDossier(id);
-  document.querySelectorAll('#rinspector .cplink').forEach(s=>{const go=()=>{setTab('map',true);selectNode(s.dataset.go);};s.onclick=go;s.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
+  // Skip the tab's own hash write and let selectNode push the one entry — so a
+  // single Back returns to this signal on the board, not to a half-state.
+  document.querySelectorAll('#rinspector .cplink').forEach(s=>{const go=()=>{setTab('map',null);selectNode(s.dataset.go);};s.onclick=go;s.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
   drawRSpark(e);
   buildRentList();
   drawScatter();

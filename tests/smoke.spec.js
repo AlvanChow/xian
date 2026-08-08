@@ -567,3 +567,17 @@ test('the scatter plot toggles and every bubble is reachable as a row', async ({
   await toggle.click();
   await expect(wrap).toBeVisible();
 });
+
+test('one back press returns from a supplier jump to the board', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  await page.locator('#rlist .rrow[data-r="HBM"]').click();
+  await expect(page).toHaveURL(/r=HBM/);
+
+  await page.locator('#rinspector .cplink').first().click();
+  await expect(page.locator('#app')).toHaveAttribute('data-view', 'map');
+
+  // The tab switch must not have cost its own history entry.
+  await page.goBack();
+  await expect(page.locator('#app')).toHaveAttribute('data-view', 'rents');
+  await expect(page.locator('#rinspector .ihead .nm')).toContainText('HBM');
+});
