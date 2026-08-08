@@ -6,7 +6,10 @@ Live site: **https://alvanchow.github.io/xian/**
 
 ![ValueGrid](https://img.shields.io/badge/render-canvas-5b8cff) ![provenance](https://img.shields.io/badge/provenance-R%2FE%2FI-3fd68a)
 
-## What it is
+Two tabs, two questions. The **Map** answers *where does the money go?* The **Scarcity board**
+answers *where is the money stuck?*
+
+## The Map
 
 - **164 nodes** — public companies (sized by market cap or revenue), plus macro nodes: treasuries, central banks (Fed, ECB, PBOC, BOJ), governments, and household sectors.
 - **~510 flow edges** — supplier payments, corporate tax, household consumption, banking/credit, energy input-output, foundry bill-of-materials, dividends, central-bank remittances, and government transfers.
@@ -14,6 +17,34 @@ Live site: **https://alvanchow.github.io/xian/**
 - **Time scrubbing** (2019–2025) and a simulated **live feed** panel.
 - **An inspector** that breaks down every node's inflows/outflows and shows the methodology + source behind each figure.
 - **Mouse, touch, and keyboard control** — drag/scroll-wheel on desktop; one-finger pan, pinch-zoom, and tap-select on touch devices; arrow keys pan, `+`/`−` zoom, and `0` resets when the map is focused.
+
+## The Scarcity board
+
+A ranked board of **scarcity rents** — things whose price has diverged far above the cost of new
+supply because supply cannot respond. DRAM and HBM are the canonical recent examples: the same
+bits, priced at multiples of their own trough, because a fab is a three-to-four year commitment
+and nobody wanted to repeat 2019.
+
+Each signal carries the price now, the baseline it is priced against, the annual excess rent that
+gap implies, who collects it, why supply is stuck, when relief arrives, **what solving it actually
+requires**, and what would kill the trade. Named suppliers that exist on the map are clickable —
+one click jumps to that entity's flow network.
+
+- **A ranked list plus a scatter** — x = time to relief, y = rent multiple, bubble = rent pool,
+  color = category.
+- **A dossier per signal** — the long-form breakdown, including a per-figure provenance table.
+- **A reverted-signals archive** — DRAM 2018, container freight 2021, lithium 2022, travel nurses
+  2021, GLP-1 2023, SiC 2023, TTF gas 2022, LCD panels 2021, NYC taxi medallions 2013. Every one
+  of them was, at its peak, as compelling as anything currently on the board. Rents decay; the
+  archive is there so the board never reads as a list of permanent conditions.
+
+**The rank score is computed, never typed** — 30% rent multiple, 28% rent pool, 20% persistence,
+12% concentration, 10% incumbent margin, derived in `rentScore()` (`src/rents.js`) from the entry's
+own fields and unit-tested for monotonicity. Provenance is deliberately *excluded* from the score:
+a weakly-sourced signal ranks where its numbers put it and shows an **I** badge, rather than being
+quietly demoted inside a number.
+
+Deep-linkable: `#view=rents&r=HBM`, with category, barrier and sort filters carried in the hash too.
 
 ## The provenance model (R / E / I)
 
@@ -40,6 +71,8 @@ The figures are drawn from / modeled on a mix of public sources, including:
 - Tax-incidence modeling (sector margin × jurisdiction effective rate) for corporate tax flows.
 
 > **Note:** This is an illustrative visualization. Company revenue is **real where we can prove it**: `scripts/fetch-data.mjs` pulls reported annual revenue (FY2019–2025) from SEC XBRL filings (10-K / 20-F) into a generated `src/facts.js`, and only those figures display the **R (Reported)** tag — with a "Verify at SEC" link in the inspector. Everything not backed by a fetched filing is shown as **E (Estimated)** or **I (Inferred)** and should be treated as directional, not audited. Flow edges are modeled throughout. The "Market feeds" panel mixes real quotes (ECB FX via Frankfurter, BTC/gold via CoinGecko, fetched only while Live is on) with simulated series — each row is labeled `live` or `sim`.
+>
+> **The Scarcity board is mostly modeled, and says so.** Advanced-packaging slots, CDMO line rates, HBM ASPs and bilateral isotope supply are not publicly quoted, so most of its prices are **E** or **I** — the board's provenance mix reports the split, and each signal's headline tag is the *weakest* figure holding it up, not an average. A handful of figures are genuinely **R** (PJM capacity auction clears, FCC auction averages, FDA shortage status). Rent pools are the softest number on the board: they multiply a modeled price gap by a modeled volume. Treat the ranking as a way to argue about where capacity is missing, not as a valuation.
 
 ## Project structure
 
@@ -50,13 +83,14 @@ src/
   world.js     # coastline geometry (export const WORLD)
   data.js      # COMPANIES + FLOWS (export const)
   facts.js     # GENERATED — real SEC-reported revenue series (do not edit)
-  app.js       # render loop, projection/zoom, interaction, inspector, drill-down
+  rents.js     # Scarcity board: RENTS + ARCHIVE + the derived rank score
+  app.js       # render loop, projection/zoom, interaction, inspector, drill-down, scarcity board
 scripts/
   postbuild.mjs   # copies the inlined build to repo-root index.html
   fetch-data.mjs  # fetches reported revenue from SEC XBRL -> src/facts.js
 tests/
   smoke.spec.js   # Playwright browser smoke tests
-  unit/           # node:test data-integrity tests
+  unit/           # node:test data-integrity tests (data.test.mjs, rents.test.mjs)
 .github/workflows/
   ci.yml            # lint + unit + build (staleness guard) + smoke tests
   refresh-data.yml  # monthly SEC data refresh + rebuild + commit

@@ -147,10 +147,79 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .feed .fsrc{font-style:normal;font-size:9px;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);margin-left:5px;vertical-align:middle}
 #spark{width:100%;height:38px;display:block;margin-top:8px}
 
-/* overlay modals (drill graph, about) */
-#modal,#aboutModal{position:fixed;inset:0;background:rgba(6,9,14,.7);display:none;align-items:center;justify-content:center;z-index:30;backdrop-filter:blur(4px)}
-#modal.show,#aboutModal.show{display:flex}
-#aboutModal .mcard{width:min(720px,92vw);height:auto;max-height:86vh}
+/* ---- scarcity board (second tab) ----
+   The two views share the four grid cells; only the contents swap. Gating on a
+   data-view attribute keeps every responsive branch and `order:` rule below
+   working for both views without a second layout. */
+#app[data-view="map"] .v-rents{display:none}
+#app[data-view="rents"] .v-map{display:none}
+.hgrp{display:flex;align-items:center;gap:22px}
+/* Both center panes fill the cell and establish the positioning context the
+   absolutely-placed map overlays (.ctl, #tip, #timebar) resolve against. */
+#centerMap,#centerRents{position:absolute;inset:0}
+#centerRents{display:flex;flex-direction:column;background:var(--bg)}
+
+.rhead{display:flex;align-items:flex-start;gap:14px;padding:14px 18px 12px;border-bottom:1px solid var(--line)}
+.rttl{font-size:15px;font-weight:680}
+.rsub{color:var(--mut);font-size:11.5px;margin-top:3px;line-height:1.5}
+.rhead .tbtn{margin-left:auto;flex-shrink:0}
+
+#rscatWrap{position:relative;flex-shrink:0;display:flex;flex-direction:column;border-bottom:1px solid var(--line)}
+#rscatWrap.off{display:none}
+#rscatter{display:block;width:100%;height:210px;cursor:crosshair}
+#rsctip{position:absolute;pointer-events:none;background:rgba(13,19,30,.96);border:1px solid var(--line);padding:8px 11px;border-radius:9px;font-size:11.5px;line-height:1.5;opacity:0;transition:opacity .1s;max-width:230px;box-shadow:0 8px 28px rgba(0,0,0,.5);z-index:6;backdrop-filter:blur(8px)}
+#rsctip .t{font-weight:650;font-size:12.5px}#rsctip .s{color:var(--dim)}
+/* Legend sits below the plot rather than over it — overlaid, it collided with
+   the x-axis tick labels as soon as more than six categories were visible. */
+.rsclegend{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:10px;color:var(--mut);padding:0 14px 9px}
+.rsclegend span{display:inline-flex;align-items:center;gap:5px}
+.rsclegend i{width:8px;height:8px;border-radius:50%}
+
+#rlist{flex:1;overflow-y:auto;padding:6px 0 18px}
+.rrow{display:flex;gap:12px;align-items:flex-start;padding:11px 18px;border-bottom:1px solid var(--line);cursor:pointer}
+.rrow:hover{background:var(--panel2)}
+.rrow.on{background:var(--panel);box-shadow:inset 3px 0 0 var(--accent)}
+.rrow .rk{font-family:var(--mono);font-size:12px;color:var(--mut);width:26px;flex-shrink:0;text-align:right;padding-top:2px;font-variant-numeric:tabular-nums}
+.rrow .rbody{flex:1;min-width:0}
+.rrow .r1{display:flex;align-items:baseline;gap:8px}
+.rrow .rn{font-weight:600;font-size:13.5px}
+.rrow .rmult{margin-left:auto;font-weight:680;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rrow .rmeta{color:var(--mut);font-size:11px;margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 10px}
+.rrow .rbars{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.rbchip{font-size:10px;padding:1px 7px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+.rrow .track{margin-top:7px}
+.rcdot{width:9px;height:9px;border-radius:3px;flex-shrink:0;align-self:center}
+.rempty{padding:28px 18px;text-align:center;color:var(--mut);line-height:1.65}
+
+/* board inspector (right rail) */
+#rinspector .ins-empty{padding:30px 18px}
+.rkv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:12.5px;border-bottom:1px solid var(--line)}
+.rkv:last-child{border-bottom:0}
+.rkv .k{color:var(--dim)}.rkv .v{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.rsup{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.rsup:last-child{border-bottom:0}
+.rsup .sh{margin-left:auto;color:var(--dim);font-variant-numeric:tabular-nums}
+.rsup .cplink{font-weight:550}
+.rsup .plain{color:var(--dim)}
+
+/* dossier body */
+#rdBody h4{margin:16px 0 7px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut)}
+#rdBody h4:first-child{margin-top:0}
+#rdBody ul{margin:0 0 12px;padding-left:18px}#rdBody li{margin:5px 0}
+#rdBody .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:6px}
+#rdBody .dcell{background:var(--panel);padding:11px 13px}
+#rdBody .dcell .k{color:var(--mut);font-size:10.5px;letter-spacing:.4px;text-transform:uppercase}
+#rdBody .dcell .v{font-size:16px;font-weight:680;margin-top:3px;font-variant-numeric:tabular-nums;color:var(--txt)}
+#rdBody .dcell .sub{color:var(--mut);font-size:10.5px;margin-top:3px;line-height:1.45}
+#rdBody .dtab{border-collapse:collapse;width:100%;font-size:11.5px;margin-bottom:12px}
+#rdBody .dtab td{padding:7px 8px 7px 0;vertical-align:top;border-bottom:1px solid var(--line);color:var(--mut);line-height:1.55}
+#rdBody .dtab td:first-child{color:var(--txt);font-weight:600;white-space:nowrap;width:1%}
+#rdBody .dtab tr:last-child td{border-bottom:0}
+
+/* overlay modals (drill graph, about, dossier) */
+#modal,#aboutModal,#rentModal{position:fixed;inset:0;background:rgba(6,9,14,.7);display:none;align-items:center;justify-content:center;z-index:30;backdrop-filter:blur(4px)}
+#modal.show,#aboutModal.show,#rentModal.show{display:flex}
+#aboutModal .mcard,#rentModal .mcard{width:min(720px,92vw);height:auto;max-height:86vh}
 .abody{padding:16px 22px 20px;overflow-y:auto;font-size:13px;line-height:1.65;color:var(--dim)}
 .abody p{margin:0 0 12px}.abody b{color:var(--txt)}
 .abody h4{margin:16px 0 8px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut)}
@@ -186,6 +255,12 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   #left{order:2}
   #right{order:3}
   #left,#right{border-left:0;border-right:0;border-top:1px solid var(--line)}
+  /* The board is a list, not a viewport-anchored canvas: give it the screen and
+     put the filters below it, since the ranking is the point on a phone. */
+  #app[data-view="rents"] #center{height:auto;min-height:calc(100svh - 60px)}
+  #app[data-view="rents"] #left{order:3}
+  #app[data-view="rents"] #right{order:2}
+  #rscatter{height:180px}
 }
 @media (max-width:480px){
   #timebar{bottom:14px;gap:8px;padding:7px 10px}

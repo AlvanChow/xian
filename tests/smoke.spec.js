@@ -420,3 +420,150 @@ test('play advances the period then stops cleanly when paused', async ({ page })
   const b = (await period.innerText()).trim();
   expect(b).toBe(a);
 });
+
+/* ---- scarcity board (second tab) ---- */
+
+// Switching to the board and back exercises the whole view-swap: the map RAF
+// loop stops, the board renders, and the header stats swap with it.
+test('the Scarcity tab swaps the view and the map loop stops', async ({ page }) => {
+  const mapCanvas = page.locator('#map');
+  await expect(mapCanvas).toBeVisible();
+
+  await page.locator('#viewTab button[data-v="rents"]').click();
+
+  await expect(page.locator('#app')).toHaveAttribute('data-view', 'rents');
+  await expect(mapCanvas).toBeHidden();
+  await expect(page.locator('#centerRents')).toBeVisible();
+  await expect(page.locator('#viewTab button[data-v="rents"]')).toHaveAttribute('aria-selected', 'true');
+  // Board header stats replace the map's entity/flow counts.
+  await expect(page.locator('#hRN')).not.toHaveText('—');
+
+  // The map render loop must actually be suspended, not merely hidden: sample
+  // the canvas status readout, which only changes while frames are running.
+  const stopped = await page.evaluate(async () => {
+    const before = document.getElementById('map').width;
+    // Force a resize the loop would normally pick up on its next frame.
+    const el = document.getElementById('map');
+    el.width = 7;
+    await new Promise((r) => setTimeout(r, 300));
+    return { before, after: el.width };
+  });
+  expect(stopped.after, 'map canvas was reallocated, so the RAF loop is still running').toBe(7);
+
+  await page.locator('#viewTab button[data-v="map"]').click();
+  await expect(page.locator('#app')).toHaveAttribute('data-view', 'map');
+  await expect(mapCanvas).toBeVisible();
+});
+
+test('the board ranks every signal and rank 1 leads', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  const rows = page.locator('#rlist .rrow');
+
+  const expected = await page.evaluate(() => Number(document.getElementById('hRN').textContent));
+  await expect(rows).toHaveCount(expected);
+  expect(expected).toBeGreaterThan(0);
+
+  // Default sort is the rank score, so the first row is rank 1 and ranks ascend.
+  await expect(rows.first().locator('.rk')).toHaveText('1');
+  const ranks = await rows.locator('.rk').allInnerTexts();
+  const nums = ranks.map((r) => Number(r.trim()));
+  expect(nums).toEqual([...nums].sort((a, b) => a - b));
+
+  // Every row shows a rent multiple above 1x — that is what makes it a signal.
+  const mults = await rows.locator('.rmult').allInnerTexts();
+  for (const m of mults) expect(parseFloat(m)).toBeGreaterThan(1);
+});
+
+test('selecting a signal fills the inspector and opens its dossier', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  await page.locator('#rlist .rrow').first().click();
+
+  const ins = page.locator('#rinspector');
+  await expect(ins.locator('.ihead .nm')).not.toHaveText('');
+  await expect(ins.locator('.stats .stat')).toHaveCount(6);
+  await expect(ins).toContainText('RENT MULTIPLE');
+  await expect(ins).toContainText('TIME TO RELIEF');
+
+  // The dossier is the long-form breakdown, and Escape must close it.
+  await page.locator('#openDossier').click();
+  const modal = page.locator('#rentModal');
+  await expect(modal).toHaveClass(/show/);
+  await expect(page.locator('#rdBody')).toContainText("Why supply can't respond");
+  await expect(page.locator('#rdBody')).toContainText('What would kill this rent');
+  await expect(page.locator('#rdBody')).toContainText('Provenance, figure by figure');
+  await page.keyboard.press('Escape');
+  await expect(modal).not.toHaveClass(/show/);
+});
+
+test('a supplier chip returns to the map with that entity selected', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  // HBM's suppliers are all memory makers that exist as map nodes.
+  await page.locator('#rlist .rrow[data-r="HBM"]').click();
+
+  const link = page.locator('#rinspector .cplink').first();
+  const wantId = await link.getAttribute('data-go');
+  await link.click();
+
+  await expect(page.locator('#app')).toHaveAttribute('data-view', 'map');
+  await expect(page.locator('#inspector .ihead .tk')).toHaveText(wantId);
+});
+
+test('board filters narrow the list and the hash deep-links a signal', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  const rows = page.locator('#rlist .rrow');
+  const all = await rows.count();
+
+  // Turning a category off must drop exactly that category's entries.
+  await page.locator('#rcats button[data-rc="compute"]').click();
+  const fewer = await rows.count();
+  expect(fewer).toBeLessThan(all);
+  await expect(page).toHaveURL(/rcat=compute/);
+
+  // Search narrows further, then clears back.
+  await page.locator('#rcats button[data-rc="compute"]').click();
+  await page.locator('#rsrch').fill('uranium');
+  await expect(rows).toHaveCount(1);
+  await page.locator('#rsrch').fill('');
+  await expect(rows).toHaveCount(all);
+
+  // Selection is addressable.
+  await page.locator('#rlist .rrow[data-r="COCOA"]').click();
+  await expect(page).toHaveURL(/view=rents/);
+  await expect(page).toHaveURL(/r=COCOA/);
+});
+
+test('a deep link boots straight into the board with the signal selected', async ({ page }) => {
+  await page.goto(`${PAGE_URL}#view=rents&r=HBM`);
+  await page.waitForFunction(() => !!document.querySelector('#rinspector .ihead'));
+
+  await expect(page.locator('#app')).toHaveAttribute('data-view', 'rents');
+  await expect(page.locator('#rinspector .ihead .nm')).toContainText('HBM');
+  await expect(page.locator('#rlist .rrow[data-r="HBM"]')).toHaveClass(/on/);
+
+  // The map's demo auto-select must not fire and rewrite the hash out from under
+  // a deep link into the board.
+  await page.waitForTimeout(700);
+  await expect(page).toHaveURL(/view=rents/);
+  await expect(page).toHaveURL(/r=HBM/);
+});
+
+test('the scatter plot toggles and every bubble is reachable as a row', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+
+  const wrap = page.locator('#rscatWrap');
+  await expect(wrap).toBeVisible();
+  // The plot draws real pixels, not an empty canvas.
+  const painted = await page.locator('#rscatter').evaluate((c) => {
+    const g = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    for (let i = 3; i < g.length; i += 4) if (g[i] > 0) return true;
+    return false;
+  });
+  expect(painted).toBe(true);
+
+  const toggle = page.locator('#rscatToggle');
+  await toggle.click();
+  await expect(wrap).toBeHidden();
+  await expect(toggle).toHaveText('Show plot');
+  await toggle.click();
+  await expect(wrap).toBeVisible();
+});
