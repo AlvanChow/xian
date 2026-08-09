@@ -13,6 +13,12 @@ answers *where is the money stuck?*
 
 - **164 nodes** — public companies (sized by market cap or revenue), plus macro nodes: treasuries, central banks (Fed, ECB, PBOC, BOJ), governments, and household sectors.
 - **~510 flow edges** — supplier payments, corporate tax, household consumption, banking/credit, energy input-output, foundry bill-of-materials, dividends, central-bank remittances, and government transfers.
+- **A ranked flow budget.** Drawing all ~510 edges and all 164 pins at once was a hairball: every
+  arc faint, none legible, and no way to tell a $400B relationship from a $2B one. The map draws the
+  largest 120 flows by default (20 / 40 / 120 / All is a control), and the largest ~45 entities at
+  fit-view, revealing the tail as you zoom. Selecting a node always shows its own flows in full,
+  whatever the budget. Travelling dots mark only the selected ego-network — five hundred of them
+  moving at once read as static.
 - **A force-directed drill-down graph** for any node's ego-network.
 - **Time scrubbing** (2019–2025) and a simulated **live feed** panel.
 - **An inspector** that breaks down every node's inflows/outflows and shows the methodology + source behind each figure.
@@ -56,6 +62,10 @@ one click jumps to that entity's flow network.
   bill-mention tally spans these categories, and inventing one would dress a guess up as a
   measurement. Tagged `I` throughout, rendered as bars rather than digits, and unit-tested to stay
   out of the rank score — an entry should rank on its economics, not on how loud it is.
+- **Named counterparties on both sides.** Every entry names who collects the rent *and* who pays it,
+  and on the small-operator board who is already doing the work. Names that exist on the Map are
+  clickable straight through to that entity's flow network; a unit test asserts every claimed id
+  resolves, so the link can never dead-end.
 - **One click-in, not two views.** Selecting a row fills the right-hand panel with the complete
   record: the five table columns restated, the price chart, what is going on, who collects it, why
   nobody can make more (with each barrier explained), what is already being built, what solving it

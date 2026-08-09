@@ -326,3 +326,17 @@ test('implied volume inverts the rent pool identity', () => {
     assert.ok(Math.abs(v * (e.px.v - e.base.v) - e.pool.v * 1e9) < 1, `${e.id} volume does not invert its own pool`);
   }
 });
+
+test('every signal names who pays for it, and the names resolve', () => {
+  for (const e of RENTS) {
+    assert.ok(e.buy && Array.isArray(e.buy.top) && e.buy.top.length >= 2,
+      `${e.id} needs at least two named buyers`);
+    assert.ok(PROVS.has(e.buy.p) && e.buy.c > 0 && e.buy.m && e.buy.s, `${e.id}.buy is missing provenance`);
+    for (const b of e.buy.top) {
+      assert.ok(b.id || b.n, `${e.id} has a nameless buyer`);
+      // Same rule the supplier list follows: an id claims a map node, so it has
+      // to exist, or the click-through dead-ends.
+      if (b.id) assert.ok(COMPANY_IDS.has(b.id), `${e.id}: buyer id ${b.id} does not resolve in COMPANIES`);
+    }
+  }
+});

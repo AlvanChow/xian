@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { COMPANIES } from '../../src/data.js';
 import {
   MICRO, MCATS, MCAT, MBARS, MBARWHY, MICRO_ASOF, MW,
   mMult, mPayback, mVolume, microScore, microProv, microConf, microFields,
@@ -151,4 +152,24 @@ test('MICRO_ASOF is well-formed and not stale', () => {
   const months = (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - m);
   assert.ok(months >= 0, `${MICRO_ASOF} is in the future`);
   assert.ok(months <= 6, `${MICRO_ASOF} is ${months} months old — refresh the board`);
+});
+
+test('every niche names who does the work and who pays for it', () => {
+  const ids = new Set(COMPANIES.map((c) => c.id));
+  for (const e of MICRO) {
+    for (const k of ['buy', 'sup']) {
+      const f = e[k];
+      assert.ok(f && Array.isArray(f.top) && f.top.length >= 2, `${e.id}.${k} needs at least two names`);
+      assert.ok(f.p === 'I' || f.p === 'E', `${e.id}.${k} provenance`);
+      assert.ok(f.m && f.s, `${e.id}.${k} needs a method and a source`);
+      for (const x of f.top) {
+        assert.ok(x.id || x.n, `${e.id}.${k} has a nameless entry`);
+        if (x.id) assert.ok(ids.has(x.id), `${e.id}.${k}: id ${x.id} does not resolve in COMPANIES`);
+      }
+    }
+    // Naming the incumbents is the point; a list that just restates the buyer
+    // categories would be the generic version this replaced.
+    const supNames = e.sup.top.map((x) => x.n || x.id).join(' ');
+    assert.notStrictEqual(supNames, e.who.join(' '), `${e.id} suppliers duplicate its buyer categories`);
+  }
 });

@@ -136,6 +136,8 @@ const att = (media, policy) => ({ media, policy, p: 'I', c: 0.25, m: ATT_M, s: '
 export const MICRO = [
   {
     id: 'LEGACYIC',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Rochester Electronics" }, { n: "Lansdale Semiconductor" }, { n: "Independent brokers and stockists" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Medical device manufacturers" }, { n: "Industrial automation OEMs" }, { n: "Defence sustainment primes" }] },
     att: att(28, 30),
     n: 'End-of-life and obsolete semiconductor parts',
     pn: 'Chips nobody makes any more',
@@ -164,6 +166,8 @@ export const MICRO = [
   },
   {
     id: 'CALIB',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Trescal" }, { n: "Transcat" }, { n: "Instrument makers' own service arms" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Contract manufacturers under ISO 9001" }, { n: "Pharma and medical device QC labs" }, { n: "Utilities and energy metering" }] },
     att: att(12, 20),
     n: 'ISO 17025 accredited instrument calibration',
     pn: 'Calibrating other people’s instruments',
@@ -192,6 +196,8 @@ export const MICRO = [
   },
   {
     id: 'ELEVPART',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Independent board-repair shops" }, { n: "Otis and TK Elevator service arms" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Building managers with pre-2005 installations" }, { n: "Independent lift service companies" }, { n: "Hospital and social-housing estates" }] },
     att: att(10, 18),
     n: 'Control boards for discontinued elevator models',
     pn: 'Spare parts for lifts nobody supports',
@@ -220,6 +226,8 @@ export const MICRO = [
   },
   {
     id: 'COBOL',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ id: 'IBM' }, { id: 'TCS' }, { id: 'INFY' }, { n: "Independent contractors" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Retail and clearing banks" }, { n: "Insurers with legacy policy systems" }, { n: "Tax and benefits agencies" }] },
     att: att(55, 40),
     n: 'Mainframe and COBOL maintenance contracting',
     pn: 'Maintaining code older than most developers',
@@ -248,6 +256,8 @@ export const MICRO = [
   },
   {
     id: 'AS9100',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Regional AS9100 job shops" }, { n: "Prime in-house machining" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Tier-one aerostructure suppliers" }, { id: 'BA' }, { id: 'AIR' }, { n: "Business aviation MRO" }] },
     att: att(22, 35),
     n: 'Small-batch aerospace-qualified machining',
     pn: 'Machining parts for aircraft in small runs',
@@ -276,6 +286,8 @@ export const MICRO = [
   },
   {
     id: 'CLINCOUR',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "World Courier (Cencora)" }, { n: "Marken (UPS)" }, { n: "Regional validated couriers" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Contract research organisations" }, { id: 'TMO' }, { n: "Hospital trial sites and biobanks" }, { n: "Small biotechs" }] },
     att: att(18, 25),
     n: 'Clinical trial sample cold-chain courier',
     pn: 'Moving trial samples that must stay cold',
@@ -304,6 +316,8 @@ export const MICRO = [
   },
   {
     id: 'RARELANG',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Appen" }, { n: "TransPerfect" }, { n: "In-country annotator cooperatives" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Model developers filling coverage gaps" }, { n: "Government and NGO translation programmes" }, { n: "Speech and OCR vendors" }] },
     att: att(48, 30),
     n: 'Low-resource language annotation and localisation',
     pn: 'Annotating languages the big datasets skipped',
@@ -332,6 +346,8 @@ export const MICRO = [
   },
   {
     id: 'FAILANA',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Eurofins EAG Laboratories" }, { n: "SGS" }, { n: "Independent analysis labs" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Medical device and automotive quality teams" }, { n: "Insurers and litigators" }, { n: "Fabless companies without in-house labs" }] },
     att: att(20, 22),
     n: 'Semiconductor failure analysis lab time',
     pn: 'Finding out why a chip failed',
@@ -360,6 +376,8 @@ export const MICRO = [
   },
   {
     id: 'SEMIREFURB',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Independent refurbishers" }, { n: "Original tool vendors' refurb programmes" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Mature-node and specialty fabs" }, { n: "Equipment resellers and asset managers" }, { n: "Research and pilot lines" }] },
     att: att(26, 34),
     n: 'Semiconductor tool subsystem refurbishment',
     pn: 'Rebuilding parts for chip-making machines',
@@ -388,6 +406,8 @@ export const MICRO = [
   },
   {
     id: 'GASCYL',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Regional requalification shops" }, { n: "Distributor in-house test bays" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Industrial gas distributors" }, { n: "Fire equipment servicing companies" }, { n: "Beverage and hospitality gas suppliers" }] },
     att: att(8, 24),
     n: 'Compressed gas cylinder requalification',
     pn: 'Recertifying gas cylinders',
@@ -416,6 +436,8 @@ export const MICRO = [
   },
   {
     id: 'HERITAGE',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Reclamation yards" }, { n: "Demolition contractors selling direct" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Conservation architects and their contractors" }, { n: "Listed-property owners" }, { n: "Film and heritage set builders" }] },
     att: att(24, 38),
     n: 'Reclaimed heritage building materials',
     pn: 'Salvaged materials for listed buildings',
@@ -444,6 +466,8 @@ export const MICRO = [
   },
   {
     id: 'WIREHARN',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Regional harness shops" }, { n: "Prime in-house assembly" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ id: 'LMT' }, { id: 'RTX' }, { n: "Rail and heavy vehicle builders" }] },
     att: att(14, 32),
     n: 'Low-volume defence wire harness assembly',
     pn: 'Hand-building cable looms to spec',
@@ -472,6 +496,8 @@ export const MICRO = [
   },
   {
     id: 'ANALOGIC',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Independent design contractors" }, { n: "Design-services firms" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Fabless startups without an analog team" }, { id: 'TXN' }, { n: "Design-services houses subcontracting overflow" }] },
     att: att(34, 26),
     n: 'Analog and mixed-signal IC design contracting',
     pn: 'Designing the analog parts of chips',
@@ -500,6 +526,8 @@ export const MICRO = [
   },
   {
     id: 'NDT',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Applus+" }, { n: "Mistras Group" }, { n: "Bureau Veritas" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Refineries and petrochemical plants" }, { n: "Power generators during outage windows" }, { n: "Pipeline operators" }] },
     att: att(16, 30),
     n: 'Certified non-destructive testing inspection',
     pn: 'Inspecting welds without cutting them open',
@@ -528,6 +556,8 @@ export const MICRO = [
   },
   {
     id: 'DRONESURV',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Regional Part 107 operators" }, { n: "Asset-owner in-house flight teams" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Telecom tower owners" }, { n: "Wind and solar operations teams" }, { n: "Insurers and roofing surveyors" }] },
     att: att(40, 44),
     n: 'Industrial asset inspection by drone',
     pn: 'Inspecting towers and roofs by drone',
@@ -556,6 +586,8 @@ export const MICRO = [
   },
   {
     id: 'OPTICS',
+    sup: { p: 'I', c: 0.3, m: 'The firms already doing this work at small scale. Named from public registries, accreditation listings and trade press; the long tail is fragmented and unlisted.', s: 'Accreditation registries; company listings; trade press', top: [{ n: "Optimax" }, { n: "Independent polishing shops" }] },
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Tender records; trade press; practitioner accounts', top: [{ n: "Scientific instrument builders" }, { n: "Defence and aerospace sensor programmes" }, { n: "Semiconductor metrology equipment makers" }] },
     att: att(18, 24),
     n: 'Precision optical component fabrication',
     pn: 'Grinding custom lenses and mirrors',
