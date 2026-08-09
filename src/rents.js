@@ -173,6 +173,7 @@ const att = (media, policy) => ({ media, policy, p: 'I', c: 0.25, m: ATT_M, s: '
 export const RENTS = [
   {
     id: 'HBM',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'NVDA' }, { id: 'AMD' }, { id: 'AVGO' }, { id: 'GOOGL' }] },
     att: att(92, 70),
     n: 'HBM3E / HBM4 stacked memory',
     pn: 'Stacked memory for AI chips',
@@ -201,6 +202,7 @@ export const RENTS = [
   },
   {
     id: 'DDR5',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'AMZN' }, { id: 'MSFT' }, { id: 'GOOGL' }, { n: "Server OEMs (Dell, HPE, Supermicro)" }] },
     att: att(74, 45),
     n: 'Server DDR5 conventional DRAM',
     pn: 'Server memory',
@@ -229,6 +231,7 @@ export const RENTS = [
   },
   {
     id: 'COWOS',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'NVDA' }, { id: 'AMD' }, { id: 'AVGO' }] },
     att: att(78, 55),
     n: 'CoWoS / SoIC advanced packaging slots',
     pn: 'Advanced chip packaging',
@@ -257,6 +260,7 @@ export const RENTS = [
   },
   {
     id: 'HIGHNA',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'TSMC' }, { id: 'INTC' }, { id: 'SAMSUNG' }] },
     att: att(66, 62),
     n: 'High-NA EUV lithography scanners',
     pn: 'The machines that print the finest chips',
@@ -285,6 +289,7 @@ export const RENTS = [
   },
   {
     id: 'NEARLINE',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'AMZN' }, { id: 'GOOGL' }, { id: 'MSFT' }] },
     att: att(40, 12),
     n: 'Nearline enterprise HDD',
     pn: 'High-capacity storage drives',
@@ -313,6 +318,7 @@ export const RENTS = [
   },
   {
     id: 'XFMR',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'IBE' }, { n: "US investor-owned utilities" }, { n: "National Grid" }] },
     att: att(55, 72),
     n: 'Large power transformers (HV/EHV)',
     pn: 'Grid transformers',
@@ -342,6 +348,7 @@ export const RENTS = [
   },
   {
     id: 'GASTURB',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'IBE' }, { n: "US independent power producers" }, { n: "Gulf state utilities" }] },
     att: att(48, 50),
     n: 'Heavy-duty gas turbine slots',
     pn: 'Large gas turbines',
@@ -370,6 +377,7 @@ export const RENTS = [
   },
   {
     id: 'SWU',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ n: "EDF" }, { n: "Constellation Energy" }, { n: "Utilities running Western reactors" }] },
     att: att(60, 88),
     n: 'Uranium enrichment (SWU)',
     pn: 'Enriched uranium for reactors',
@@ -398,6 +406,7 @@ export const RENTS = [
   },
   {
     id: 'DCPOWER',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'MSFT' }, { id: 'AMZN' }, { id: 'META' }, { id: 'GOOGL' }] },
     att: att(84, 80),
     n: 'Datacenter-ready grid capacity',
     pn: 'Grid power for datacenters',
@@ -427,6 +436,7 @@ export const RENTS = [
   },
   {
     id: 'COPPER',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ n: "Cable and wire manufacturers" }, { id: 'TSLA' }, { id: 'BYDDY' }, { n: "Chinese grid operators" }] },
     att: att(70, 48),
     n: 'Copper cathode',
     pn: 'Copper',
@@ -456,6 +466,7 @@ export const RENTS = [
   },
   {
     id: 'NDPR',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'TSLA' }, { id: 'BYDDY' }, { n: "Vestas and other turbine makers" }] },
     att: att(62, 85),
     n: 'NdPr oxide (magnet rare earths)',
     pn: 'Magnet metals for motors',
@@ -485,6 +496,7 @@ export const RENTS = [
   },
   {
     id: 'ANTIMONY',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ n: "Flame-retardant compounders" }, { id: 'LMT' }, { id: 'RTX' }] },
     att: att(34, 68),
     n: 'Antimony',
     pn: 'Antimony',
@@ -513,6 +525,7 @@ export const RENTS = [
   },
   {
     id: 'HELIUM',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'TSMC' }, { id: 'SAMSUNG' }, { id: 'GE' }, { id: 'SIE' }] },
     att: att(30, 25),
     n: 'Grade-A helium',
     pn: 'Helium',
@@ -541,6 +554,7 @@ export const RENTS = [
   },
   {
     id: 'FILLFINISH',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'NVO' }, { id: 'LLY' }, { n: "Moderna and other mRNA developers" }] },
     att: att(44, 52),
     n: 'Sterile fill-finish CDMO capacity',
     pn: 'Filling injectable drugs into vials',
@@ -570,6 +584,7 @@ export const RENTS = [
   },
   {
     id: 'ISOTOPE',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'NOVN' }, { n: "Bayer" }, { n: "Lantheus" }] },
     att: att(38, 58),
     n: 'Ac-225 and Lu-177 medical isotopes',
     pn: 'Isotopes for cancer treatment',
@@ -599,6 +614,7 @@ export const RENTS = [
   },
   {
     id: 'ATC',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ n: "US Federal Aviation Administration" }, { n: "Eurocontrol and national air navigation providers" }, { n: "NAV Canada" }] },
     att: att(72, 78),
     n: 'Air traffic controllers',
     pn: 'Air traffic controllers',
@@ -628,6 +644,7 @@ export const RENTS = [
   },
   {
     id: 'WELDERS',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ n: "EPC contractors" }, { n: "Nuclear operators" }, { n: "Shipyards" }] },
     att: att(42, 40),
     n: 'Nuclear-qualified and pipe welders',
     pn: 'Certified welders',
@@ -657,6 +674,7 @@ export const RENTS = [
   },
   {
     id: 'DCELEC',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ n: "Datacenter general contractors" }, { id: 'MSFT' }, { id: 'AMZN' }] },
     att: att(46, 30),
     n: 'Datacenter electricians',
     pn: 'Datacenter electricians',
@@ -685,6 +703,7 @@ export const RENTS = [
   },
   {
     id: 'NARROWBODY',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ n: "Ryanair" }, { n: "IndiGo" }, { n: "United Airlines" }, { n: "Aircraft lessors" }] },
     att: att(68, 42),
     n: 'Narrowbody aircraft delivery slots',
     pn: 'A delivery slot for a new airliner',
@@ -714,6 +733,7 @@ export const RENTS = [
   },
   {
     id: 'ENGINEMRO',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ n: "Airlines" }, { n: "Aircraft lessors" }, { id: 'GE' }] },
     att: att(44, 28),
     n: 'LEAP / GTF engine shop-visit slots',
     pn: 'Jet engine overhauls',
@@ -743,6 +763,7 @@ export const RENTS = [
   },
   {
     id: 'DCSHELL',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'MSFT' }, { id: 'AMZN' }, { id: 'META' }, { id: 'ORCL' }] },
     att: att(76, 55),
     n: 'Powered datacenter shell',
     pn: 'A powered, ready-to-fit-out datacenter',
@@ -772,6 +793,7 @@ export const RENTS = [
   },
   {
     id: 'COCOA',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'NESN' }, { n: "Mondelez" }, { n: "Hershey" }, { n: "Mars" }] },
     att: att(66, 30),
     n: 'Cocoa',
     pn: 'Cocoa',
@@ -801,6 +823,7 @@ export const RENTS = [
   },
   {
     id: 'SHELLS155',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ n: "US Army" }, { n: "Ukraine Ministry of Defence" }, { n: "European defence ministries" }] },
     att: att(80, 90),
     n: '155 mm artillery shells',
     pn: 'Artillery shells',
@@ -830,6 +853,7 @@ export const RENTS = [
   },
   {
     id: 'SRM',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'LMT' }, { id: 'RTX' }, { n: "Northrop Grumman" }] },
     att: att(52, 74),
     n: 'Solid rocket motors',
     pn: 'Rocket motors',
@@ -859,6 +883,7 @@ export const RENTS = [
   },
   {
     id: 'CDR',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ id: 'MSFT' }, { n: "Frontier advance-market buyers" }, { n: "Airlines under CORSIA" }] },
     att: att(58, 66),
     n: 'Durable carbon removal',
     pn: 'Permanent carbon removal',
@@ -888,6 +913,7 @@ export const RENTS = [
   },
   {
     id: 'SPECTRUM',
+    buy: { p: 'I', c: 0.3, m: 'Ranked by estimated share of purchases, not by contract value — buyer-side splits are almost never disclosed for these markets.', s: 'Vendor customer disclosures; programme and procurement records', top: [{ n: "Verizon" }, { n: "AT&T" }, { n: "T-Mobile" }, { id: 'BHARTI' }] },
     att: att(50, 82),
     n: 'Mid-band spectrum licenses',
     pn: 'Mobile spectrum licences',

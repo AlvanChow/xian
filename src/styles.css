@@ -112,6 +112,10 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 /* shape redundancy matches the canvas provenance markers (R circle / E square / I triangle) */
 #legend i.pE{border-radius:2px}
 #legend i.pI{border-radius:0;clip-path:polygon(50% 0,100% 100%,0 100%)}
+#flowctl{left:14px;bottom:52px;display:flex;align-items:center;gap:9px;background:rgba(13,19,30,.82);border:1px solid var(--line);border-radius:10px;padding:5px 9px;backdrop-filter:blur(8px)}
+#flowctl .lb{font-size:11px;color:var(--mut)}
+#flowctl .seg{padding:1px}
+#flowctl .seg button{padding:4px 9px;font-size:11.5px}
 #hint{right:18px;bottom:16px;color:var(--mut);font-size:11px;background:rgba(13,19,30,.5);padding:5px 10px;border-radius:7px}
 
 /* timebar (floating over map) */
@@ -243,6 +247,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 #rinspector .ptxt.sm{font-size:12px;margin:0 0 9px;color:var(--mut)}
 #rinspector .ptxt.sm:last-child{margin-bottom:0}
 #rinspector .flowsec.bt{border-top:1px solid var(--line)}
+#rinspector .rsup .dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0}
 #rinspector .meth{color:var(--mut);font-size:11px;line-height:1.55;margin-top:8px}
 .rempty{padding:28px 18px;text-align:center;color:var(--mut);line-height:1.65}
 /* The board's inspector drops the map's uppercase letterspaced micro-labels.

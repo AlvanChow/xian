@@ -76,7 +76,13 @@
         <span><i class="pI" style="background:var(--inferred)"></i>Inferred</span>
         <span class="lnote">· flows mostly modeled</span>
       </div>
-      <div class="ctl" id="hint">drag · scroll / pinch · click a node · click water for all flows</div>
+      <div class="ctl" id="flowctl">
+        <span class="lb">Flows</span>
+        <div class="seg" id="flowTop" role="group" aria-label="How many flows to draw">
+          <button data-ft="20">20</button><button data-ft="40">40</button><button data-ft="120">120</button><button data-ft="9999">All</button>
+        </div>
+      </div>
+      <div class="ctl" id="hint">drag · scroll / pinch · click a node for its flows</div>
       <div id="timebar">
         <button id="play" aria-label="Play timeline">▶</button>
         <span class="period" id="period">2025</span>

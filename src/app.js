@@ -24,7 +24,7 @@ const CB=new Set(['FED','ECB','PBOC','BOJ']); // central banks: their scale figu
 const VINTAGE=String(FLOW_VINTAGE);
 const TMUL_HIST={2019:.62,2020:.60,2021:.82,2022:.95,2023:.97};
 const TMUL=PERIODS.map(p=>p===VINTAGE?1:TMUL_HIST[p]??YEAR_MULT[p]??1);
-let sizeBy='mcap',secOn={},layerOn={R:1,E:1,I:1},tIdx=PERIODS.length-1,playing=false,live=false,selected=null,hover=null;
+let sizeBy='mcap',flowTop=120,secOn={},layerOn={R:1,E:1,I:1},tIdx=PERIODS.length-1,playing=false,live=false,selected=null,hover=null;
 Object.keys(SEC).forEach(s=>secOn[s]=1);
 const fmt=v=>v>=1000?'$'+(v/1000).toFixed(2)+'T':(v>=1?'$'+v.toFixed(0)+'B':'$'+(v*1000).toFixed(0)+'M');
 // HTML-escape for data strings interpolated into innerHTML templates. The
@@ -125,7 +125,7 @@ function render(){
   // bg
   mx.clearRect(0,0,MW,MH);
   // graticule
-  mx.strokeStyle='rgba(90,120,170,.08)';mx.lineWidth=1;
+  mx.strokeStyle='rgba(90,120,170,.035)';mx.lineWidth=1;
   for(let lon=-180;lon<=180;lon+=20){const a=proj(lon,85),b=proj(lon,-85);mx.beginPath();mx.moveTo(a.x,a.y);mx.lineTo(b.x,b.y);mx.stroke();}
   for(let lat=-60;lat<=80;lat+=20){const a=proj(-180,lat),b=proj(180,lat);mx.beginPath();mx.moveTo(a.x,a.y);mx.lineTo(b.x,b.y);mx.stroke();}
   // land (real coastlines)
@@ -134,10 +134,18 @@ function render(){
     mx.beginPath();
     for(let i=0;i<r.length;i+=2){const p=proj(r[i],r[i+1]);i?mx.lineTo(p.x,p.y):mx.moveTo(p.x,p.y);}
     mx.closePath();
-    mx.fillStyle='#142036';mx.fill();
-    mx.strokeStyle='#27375a';mx.stroke();
+    mx.fillStyle='#0f1829';mx.fill();
+    mx.strokeStyle='#1b2740';mx.stroke();
   });
-  const fl=visF();
+  // Flow budget. Drawing all ~510 edges at once was the hairball: every arc
+  // faint, none legible, and no way to tell a $400B relationship from a $2B
+  // one. Rank by value and draw the top slice; a selection always gets its own
+  // ego-network in full, with the budget behind it as context.
+  const flAll=visF();
+  const ranked=flAll.slice().sort((a,b)=>b.vv-a.vv);
+  const budget=flowTop>=ranked.length?ranked:ranked.slice(0,flowTop);
+  const ego=selected?flAll.filter(e=>e.f===selected||e.t===selected):[];
+  const fl=selected?ego.concat(budget.filter(e=>e.f!==selected&&e.t!==selected)):budget;
   // arcs
   fl.forEach(e=>{
     const A=byId[e.f],B=byId[e.t];
@@ -153,16 +161,19 @@ function render(){
     const fp=fProv(e),col=PCOL[fp];
     const dx=b.x-a.x,dy=b.y-a.y,len=Math.hypot(dx,dy)||1,lift=Math.min(180*DPR,len*0.3);
     const mxp=(a.x+b.x)/2,myp=(a.y+b.y)/2,cx=mxp-dy/len*lift,cy=myp+dx/len*lift-lift*0.3;
-    mx.globalAlpha=hot?0.95:dim?0.09:0.34;
+    mx.globalAlpha=hot?0.95:dim?0.07:0.5;
     mx.setLineDash(fp==='R'?[]:(fp==='E'?[8*DPR,6*DPR]:[2*DPR,7*DPR]));
-    mx.lineWidth=Math.max(1,Math.log(e.vv+1)*0.6)*(hot?1.7:1)*DPR;
+    mx.lineWidth=Math.max(0.8,Math.log(e.vv+1)*0.72)*(hot?1.7:1)*DPR;
     if(hot){mx.shadowBlur=12*DPR;mx.shadowColor=col;}
     mx.strokeStyle=col;mx.beginPath();mx.moveTo(a.x,a.y);mx.quadraticCurveTo(cx,cy,b.x,b.y);mx.stroke();
     mx.shadowBlur=0;mx.setLineDash([]);
-    if(hot||!selected){const t=(pulse+(e.f.charCodeAt(0)%9)/9)%1;const q=quad(a,{x:cx,y:cy},b,t);
-      mx.globalAlpha=hot?1:0.55;mx.fillStyle=col;if(hot){mx.shadowBlur=8*DPR;mx.shadowColor=col;}
-      mx.beginPath();mx.arc(q.x,q.y,(hot?3:2)*DPR,0,6.28);mx.fill();mx.shadowBlur=0;
-      if(hot){const q2=quad(a,{x:cx,y:cy},b,0.97);arrow(q2,b,col);}}
+    // Travelling dots only on the selected ego-network. Five hundred of them
+    // moving at once read as static, which is the opposite of what motion is
+    // for — it should mark the thing you are looking at.
+    if(hot){const t=(pulse+(e.f.charCodeAt(0)%9)/9)%1;const q=quad(a,{x:cx,y:cy},b,t);
+      mx.globalAlpha=1;mx.fillStyle=col;mx.shadowBlur=8*DPR;mx.shadowColor=col;
+      mx.beginPath();mx.arc(q.x,q.y,3*DPR,0,6.28);mx.fill();mx.shadowBlur=0;
+      const q2=quad(a,{x:cx,y:cy},b,0.97);arrow(q2,b,col);}
   });
   mx.globalAlpha=1;
   // pins. Radius shrinks as you zoom in so dense clusters reveal separation
@@ -173,8 +184,23 @@ function render(){
   const sizeVal=c=>(sizeBy==='mcap'&&c.mcap>0)?mcapOf(c):revAt(c);
   const maxV=Math.max(1,...sized.map(sizeVal));
   const zoomShrink=Math.max(0.35, Math.min(1, 1.6/Math.sqrt(view.scale))); // 1 at scale~2.5, ~0.35 floor
+  // Node budget, on the same principle as the flow budget. A hundred and sixty
+  // pins at fit-view collapse into three coloured blobs — the US cluster alone
+  // was ~60 overlapping circles with eight labels between them. Show the
+  // largest at low zoom and reveal the tail as you zoom in, so what is on
+  // screen is always something you can actually pick out and name.
+  const byBig=sized.slice().sort((p,q)=>sizeVal(q)-sizeVal(p));
+  const nodeBudget=Math.min(byBig.length,Math.round(45*Math.max(1,view.scale)));
+  const shown=byBig.slice(0,nodeBudget);
+  const shownIds=new Set(shown.map(c=>c.id));
+  // A selection and its counterparties are never budgeted out from under you.
+  if(selected){
+    const keep=new Set([selected]);
+    ego.forEach(e=>{keep.add(e.f);keep.add(e.t);});
+    byBig.forEach(c=>{if(keep.has(c.id)&&!shownIds.has(c.id)){shown.push(c);shownIds.add(c.id);}});
+  }
   const drawn=[];
-  sized.slice().sort((p,q)=>sizeVal(q)-sizeVal(p)).forEach(c=>{
+  shown.forEach(c=>{
     const s=proj(c.lng,c.lat);
     if(s.x<-60||s.x>MW+60||s.y<-60||s.y>MH+60)return;
     const r=(4+Math.sqrt(sizeVal(c)/maxV)*26)*DPR*zoomShrink;
@@ -205,7 +231,9 @@ function render(){
     if(sel||hov){mx.beginPath();shape(r+8*DPR);const g=mx.createRadialGradient(s.x,s.y,r,s.x,s.y,r+10*DPR);g.addColorStop(0,SEC[c.sec]+'66');g.addColorStop(1,SEC[c.sec]+'00');mx.fillStyle=g;mx.fill();}
     mx.beginPath();shape(r);
     mx.fillStyle=SEC[c.sec];mx.globalAlpha=sel?1:(selected?0.4:0.82);
-    if(!selected||sel){mx.shadowBlur=(sel||hov?14:6)*DPR;mx.shadowColor=SEC[c.sec];}
+    // Every node used to glow when nothing was selected, which made the whole
+    // field equally loud. Glow is now a pointer, not a texture.
+    if(sel||hov){mx.shadowBlur=14*DPR;mx.shadowColor=SEC[c.sec];}
     mx.fill();mx.shadowBlur=0;mx.globalAlpha=1;
     mx.lineWidth=(sel||hov?2.2:1.2)*DPR;mx.strokeStyle=sel||hov?'#fff':'rgba(255,255,255,.55)';mx.stroke();
     // provenance marker (shape + color encode the tier)
@@ -217,9 +245,12 @@ function render(){
   // -placed one (selected/hovered always win), and paint a dark halo so labels
   // stay legible over dense clusters instead of smearing into each other.
   const placed=[];mx.textAlign='center';mx.lineJoin='round';
-  drawn.forEach(({c,x,y,r})=>{
+  drawn.forEach(({c,x,y,r},i)=>{
     const sel=c.id===selected,hov=hover&&hover.id===c.id;
-    if(!(r>15*DPR||sel||hov||view.scale>=4))return;
+    // Rank, not radius. The old radius threshold labelled about eight nodes and
+    // left the rest as anonymous dots, which is most of why the map read as
+    // decoration rather than data.
+    if(!(i<30||sel||hov||view.scale>=3))return;
     const fs=11*DPR;mx.font=(sel||hov?'700 ':'600 ')+fs+'px Inter,-apple-system,Segoe UI,Roboto,sans-serif';
     const w=mx.measureText(c.id).width,lx=x,ly=y+r+13*DPR;
     const box={x:lx-w/2-2*DPR,y:ly-fs,w:w+4*DPR,h:fs+5*DPR};
@@ -231,7 +262,7 @@ function render(){
   });
   // Skip the innerHTML write when nothing changed — this runs every frame and
   // the string only moves while zoom eases or a control flips.
-  const ctl=`<b>${live?'Feeds live · map '+PERIODS[tIdx]:PERIODS[tIdx]}</b> · ${sized.length} entities · ${fl.length} flows · sized by <b>${sizeBy==='mcap'?'market cap':'revenue'}</b> · zoom <b>${view.scale.toFixed(1)}×</b> · <span class="hon">${tIdx===ANCHOR?'flows modeled (E/I)':'flows = '+PERIODS[ANCHOR]+' figures ×'+TMUL[tIdx]}</span>`;
+  const ctl=`<b>${live?'Feeds live · map '+PERIODS[tIdx]:PERIODS[tIdx]}</b> · ${drawn.length} of ${sized.length} entities · ${selected?ego.length+' flows here':fl.length+' of '+flAll.length+' flows'} · sized by <b>${sizeBy==='mcap'?'market cap':'revenue'}</b> · zoom <b>${view.scale.toFixed(1)}×</b> · <span class="hon">${tIdx===ANCHOR?'flows modeled (E/I)':'flows = '+PERIODS[ANCHOR]+' figures ×'+TMUL[tIdx]}</span>`;
   if(ctl!==ctlPrev)ctlTopEl.innerHTML=ctlPrev=ctl;
 }
 const ctlTopEl=document.getElementById('ctlTop');let ctlPrev='';
@@ -322,6 +353,19 @@ function clearSelection(){selected=null;hover=null;renderInspectorEmpty();syncHa
 function fitView(){target={cx:10,cy:25,scale:1};clearSelection();}
 document.getElementById('zin').onclick=()=>target.scale=Math.min(80,target.scale*1.6);
 document.getElementById('zout').onclick=()=>target.scale=Math.max(0.8,target.scale/1.6);
+/* Flow budget control. The map draws the biggest N relationships by default;
+   this is how you ask for more of the tail. */
+function syncFlowTop(){
+  document.querySelectorAll('#flowTop button').forEach(x=>{
+    const on=+x.dataset.ft===flowTop;
+    x.classList.toggle('on',on);x.setAttribute('aria-pressed',on?'true':'false');});
+}
+document.querySelectorAll('#flowTop button').forEach(b=>b.onclick=()=>{
+  flowTop=+b.dataset.ft;syncFlowTop();refreshStats();
+});
+// Derived from state rather than stamped into the markup — the pressed button
+// and the number of arcs on screen have to be the same fact.
+syncFlowTop();
 document.getElementById('zfit').onclick=fitView;
 
 /* ---- inspector ---- */
@@ -445,7 +489,7 @@ dd.addEventListener('pointercancel',()=>ddDrag=null);
 /* ---- panels ---- */
 function buildSectors(){const ct={};C.forEach(c=>ct[c.sec]=(ct[c.sec]||0)+1);document.getElementById('sectors').innerHTML=Object.keys(SEC).map(s=>`<button class="chip ${secOn[s]?'on':''}" data-s="${s}" style="${secOn[s]?'background:'+SEC[s]+'1a;border-color:'+SEC[s]+'66':''}"><span class="l"><span class="d" style="background:${SEC[s]}"></span>${SECNAME[s]}</span><span class="ct">${ct[s]}</span></button>`).join('');document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{secOn[b.dataset.s]=!secOn[b.dataset.s];buildSectors();refreshStats();if(selected)selectNode(selected,false);syncHash(false);});}
 function buildLayers(){const L={R:'Filing-anchored revenue & disclosures',E:'Modeled from disclosure + I-O; point-in-time caps',I:'Third-party or allocation heuristics'};document.getElementById('layers').innerHTML=Object.keys(L).map(k=>`<div class="leg ${layerOn[k]?'':'off'}" data-l="${k}" role="switch" tabindex="0" aria-checked="${layerOn[k]?'true':'false'}" aria-label="${PNAME[k]} layer"><span class="ln" style="border-color:${PCOL[k]};border-top-style:${k==='R'?'solid':k==='E'?'dashed':'dotted'}"></span><div><div class="ttl" style="color:${PCOL[k]}">${PNAME[k]}</div><div class="sub">${L[k]}</div></div></div>`).join('');document.querySelectorAll('[data-l]').forEach(el=>{const go=()=>{layerOn[el.dataset.l]=!layerOn[el.dataset.l];buildLayers();refreshStats();if(selected)selectNode(selected,false);syncHash(false);};el.onclick=go;el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};});}
-function refreshStats(){const sc=visC(),fl=visF();map.setAttribute('aria-label','Capital-flow world map — '+sc.length+' entities and '+fl.length+' flows shown for period '+(live?'live (simulated)':PERIODS[tIdx])+'. When focused: arrow keys pan, plus and minus zoom, zero resets. Use the search box and side panels to explore entity details and provenance.');document.getElementById('hCap').textContent=fmt(sc.reduce((a,c)=>a+mcapOf(c),0));document.getElementById('hF').textContent=fl.length;document.getElementById('hN').textContent=sc.length;const mix={R:0,E:0,I:0};fl.forEach(e=>mix[fProv(e)]+=e.vv);const tot=mix.R+mix.E+mix.I||1;document.getElementById('provmix').innerHTML=['R','E','I'].map(k=>`<div class="mixrow"><div class="h"><b style="color:${PCOL[k]}">${PNAME[k]}</b><span>${(mix[k]/tot*100).toFixed(0)}%</span></div><div class="track"><i style="width:${mix[k]/tot*100}%;background:${PCOL[k]}"></i></div></div>`).join('')+`<div class="note">Share of visible flow volume by source quality. Toggle layers to see how much rests on modeling vs. reported figures.</div>`;}
+function refreshStats(){const sc=visC(),fl=visF();map.setAttribute('aria-label','Capital-flow world map — '+sc.length+' entities and, of '+fl.length+' flows, the '+Math.min(flowTop,fl.length)+' largest drawn for period '+(live?'live (simulated)':PERIODS[tIdx])+'. When focused: arrow keys pan, plus and minus zoom, zero resets. Use the search box and side panels to explore entity details and provenance.');document.getElementById('hCap').textContent=fmt(sc.reduce((a,c)=>a+mcapOf(c),0));document.getElementById('hF').textContent=fl.length;document.getElementById('hN').textContent=sc.length;const mix={R:0,E:0,I:0};fl.forEach(e=>mix[fProv(e)]+=e.vv);const tot=mix.R+mix.E+mix.I||1;document.getElementById('provmix').innerHTML=['R','E','I'].map(k=>`<div class="mixrow"><div class="h"><b style="color:${PCOL[k]}">${PNAME[k]}</b><span>${(mix[k]/tot*100).toFixed(0)}%</span></div><div class="track"><i style="width:${mix[k]/tot*100}%;background:${PCOL[k]}"></i></div></div>`).join('')+`<div class="note">Share of visible flow volume by source quality. Toggle layers to see how much rests on modeling vs. reported figures.</div>`;}
 
 /* ---- search (ranked: exact ticker ≫ ticker prefix ≫ name ≫ country) ---- */
 const srch=document.getElementById('srch'),reslist=document.getElementById('reslist');
@@ -837,6 +881,16 @@ function renderRentEmpty(){
 }
 
 
+/* One renderer for every named counterparty on either board: a name, a click
+   through to the map when the entity is on it, and a share when there is one. */
+function mSupRow(s){
+  const c=s.id&&byId[s.id];
+  return `<div class="rsup"><span class="dot" style="background:${c?SEC[c.sec]:'var(--mut)'}"></span>`
+    +(c?`<span class="cplink" data-go="${s.id}" role="button" tabindex="0" title="Show ${esc(c.name)} on the map">${esc(c.name)}</span>`
+       :`<span class="plain">${esc(s.n||s.id)}</span>`)
+    +(s.sh?`<span class="sh">${rpct(s.sh)}</span>`:'')+`</div>`;
+}
+
 /* The micro inspector leads with the three numbers a person weighing this up
    actually needs — what to spend, how long until money comes in, and what it
    pays back — before any of the market framing. */
@@ -862,7 +916,13 @@ function renderMicroInspector(e){
    <div class="flowsec"><div class="lbl">What is going on</div><div class="ptxt">${esc(e.th)}</div></div>
    <div class="flowsec bt"><div class="lbl">What you actually need <span>${e.need.length}</span></div>
      ${e.need.map(n=>`<div class="ptxt sm">${esc(n)}</div>`).join('')}</div>
-   <div class="flowsec bt"><div class="lbl">Who buys it <span>${e.who.length}</span></div>
+   <div class="flowsec bt"><div class="lbl">Who does this now <span>${e.sup.top.length}</span></div>
+     ${e.sup.top.map(mSupRow).join('')}
+     <div class="meth">${esc(e.sup.m)} <span class="tag ${e.sup.p}">${PWORD[e.sup.p]}</span></div></div>
+   <div class="flowsec bt"><div class="lbl">Who pays for it <span>${e.buy.top.length}</span></div>
+     ${e.buy.top.map(mSupRow).join('')}
+     <div class="meth">${esc(e.buy.m)} <span class="tag ${e.buy.p}">${PWORD[e.buy.p]}</span></div></div>
+   <div class="flowsec bt"><div class="lbl">Buyer types <span>${e.who.length}</span></div>
      ${e.who.map(w=>`<div class="rkv"><span class="k">${esc(w)}</span></div>`).join('')}</div>
    <div class="flowsec bt"><div class="lbl">Why it stays expensive <span>${e.bar.length}</span></div>
      ${e.bar.map(k=>`<div class="rkv"><span class="k">${esc(MBARS[k])}</span></div><div class="ptxt sm">${esc(MBARWHY[k])}</div>`).join('')}</div>
@@ -873,7 +933,8 @@ function renderMicroInspector(e){
    <div class="flowsec bt"><div class="lbl">Every figure, and where it came from</div>
      <table class="dtab">${[['What buyers pay',e.px,''],['If supply could respond',e.base,e.base.per],
        ['Whole niche',e.mkt,'a year'],['A year of billing',e.take,'one to five people'],
-       ['Cost to start',e.entry,''],['Months to first invoice',e.ramp,''],['Attention',e.att,'media and policy']]
+       ['Cost to start',e.entry,''],['Months to first invoice',e.ramp,''],
+       ['Who does this now',e.sup,''],['Top buyers',e.buy,''],['Attention',e.att,'media and policy']]
        .map(([k,f,x])=>provRow(k,f,x)).join('')}</table>
      <div class="meth">Score ${microScore(e).toFixed(0)} = 30% payback + 24% gap + 20% speed to start + 16% take + 10% how hard to copy, computed from the fields above. Snapshot ${esc(MICRO_ASOF)}. Weakest figure here is ${PNAME[p]}. Nothing on this board is a published price — check every number yourself before spending money on it.</div></div>`;
 }
@@ -881,10 +942,13 @@ function renderMicroInspector(e){
 function selectRent(id,push){
   const e=rById(id);if(!e)return;
   rSel=id;
-  if(rScale==='micro'){renderMicroInspector(e);drawRSpark(e);buildRentList();syncHash(push);return;}
+  if(rScale==='micro'){
+    renderMicroInspector(e);
+    document.querySelectorAll('#rinspector .cplink').forEach(n=>{const go=()=>{setTab('map',null);selectNode(n.dataset.go);};
+      n.onclick=go;n.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
+    drawRSpark(e);buildRentList();syncHash(push);return;
+  }
   const p=rProv(e),rank=rRankAll()[id],mult=rMult(e),an=e.an?ABY[e.an]:null;
-  const supRow=s=>{const c=s.id&&byId[s.id];
-    return `<div class="rsup"><span style="width:9px;height:9px;border-radius:50%;background:${c?SEC[c.sec]:'var(--mut)'};display:inline-block"></span>${c?`<span class="cplink" data-go="${s.id}" role="button" tabindex="0" title="Show ${esc(c.name)} on the map">${esc(c.name)}</span>`:`<span class="plain">${esc(s.n||s.id)}</span>`}<span class="sh">${rpct(s.sh)}</span></div>`;};
   document.getElementById('rinspector').innerHTML=`
    <div class="ihead"><div class="tk">No. ${rank} of ${RENTS.length}</div><div class="nm">${esc(e.n)}</div>
      <div class="meta"><span class="pill"><span class="d" style="background:${RCAT[e.cat]}"></span>${esc(CATS[e.cat])}</span><span class="pill" title="Unit the price is quoted in">${esc(e.u)}</span></div></div>
@@ -904,8 +968,10 @@ function selectRent(id,push){
    ${p==='R'?`<div class="verdict ok">Every headline number here comes from a published source. That is rare on this board — most of these things are sold under private contracts and the prices are never printed anywhere.</div>`
       :`<div class="verdict warn">The softest number here is ${p==='E'?'an estimate':'a model'}, not something published. ${esc(e.pool.m)} So read the position on this list as a rough guide, not a measurement.</div>`}
    <div class="flowsec"><div class="lbl">What is going on</div><div class="ptxt">${esc(e.th)}</div></div>
-   <div class="flowsec bt"><div class="lbl">Who collects it <span>${e.conc.sup.length}</span></div>${e.conc.sup.map(supRow).join('')}
-     <div class="meth">${esc(e.conc.s)}. Named suppliers already on the map are clickable.</div></div>
+   <div class="flowsec bt"><div class="lbl">Who collects it <span>${e.conc.sup.length}</span></div>${e.conc.sup.map(mSupRow).join('')}
+     <div class="meth">${esc(e.conc.s)}. Names already on the map are clickable.</div></div>
+   <div class="flowsec bt"><div class="lbl">Who pays it <span>${e.buy.top.length}</span></div>${e.buy.top.map(mSupRow).join('')}
+     <div class="meth">${esc(e.buy.m)} <span class="tag ${e.buy.p}">${PWORD[e.buy.p]}</span></div></div>
    <div class="flowsec bt"><div class="lbl">Why nobody can just make more <span>${e.bar.length}</span></div>
      ${e.bar.map(k=>`<div class="rkv"><span class="k">${esc(BARS[k])}</span></div><div class="ptxt sm">${esc(BARWHY[k])}</div>`).join('')}
      <div class="meth">${esc(e.ttr.m)}</div></div>
@@ -921,7 +987,7 @@ function selectRent(id,push){
      <div class="ptxt sm">${esc(an.why)}</div><div class="ptxt sm"><b>Lesson.</b> ${esc(an.lesson)}</div></div>`:''}
    <div class="flowsec bt"><div class="lbl">Every figure, and where it came from</div>
      <table class="dtab">${[['Price',e.px,'as of '+e.px.asOf],['Baseline',e.base,e.base.per],['Excess per year',e.pool,''],
-       ['Incumbent margin',e.gm,byId[e.gm.who]?byId[e.gm.who].name:e.gm.who],['Concentration',e.conc,''],['Time to relief',e.ttr,''],['Attention',e.att,'media and policy']]
+       ['Incumbent margin',e.gm,byId[e.gm.who]?byId[e.gm.who].name:e.gm.who],['Concentration',e.conc,''],['Time to relief',e.ttr,''],['Top buyers',e.buy,''],['Attention',e.att,'media and policy']]
        .map(([k,f,x])=>provRow(k,f,x)).join('')}</table>
      <div class="meth">Score ${rentScore(e).toFixed(0)} = 30% gap + 28% excess + 20% persistence + 12% concentration + 10% margin, computed from the fields above. Snapshot ${esc(RENT_ASOF)}. Estimated and Inferred figures are directional, not audited.</div></div>`;
   // Skip the tab's own hash write and let selectNode push the one entry — so a

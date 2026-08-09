@@ -487,13 +487,13 @@ test('the click-in carries the whole record, with no second view to open', async
     await expect(ins).toContainText(k);
   }
   // ...along with everything the dossier modal used to hold on its own.
-  for (const k of ['What is going on', 'Who collects it', 'Why nobody can just make more',
-    'Already being built', 'What solving it requires', 'What would kill it',
-    'Substitutes and adjacent routes', 'Every figure, and where it came from']) {
+  for (const k of ['What is going on', 'Who collects it', 'Who pays it',
+    'Why nobody can just make more', 'Already being built', 'What solving it requires',
+    'What would kill it', 'Substitutes and adjacent routes', 'Every figure, and where it came from']) {
     await expect(ins).toContainText(k);
   }
-  // Per-figure provenance, including the attention row, and the score formula.
-  await expect(ins.locator('.dtab tr')).toHaveCount(7);
+  // Per-figure provenance, including buyers and attention, and the score formula.
+  await expect(ins.locator('.dtab tr')).toHaveCount(8);
   await expect(ins.locator('.meth').last()).toContainText('30% gap + 28% excess');
 
   // There is no longer a second thing to open.
@@ -739,8 +739,9 @@ test('the small-operator click-in answers what it costs and what would end it', 
   await page.locator('#rlist .trow').first().click();
   const ins = page.locator('#rinspector');
   for (const k of ['Cost to start', 'Until the first invoice', 'Pays itself back in', 'Gap',
-    'Whole niche', 'Media', 'Policy', 'What you actually need', 'Who buys it',
-    'Why it stays expensive', 'What would end it', 'Every figure, and where it came from']) {
+    'Whole niche', 'Media', 'Policy', 'What you actually need', 'Who does this now',
+    'Who pays for it', 'Buyer types', 'Why it stays expensive', 'What would end it',
+    'Every figure, and where it came from']) {
     await expect(ins).toContainText(k);
   }
   // The board never claims a published price, and the click-in says so twice:
@@ -796,4 +797,76 @@ test('the board table is a grid, and its bars are not silent', async ({ page }) 
   const row = page.locator('#rlist .trow').first();
   await expect(row.locator('.td').nth(6)).toHaveAttribute('aria-label', 'Media');
   await expect(row.locator('.meter').first()).toHaveAttribute('aria-label', /^\d+ out of 100$/);
+});
+
+// A section of the click-in, addressed by its heading. Filtering on section
+// text alone is ambiguous: the provenance table at the bottom repeats every
+// heading as a row label, so "Who does this now" matches twice.
+const section = (page, name) => page.locator('#rinspector .flowsec')
+  .filter({ has: page.locator('.lbl', { hasText: name }) });
+
+test('both boards name their buyers and suppliers, and the names click through', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  await page.locator('#rlist .trow[data-r="HBM"]').click();
+
+  // Who collects it, and — new — who pays for it, by name rather than by category.
+  const collects = section(page, 'Who collects it');
+  const pays = section(page, 'Who pays it');
+  await expect(collects).toContainText('SK Hynix');
+  await expect(pays).toContainText('NVIDIA');
+  await expect(pays).toContainText('AMD');
+  // Suppliers carry a share; buyers do not, and a shared renderer that assumed
+  // one printed "NaN%" beside every buyer. Nothing on the panel may read NaN.
+  await expect(collects).toContainText('50%');
+  await expect(pays).not.toContainText('NaN');
+  await expect(page.locator('#rinspector')).not.toContainText('NaN');
+
+  // A named buyer that exists on the map is a link to it, same as a supplier.
+  await pays.locator('.cplink').first().click();
+  await expect(page.locator('#app')).toHaveAttribute('data-view', 'map');
+  await expect(page.locator('#inspector .ihead .nm')).toContainText('NVIDIA');
+});
+
+test('the small-operator board names who does the work and who pays for it', async ({ page }) => {
+  await page.goto(PAGE_URL + '#view=rents&scale=micro&r=CALIB');
+  await expect(section(page, 'Who does this now')).toContainText('Trescal');
+  await expect(section(page, 'Who pays for it')).toContainText('Pharma');
+
+  // COBOL's incumbents are on the map, so they click through from here too.
+  await page.goto(PAGE_URL + '#view=rents&scale=micro&r=COBOL');
+  const now = section(page, 'Who does this now');
+  await expect(now).toContainText('Tata Consultancy');
+  await now.locator('.cplink').first().click();
+  await expect(page.locator('#app')).toHaveAttribute('data-view', 'map');
+  await expect(page.locator('#inspector .ihead .nm')).not.toHaveText('');
+});
+
+test('no panel on either board ever renders NaN or undefined', async ({ page }) => {
+  for (const url of ['#view=rents&r=HBM', '#view=rents&r=SPECTRUM', '#view=rents&r=ATC',
+    '#view=rents&scale=micro&r=CALIB', '#view=rents&scale=micro&r=COBOL', '#view=rents&scale=micro&r=OPTICS']) {
+    await page.goto(PAGE_URL + url);
+    const txt = await page.locator('#rinspector').textContent();
+    expect(txt, `${url} renders a broken value`).not.toMatch(/NaN|undefined|\[object/);
+  }
+});
+
+test('the map draws a ranked budget of flows and nodes, not the whole graph', async ({ page }) => {
+  // The hairball: ~510 arcs and 164 pins at once, every one of them faint, with
+  // an animated dot on every arc. What is drawn is now a ranked slice, and the
+  // status line says so.
+  await page.locator('#zfit').click();
+  await expect(page.locator('#ctlTop')).toContainText(/\d+ of 164 entities/);
+  await expect(page.locator('#ctlTop')).toContainText(/120 of \d+ flows/);
+
+  // The control reflects what is drawn, rather than being stamped into markup.
+  await expect(page.locator('#flowTop button[data-ft="120"]')).toHaveClass(/on/);
+  await page.locator('#flowTop button[data-ft="20"]').click();
+  await expect(page.locator('#ctlTop')).toContainText(/20 of \d+ flows/);
+  await expect(page.locator('#flowTop button[data-ft="20"]')).toHaveClass(/on/);
+  await expect(page.locator('#flowTop button[data-ft="120"]')).not.toHaveClass(/on/);
+
+  // Selecting a node shows its own flows in full, however tight the budget is.
+  await page.locator('#srch').fill('NVIDIA');
+  await page.locator('#reslist .resrow').first().click();
+  await expect(page.locator('#ctlTop')).toContainText(/\d+ flows here/);
 });
