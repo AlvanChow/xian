@@ -233,6 +233,17 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .minor{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:9px 12px;margin:0;padding:14px 18px 4px}
 .minor dt{font-size:10.5px;color:var(--mut)}
 .minor dd{margin:2px 0 0;font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+/* Provenance table and prose, now rendered inside the inspector rather than a
+   modal — the dossier repeated what the panel beside it already said. */
+#rinspector .dtab{border-collapse:collapse;width:100%;font-size:11px;margin:2px 0 4px}
+#rinspector .dtab td{padding:7px 8px 7px 0;vertical-align:top;border-bottom:1px solid var(--line);color:var(--mut);line-height:1.55}
+#rinspector .dtab td:first-child{white-space:nowrap;color:var(--dim);width:34%}
+#rinspector .dtab tr:last-child td{border-bottom:0}
+#rinspector .ptxt{font-size:12.5px;line-height:1.6;color:var(--dim)}
+#rinspector .ptxt.sm{font-size:12px;margin:0 0 9px;color:var(--mut)}
+#rinspector .ptxt.sm:last-child{margin-bottom:0}
+#rinspector .flowsec.bt{border-top:1px solid var(--line)}
+#rinspector .meth{color:var(--mut);font-size:11px;line-height:1.55;margin-top:8px}
 .rempty{padding:28px 18px;text-align:center;color:var(--mut);line-height:1.65}
 /* The board's inspector drops the map's uppercase letterspaced micro-labels.
    Scoped to #rinspector so the map keeps the instrument look it wants. */
@@ -269,18 +280,6 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .rsup .plain{color:var(--dim)}
 
 /* dossier body */
-#rdBody h4{margin:16px 0 7px;font-size:11px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--mut)}
-#rdBody h4:first-child{margin-top:0}
-#rdBody ul{margin:0 0 12px;padding-left:18px}#rdBody li{margin:5px 0}
-#rdBody .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:6px}
-#rdBody .dcell{background:var(--panel);padding:11px 13px}
-#rdBody .dcell .k{color:var(--mut);font-size:10.5px;letter-spacing:.4px;text-transform:uppercase}
-#rdBody .dcell .v{font-size:16px;font-weight:680;margin-top:3px;font-variant-numeric:tabular-nums;color:var(--txt)}
-#rdBody .dcell .sub{color:var(--mut);font-size:10.5px;margin-top:3px;line-height:1.45}
-#rdBody .dtab{border-collapse:collapse;width:100%;font-size:11.5px;margin-bottom:12px}
-#rdBody .dtab td{padding:7px 8px 7px 0;vertical-align:top;border-bottom:1px solid var(--line);color:var(--mut);line-height:1.55}
-#rdBody .dtab td:first-child{color:var(--txt);font-weight:600;white-space:nowrap;width:1%}
-#rdBody .dtab tr:last-child td{border-bottom:0}
 
 /* overlay modals (drill graph, about, dossier) */
 #modal,#aboutModal,#rentModal{position:fixed;inset:0;background:rgba(6,9,14,.7);display:none;align-items:center;justify-content:center;z-index:30;backdrop-filter:blur(4px)}

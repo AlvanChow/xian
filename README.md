@@ -56,8 +56,12 @@ one click jumps to that entity's flow network.
   bill-mention tally spans these categories, and inventing one would dress a guess up as a
   measurement. Tagged `I` throughout, rendered as bars rather than digits, and unit-tested to stay
   out of the rank score — an entry should rank on its economics, not on how loud it is.
-- **A dossier per signal** — the long-form breakdown, including a per-figure provenance table. The
-  technical name, the unit, and the barrier taxonomy live here rather than in the row.
+- **One click-in, not two views.** Selecting a row fills the right-hand panel with the complete
+  record: the five table columns restated, the price chart, what is going on, who collects it, why
+  nobody can make more (with each barrier explained), what is already being built, what solving it
+  requires, what would kill it, substitutes, the historical analogue, and a per-figure provenance
+  table with the score formula. There used to be a "Full dossier" modal on top of this; it repeated
+  what the panel beside it already said, so it was folded in and removed.
 - **A reverted-signals archive** — DRAM 2018, container freight 2021, lithium 2022, travel nurses
   2021, GLP-1 2023, SiC 2023, TTF gas 2022, LCD panels 2021, NYC taxi medallions 2013. Every one
   of them was, at its peak, as compelling as anything currently on the board. Rents decay; the

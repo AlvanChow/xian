@@ -546,10 +546,9 @@ aboutModal.addEventListener('keydown',e=>{
 // selection — which selection that is depends on the tab you are looking at.
 window.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
-  if(rentModal.classList.contains('show'))closeDossier();
-  else if(aboutModal.classList.contains('show'))closeAbout();
+  if(aboutModal.classList.contains('show'))closeAbout();
   else if(modal.classList.contains('show'))closeDrill();
-  else if(tab==='rents'){if(rSel){rSel=null;renderRentEmpty();buildRentList();;syncHash(true);}}
+  else if(tab==='rents'){if(rSel){rSel=null;renderRentEmpty();buildRentList();syncHash(true);}}
   else if(selected)clearSelection();
 });
 
@@ -559,6 +558,8 @@ window.addEventListener('keydown',e=>{
    machinery as the map (PCOL / PNAME / .tag), different question. */
 const RCAT={compute:'#5b8cff',power:'#f5b042',materials:'#ed8f00',pharma:'#3fd68a',labor:'#f472b6',logistics:'#a78bfa',infra:'#2dd4e8',agri:'#1fb979',defense:'#ff6b7a',regulated:'#e2e8f0'};
 const ABY=Object.fromEntries(ARCHIVE.map(a=>[a.id,a]));
+// Exposed for the smoke test that asserts no COMPANIES key is ever rendered raw.
+window.__ids=COMPANIES.map(c=>({id:c.id,name:c.name}));
 // rMult / rentScore / rentProv / rentConf live in rents.js beside the data, so
 // the unit tests score exactly what the board scores.
 const rProv=rentProv;
@@ -761,17 +762,19 @@ function compact(v){
 }
 /* Attention cells. A 0-100 judgement is easier to compare as a bar than as a
    number, and the bar quietly signals "rating", not "measurement". */
-const meter=v=>`<span class="meter" title="${v} of 100"><i style="width:${v}%"></i></span>`;
+// A bar with no text announces as an empty cell, so the number rides along in
+// the label. role=img keeps a screen reader from reading the empty span.
+const meter=v=>`<span class="meter" role="img" title="${v} of 100" aria-label="${v} out of 100"><i style="width:${v}%"></i></span>`;
 const nameCell=e=>`<span class="cdot" style="background:${B().ccol[e.cat]}"></span><span class="t" title="${esc(e.pn)} · ${esc(e.n)}">${esc(e.pn)}</span>`;
 
 function buildRentList(){
   const rows=rVis(),rank=rRankAll(),el=document.getElementById('rlist'),b=B();
   const grid=b.cols.map(c=>c.w).join(' ');
-  const head=`<div class="thead" style="grid-template-columns:${grid}" role="row">`+b.cols.map(c=>{
+  const head=`<div role="rowgroup"><div class="thead" style="grid-template-columns:${grid}" role="row">`+b.cols.map(c=>{
     const on=rSort===c.k;
     return `<button class="th ${c.cls||''} ${on?'on':''}" data-sc-col="${c.k}" role="columnheader"
       aria-sort="${on?(rDir<0?'descending':'ascending'):'none'}" title="${esc(c.ttl||c.lab)}"
-      >${esc(c.lab)}<i class="ar">${on?(rDir<0?'▾':'▴'):''}</i></button>`;}).join('')+'</div>';
+      >${esc(c.lab)}<i class="ar">${on?(rDir<0?'▾':'▴'):''}</i></button>`;}).join('')+'</div></div>';
   if(!rows.length){
     el.innerHTML=head+'<div class="rempty">Nothing matches those filters.<br>Switch a category back on to bring the board back.</div>';
     bindHeaders();return;
@@ -781,7 +784,7 @@ function buildRentList(){
     return `<div class="trow ${rSel===e.id?'on':''}" style="grid-template-columns:${grid}" role="row" tabindex="0"
       aria-selected="${rSel===e.id?'true':'false'}" data-r="${e.id}"
       aria-label="${esc(e.pn)}, ${rPrice(e.px.v,e.u)} ${esc(rUnit(e.u))}, ${b.mult(e).toFixed(1)} times baseline">`
-      +b.cols.map(c=>`<div class="td ${c.cls||''}" role="gridcell">${c.cell(e,rank,col)}</div>`).join('')
+      +b.cols.map(c=>`<div class="td ${c.cls||''}" role="gridcell" aria-label="${esc(c.lab==='#'?'Rank':c.lab)}">${c.cell(e,rank,col)}</div>`).join('')
       +'</div>';}).join('')+'</div>';
   el.querySelectorAll('[data-r]').forEach(r=>{const go=()=>selectRent(r.dataset.r,true);r.onclick=go;
     r.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
@@ -847,28 +850,32 @@ function renderMicroInspector(e){
      <div class="stat"><div class="k">Until the first invoice</div><div class="v">${e.ramp.mo} mo<span class="tag ${e.ramp.p}">${PWORD[e.ramp.p]}</span></div><div class="k" style="margin-top:2px">${esc(e.ramp.m)}</div></div>
      <div class="stat"><div class="k">A year of billing</div><div class="v">${mk(e.take.v)}<span class="tag ${e.take.p}">${PWORD[e.take.p]}</span></div><div class="k" style="margin-top:2px">one to five people</div></div>
      <div class="stat"><div class="k">Pays itself back in</div><div class="v">${Math.round(mPayback(e))} mo</div><div class="k" style="margin-top:2px">start-up cost over billing</div></div>
-     <div class="stat"><div class="k">Costs this much more</div><div class="v">${mMult(e).toFixed(1)}×<span class="tag ${e.px.p}">${PWORD[e.px.p]}</span></div><div class="k" style="margin-top:2px">${rPrice(e.px.v,e.u)} now, ${rPrice(e.base.v,e.u)} if supply could respond</div></div>
-     <div class="stat"><div class="k">Whole niche is worth</div><div class="v">${mk(e.mkt.v)}<span class="tag ${e.mkt.p}">${PWORD[e.mkt.p]}</span></div><div class="k" style="margin-top:2px">a year, everyone in it combined</div></div>
+     <div class="stat"><div class="k">Gap</div><div class="v">${mMult(e).toFixed(1)}×<span class="tag ${e.px.p}">${PWORD[e.px.p]}</span></div><div class="k" style="margin-top:2px">${rPrice(e.px.v,e.u)} now, ${rPrice(e.base.v,e.u)} if supply could respond</div></div>
+     <div class="stat"><div class="k">Whole niche</div><div class="v">${mk(e.mkt.v)}<span class="tag ${e.mkt.p}">${PWORD[e.mkt.p]}</span></div><div class="k" style="margin-top:2px">a year · ${compact(mVolume(e))} ${esc(rUnit(e.u).replace(/^per /,''))}</div></div>
    </div>
    <div class="nsw"><div class="k">Price · ${esc(e.u)}</div><canvas id="rspark" aria-label="Price history for ${esc(e.n)}"></canvas><div class="yrs"><span>${esc(e.ser[0].t)}</span><span>${esc(e.ser[e.ser.length-1].t)}</span></div></div>
-   <dl class="minor">${[['Last year',(rTrend(e)>0?'+':'')+(rTrend(e)*100).toFixed(0)+'%'],
-      ['Barriers',String(e.bar.length)],['Ways round',String(e.sub.length)],
-      ['Units a year',compact(mVolume(e))],
-      ['Media',String(e.att.media)+'/100'],['Policy',String(e.att.policy)+'/100']]
+   <dl class="minor">${[['Media',e.att.media+'/100'],['Policy',e.att.policy+'/100'],
+      ['Last year',(rTrend(e)>0?'+':'')+(rTrend(e)*100).toFixed(0)+'%'],
+      ['Barriers',String(e.bar.length)],['Ways round',String(e.sub.length)]]
       .map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
-   <button class="ddbtn" id="openDossier">Full dossier →</button>
    <div class="verdict warn">Nothing on this board is a published price — work at this size is quoted bilaterally and never printed. ${esc(e.take.m)} Modelled well enough to rank, not well enough to underwrite. Check it yourself before you spend anything.</div>
-   <div class="flowsec"><div class="lbl">What is going on</div><div style="font-size:12.5px;line-height:1.6;color:var(--dim)">${esc(e.th)}</div></div>
-   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">What you actually need <span>${e.need.length}</span></div>
-     ${e.need.map(n=>`<div class="prov-txt" style="margin:0 0 8px">${esc(n)}</div>`).join('')}</div>
-   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Who buys it <span>${e.who.length}</span></div>
+   <div class="flowsec"><div class="lbl">What is going on</div><div class="ptxt">${esc(e.th)}</div></div>
+   <div class="flowsec bt"><div class="lbl">What you actually need <span>${e.need.length}</span></div>
+     ${e.need.map(n=>`<div class="ptxt sm">${esc(n)}</div>`).join('')}</div>
+   <div class="flowsec bt"><div class="lbl">Who buys it <span>${e.who.length}</span></div>
      ${e.who.map(w=>`<div class="rkv"><span class="k">${esc(w)}</span></div>`).join('')}</div>
-   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Why it stays expensive <span>${e.bar.length}</span></div>
-     ${e.bar.map(b=>`<div class="rkv"><span class="k">${esc(MBARS[b])}</span></div>`).join('')}</div>
-   <div class="mblock"><div class="lbl">What would end it</div>
-     ${e.kill.map(k=>`<div class="prov-txt" style="margin:0 0 8px">${esc(k)}</div>`).join('')}
-     <div class="meth" style="color:var(--mut);font-size:11px;margin-top:6px">Provenance: ${PNAME[p]} at its weakest figure.</div></div>`;
-  const btn=document.getElementById('openDossier');if(btn)btn.onclick=()=>openDossier(e.id);
+   <div class="flowsec bt"><div class="lbl">Why it stays expensive <span>${e.bar.length}</span></div>
+     ${e.bar.map(k=>`<div class="rkv"><span class="k">${esc(MBARS[k])}</span></div><div class="ptxt sm">${esc(MBARWHY[k])}</div>`).join('')}</div>
+   <div class="flowsec bt"><div class="lbl">What would end it <span>${e.kill.length}</span></div>
+     ${e.kill.map(k=>`<div class="ptxt sm">${esc(k)}</div>`).join('')}</div>
+   <div class="flowsec bt"><div class="lbl">If this one closes</div>
+     ${e.sub.map(x=>`<div class="rkv"><span class="k">${esc(x)}</span></div>`).join('')}</div>
+   <div class="flowsec bt"><div class="lbl">Every figure, and where it came from</div>
+     <table class="dtab">${[['What buyers pay',e.px,''],['If supply could respond',e.base,e.base.per],
+       ['Whole niche',e.mkt,'a year'],['A year of billing',e.take,'one to five people'],
+       ['Cost to start',e.entry,''],['Months to first invoice',e.ramp,''],['Attention',e.att,'media and policy']]
+       .map(([k,f,x])=>provRow(k,f,x)).join('')}</table>
+     <div class="meth">Score ${microScore(e).toFixed(0)} = 30% payback + 24% gap + 20% speed to start + 16% take + 10% how hard to copy, computed from the fields above. Snapshot ${esc(MICRO_ASOF)}. Weakest figure here is ${PNAME[p]}. Nothing on this board is a published price — check every number yourself before spending money on it.</div></div>`;
 }
 
 function selectRent(id,push){
@@ -882,30 +889,41 @@ function selectRent(id,push){
    <div class="ihead"><div class="tk">No. ${rank} of ${RENTS.length}</div><div class="nm">${esc(e.n)}</div>
      <div class="meta"><span class="pill"><span class="d" style="background:${RCAT[e.cat]}"></span>${esc(CATS[e.cat])}</span><span class="pill" title="Unit the price is quoted in">${esc(e.u)}</span></div></div>
    <div class="stats">
-     <div class="stat"><div class="k">Costs this much more</div><div class="v">${mult.toFixed(1)}×<span class="tag ${e.px.p}">${PWORD[e.px.p]}</span></div><div class="k" style="margin-top:2px">${rPrice(e.px.v,e.u)} now, ${rPrice(e.base.v,e.u)} before</div></div>
-     <div class="stat"><div class="k">Excess paid every year</div><div class="v">${fmt(e.pool.v)}<span class="tag ${e.pool.p}">${PWORD[e.pool.p]}</span></div><div class="k" style="margin-top:2px">above what it used to cost</div></div>
+     <div class="stat"><div class="k">Gap</div><div class="v">${mult.toFixed(1)}×<span class="tag ${e.px.p}">${PWORD[e.px.p]}</span></div><div class="k" style="margin-top:2px">${rPrice(e.px.v,e.u)} now, ${rPrice(e.base.v,e.u)} before</div></div>
+     <div class="stat"><div class="k">Excess every year</div><div class="v">${fmt(e.pool.v)}<span class="tag ${e.pool.p}">${PWORD[e.pool.p]}</span></div><div class="k" style="margin-top:2px">above what it used to cost</div></div>
+     <div class="stat"><div class="k">Volume</div><div class="v">${compact(rVolume(e))}</div><div class="k" style="margin-top:2px">${esc(rUnit(e.u).replace(/^per /,''))} a year, implied</div></div>
      <div class="stat"><div class="k">Until it eases</div><div class="v">${rmo(e.ttr.mo)}<span class="tag ${e.ttr.p}">${PWORD[e.ttr.p]}</span></div><div class="k" style="margin-top:2px">${e.ttr.mo>=96?'no end in sight':'around '+reliefYear(e)}</div></div>
-     <div class="stat"><div class="k">Held by the top three</div><div class="v">${rpct(e.conc.top3)}<span class="tag ${e.conc.p}">${PWORD[e.conc.p]}</span></div></div>
+     <div class="stat"><div class="k">Held by the top three</div><div class="v">${rpct(e.conc.top3)}<span class="tag ${e.conc.p}">${PWORD[e.conc.p]}</span></div><div class="k" style="margin-top:2px">HHI ${e.conc.hhi}</div></div>
      <div class="stat"><div class="k">Their gross margin</div><div class="v">${rpct(e.gm.v)}<span class="tag ${e.gm.p}">${PWORD[e.gm.p]}</span></div><div class="k" style="margin-top:2px">${esc(byId[e.gm.who]?byId[e.gm.who].name:e.gm.who)}</div></div>
-     <div class="stat"><div class="k">Where it ranks</div><div class="v">No. ${rank}</div><div class="k" style="margin-top:2px">of ${RENTS.length} on the board</div></div>
    </div>
    <div class="nsw"><div class="k">Price · ${esc(e.u)}</div><canvas id="rspark" aria-label="Price history for ${esc(e.n)}"></canvas><div class="yrs"><span>${esc(e.ser[0].t)}</span><span>${esc(e.ser[e.ser.length-1].t)}</span></div></div>
-   <dl class="minor">${[['Last year',(rTrend(e)>0?'+':'')+(rTrend(e)*100).toFixed(0)+'%'],
-      ['Years high',String(rRun(e))],['Biggest swing',(rVol(e)*100).toFixed(0)+'%'],
-      ['Ways round',String(rSubs(e))],['Barriers',String(rBars(e))],
-      ['Media',String(e.att.media)+'/100'],['Policy',String(e.att.policy)+'/100']]
+   <dl class="minor">${[['Media',e.att.media+'/100'],['Policy',e.att.policy+'/100'],
+      ['Last year',(rTrend(e)>0?'+':'')+(rTrend(e)*100).toFixed(0)+'%'],['Years high',String(rRun(e))],
+      ['Biggest swing',(rVol(e)*100).toFixed(0)+'%'],['Ways round',String(rSubs(e))],['Barriers',String(rBars(e))]]
       .map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
-   <button class="ddbtn" id="openDossier">Full dossier →</button>
    ${p==='R'?`<div class="verdict ok">Every headline number here comes from a published source. That is rare on this board — most of these things are sold under private contracts and the prices are never printed anywhere.</div>`
       :`<div class="verdict warn">The softest number here is ${p==='E'?'an estimate':'a model'}, not something published. ${esc(e.pool.m)} So read the position on this list as a rough guide, not a measurement.</div>`}
-   <div class="flowsec"><div class="lbl">What is going on</div><div style="font-size:12.5px;line-height:1.6;color:var(--dim)">${esc(e.th)}</div></div>
-   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Who collects it <span>${e.conc.sup.length}</span></div>${e.conc.sup.map(supRow).join('')}
-     <div class="meth" style="color:var(--mut);font-size:11px;margin-top:8px">${esc(e.conc.s)}. Named suppliers already on the map are clickable.</div></div>
-   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Why nobody can just make more <span>${e.bar.length}</span></div>
-     ${e.bar.map(b=>`<div class="rkv"><span class="k">${esc(BARS[b])}</span></div>`).join('')}
-     <div class="meth" style="color:var(--mut);font-size:11px;margin-top:8px">${esc(e.ttr.m)}</div></div>
-   ${an?`<div class="mblock"><div class="lbl">It happened before</div><div class="rkv"><span class="k">${esc(an.n)}</span><span class="v">${rnum(an.peak.v)} → ${rnum(an.trough.v)}</span></div><div class="prov-txt"><b>Lesson.</b> ${esc(an.lesson)}</div></div>`:''}`;
-  const b=document.getElementById('openDossier');if(b)b.onclick=()=>openDossier(id);
+   <div class="flowsec"><div class="lbl">What is going on</div><div class="ptxt">${esc(e.th)}</div></div>
+   <div class="flowsec bt"><div class="lbl">Who collects it <span>${e.conc.sup.length}</span></div>${e.conc.sup.map(supRow).join('')}
+     <div class="meth">${esc(e.conc.s)}. Named suppliers already on the map are clickable.</div></div>
+   <div class="flowsec bt"><div class="lbl">Why nobody can just make more <span>${e.bar.length}</span></div>
+     ${e.bar.map(k=>`<div class="rkv"><span class="k">${esc(BARS[k])}</span></div><div class="ptxt sm">${esc(BARWHY[k])}</div>`).join('')}
+     <div class="meth">${esc(e.ttr.m)}</div></div>
+   <div class="flowsec bt"><div class="lbl">Already being built</div><div class="ptxt sm">${esc(e.build)}</div></div>
+   <div class="flowsec bt"><div class="lbl">What solving it requires <span>${e.solve.length}</span></div>
+     ${e.solve.map(x=>`<div class="ptxt sm">${esc(x)}</div>`).join('')}</div>
+   <div class="flowsec bt"><div class="lbl">What would kill it <span>${e.kill.length}</span></div>
+     ${e.kill.map(x=>`<div class="ptxt sm">${esc(x)}</div>`).join('')}</div>
+   <div class="flowsec bt"><div class="lbl">Substitutes and adjacent routes</div>
+     ${e.sub.map(x=>`<div class="rkv"><span class="k">${esc(x)}</span></div>`).join('')}</div>
+   ${an?`<div class="flowsec bt"><div class="lbl">It happened before</div>
+     <div class="rkv"><span class="k">${esc(an.n)}</span><span class="v">${rnum(an.peak.v)} → ${rnum(an.trough.v)}</span></div>
+     <div class="ptxt sm">${esc(an.why)}</div><div class="ptxt sm"><b>Lesson.</b> ${esc(an.lesson)}</div></div>`:''}
+   <div class="flowsec bt"><div class="lbl">Every figure, and where it came from</div>
+     <table class="dtab">${[['Price',e.px,'as of '+e.px.asOf],['Baseline',e.base,e.base.per],['Excess per year',e.pool,''],
+       ['Incumbent margin',e.gm,byId[e.gm.who]?byId[e.gm.who].name:e.gm.who],['Concentration',e.conc,''],['Time to relief',e.ttr,''],['Attention',e.att,'media and policy']]
+       .map(([k,f,x])=>provRow(k,f,x)).join('')}</table>
+     <div class="meth">Score ${rentScore(e).toFixed(0)} = 30% gap + 28% excess + 20% persistence + 12% concentration + 10% margin, computed from the fields above. Snapshot ${esc(RENT_ASOF)}. Estimated and Inferred figures are directional, not audited.</div></div>`;
   // Skip the tab's own hash write and let selectNode push the one entry — so a
   // single Back returns to this signal on the board, not to a half-state.
   document.querySelectorAll('#rinspector .cplink').forEach(s=>{const go=()=>{setTab('map',null);selectNode(s.dataset.go);};s.onclick=go;s.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
@@ -946,101 +964,16 @@ document.querySelectorAll('#rScaleTab button').forEach(btn=>btn.onclick=()=>{
   buildRentBoard();syncHash(true);
 });
 
-rsrch.oninput=()=>{rQ=rsrch.value.toLowerCase().trim();buildRentList();refreshRentStats();;};
-rsrch.onkeydown=ev=>{if(ev.key==='Escape'){ev.stopPropagation();rsrch.value='';rQ='';buildRentList();refreshRentStats();;}};
+rsrch.oninput=()=>{rQ=rsrch.value.toLowerCase().trim();buildRentList();refreshRentStats();};
+rsrch.onkeydown=ev=>{if(ev.key==='Escape'){ev.stopPropagation();rsrch.value='';rQ='';buildRentList();refreshRentStats();}};
 
-/* ---- dossier modal (the long-form breakdown) ---- */
-const rentModal=document.getElementById('rentModal');
-let rdPrevFocus=null;
+/* Per-figure provenance row, rendered inside the inspector. */
 function provRow(label,f,extra){
   return `<tr><td>${esc(label)}</td><td><span class="tag ${f.p}">${PNAME[f.p]}</span> · source quality ${(f.c*100|0)}%${extra?' · '+esc(extra):''}<br>${f.m?'<b>Method.</b> '+esc(f.m)+'<br>':''}<b>Source.</b> ${esc(f.s)}${f.url?` · <a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">verify ↗</a>`:''}</td></tr>`;
 }
 
 /* Micro dossier. Same long-form treatment as the industrial one, organised
    around doing the thing rather than around the market for it. */
-function openMicroDossier(e){
-  const p=microProv(e);
-  document.getElementById('rdTitle').textContent=e.n;
-  document.getElementById('rdBody').innerHTML=`
-   <p style="color:var(--txt);font-size:13.5px;line-height:1.6;margin:0 0 14px">${esc(e.th)}</p>
-   <div class="mblock"><div class="lbl">The numbers</div>
-     ${[['What buyers pay',`${rPrice(e.px.v,e.u)} ${rUnit(e.u)}`,e.px],
-        ['What it would cost if supply could respond',`${rPrice(e.base.v,e.u)} · ${e.base.per}`,e.base],
-        ['Whole niche, a year',mk(e.mkt.v),e.mkt],
-        ['A year of billing, one to five people',mk(e.take.v),e.take],
-        ['Cost to start',mk(e.entry.v),e.entry],
-        ['Months to the first invoice',String(e.ramp.mo),e.ramp]]
-       .map(([k,v,f])=>`<div class="rkv"><span class="k">${esc(k)}</span><span class="v">${esc(v)} <span class="tag ${f.p}">${PWORD[f.p]}</span></span></div>
-         <div class="prov-txt">${esc(f.m)} <i style="color:var(--mut)">${esc(f.s)}</i></div>`).join('')}</div>
-   <div class="mblock"><div class="lbl">What you actually need</div>
-     ${e.need.map(n=>`<div class="prov-txt" style="margin:0 0 8px">${esc(n)}</div>`).join('')}</div>
-   <div class="mblock"><div class="lbl">Why it stays expensive</div>
-     ${e.bar.map(b=>`<div class="rkv"><span class="k">${esc(MBARS[b])}</span></div><div class="prov-txt">${esc(MBARWHY[b])}</div>`).join('')}</div>
-   <div class="mblock"><div class="lbl">Who buys it</div>
-     ${e.who.map(w=>`<div class="rkv"><span class="k">${esc(w)}</span></div>`).join('')}</div>
-   <div class="mblock"><div class="lbl">What would end it</div>
-     ${e.kill.map(k=>`<div class="prov-txt" style="margin:0 0 8px">${esc(k)}</div>`).join('')}</div>
-   <div class="mblock"><div class="lbl">If this one closes</div>
-     ${e.sub.map(x=>`<div class="rkv"><span class="k">${esc(x)}</span></div>`).join('')}</div>`;
-  document.getElementById('rdFoot').innerHTML=`No. ${rRankAll()[e.id]} of ${MICRO.length} · score ${microScore(e).toFixed(0)} = 30% payback + 24% how overpriced + 20% speed to start + 16% annual take + 10% how hard to copy, computed from the fields above. Snapshot ${esc(MICRO_ASOF)}. Weakest figure here is ${PNAME[p]}. Nothing on this board is a published price — check every number yourself before you spend money on it.`;
-  rentModal.classList.add('show');document.getElementById('rdClose').focus();
-}
-
-function openDossier(id){
-  const e=rById(id);if(!e)return;
-  rdPrevFocus=document.activeElement;
-  if(rScale==='micro')return openMicroDossier(e);
-  const an=e.an?ABY[e.an]:null;
-  document.getElementById('rdTitle').textContent=e.n;
-  document.getElementById('rdBody').innerHTML=`
-   <p style="color:var(--txt);font-size:13.5px;line-height:1.6;margin:0 0 14px">${esc(e.th)}</p>
-   <div class="dgrid">
-     <div class="dcell"><div class="k">Price now</div><div class="v">${rnum(e.px.v)}</div><div class="sub">${esc(e.u)} · as of ${esc(e.px.asOf)}</div></div>
-     <div class="dcell"><div class="k">Baseline</div><div class="v">${rnum(e.base.v)}</div><div class="sub">${esc(e.base.per)}</div></div>
-     <div class="dcell"><div class="k">Rent multiple</div><div class="v">${rMult(e).toFixed(1)}×</div><div class="sub">price ÷ baseline, derived</div></div>
-     <div class="dcell"><div class="k">Rent pool</div><div class="v">${fmt(e.pool.v)}</div><div class="sub">per year of excess over baseline</div></div>
-   </div>
-   <h4>Why supply can't respond</h4>
-   <ul>${e.bar.map(b=>`<li><b>${esc(BARS[b])}.</b> ${esc(BARWHY[b])}</li>`).join('')}</ul>
-   <h4>Time to relief · ${rmo(e.ttr.mo)}</h4>
-   <p>${esc(e.ttr.m)}</p>
-   <p>${esc(e.build)}</p>
-   <h4>What solving it requires</h4>
-   <ul>${e.solve.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
-   <h4>What would kill this rent</h4>
-   <ul>${e.kill.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
-   <h4>Substitutes and adjacent routes</h4>
-   <p>${e.sub.map(esc).join(' · ')}</p>
-   <h4>Who collects it</h4>
-   <p>${e.conc.sup.map(s=>`${esc(s.n||(byId[s.id]?byId[s.id].name:s.id))} ${rpct(s.sh)}`).join(' · ')}<br>
-     <span style="color:var(--mut)">Top-3 share ${rpct(e.conc.top3)} · HHI ${e.conc.hhi} · incumbent gross margin ${rpct(e.gm.v)} (${esc(e.gm.who)})</span></p>
-   ${an?`<h4>Historical analogue · ${esc(an.n)}</h4>
-     <p>${rnum(an.peak.v)} (${esc(an.peak.t)}) → ${rnum(an.trough.v)} (${esc(an.trough.t)}). ${esc(an.why)}<br>
-     <b>Lesson.</b> ${esc(an.lesson)}</p>`:''}
-   <h4>Provenance, figure by figure</h4>
-   <table class="dtab">
-     ${provRow('Price',e.px,'as of '+e.px.asOf)}
-     ${provRow('Baseline',e.base,e.base.per)}
-     ${provRow('Rent pool',e.pool)}
-     ${provRow('Incumbent margin',e.gm,e.gm.who)}
-     ${provRow('Concentration',e.conc)}
-     ${provRow('Time to relief',e.ttr)}
-   </table>`;
-  document.getElementById('rdFoot').innerHTML=`Rank ${rRankAll()[id]} of ${RENTS.length} · score ${rentScore(e).toFixed(0)} = 30% rent multiple + 28% rent pool + 20% persistence + 12% concentration + 10% incumbent margin, computed from the fields above. Snapshot ${esc(RENT_ASOF)}. Estimated and Inferred figures are directional, not audited.`;
-  rentModal.classList.add('show');document.getElementById('rdClose').focus();
-}
-function closeDossier(){rentModal.classList.remove('show');if(rdPrevFocus&&rdPrevFocus.focus){try{rdPrevFocus.focus();}catch{/* element gone */}}}
-document.getElementById('rdClose').onclick=closeDossier;
-rentModal.addEventListener('mousedown',e=>{if(e.target===rentModal)closeDossier();});
-rentModal.addEventListener('keydown',e=>{
-  if(e.key!=='Tab'||!rentModal.classList.contains('show'))return;
-  const f=[...rentModal.querySelectorAll('button,a[href]')];
-  if(!f.length)return;
-  const first=f[0],last=f[f.length-1],cur=document.activeElement;
-  if(e.shiftKey&&(cur===first||!f.includes(cur))){e.preventDefault();last.focus();}
-  else if(!e.shiftKey&&(cur===last||!f.includes(cur))){e.preventDefault();first.focus();}
-});
-
 /* ---- shareable URL state ----
    #node=NVDA&t=2022&hide=fin,energy&layers=RE&size=rev — every interesting
    view is linkable. Selection changes push history (back/forward steps

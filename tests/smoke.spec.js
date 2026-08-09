@@ -474,27 +474,55 @@ test('the board ranks every signal and rank 1 leads', async ({ page }) => {
   for (const m of mults) expect(parseFloat(m)).toBeGreaterThan(1);
 });
 
-test('selecting a signal fills the inspector and opens its dossier', async ({ page }) => {
+test('the click-in carries the whole record, with no second view to open', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
   await page.locator('#rlist .trow').first().click();
-
   const ins = page.locator('#rinspector');
+
   await expect(ins.locator('.ihead .nm')).not.toHaveText('');
   await expect(ins.locator('.stats .stat')).toHaveCount(6);
-  // Labels read as English, not as field names off the schema.
-  await expect(ins).toContainText('Costs this much more');
-  await expect(ins).toContainText('Until it eases');
-  await expect(ins).not.toContainText('RENT MULTIPLE');
 
-  // The dossier is the long-form breakdown, and Escape must close it.
-  await page.locator('#openDossier').click();
-  const modal = page.locator('#rentModal');
-  await expect(modal).toHaveClass(/show/);
-  await expect(page.locator('#rdBody')).toContainText("Why supply can't respond");
-  await expect(page.locator('#rdBody')).toContainText('What would kill this rent');
-  await expect(page.locator('#rdBody')).toContainText('Provenance, figure by figure');
-  await page.keyboard.press('Escape');
-  await expect(modal).not.toHaveClass(/show/);
+  // The five columns the table shows must all be answerable here too.
+  for (const k of ['Gap', 'Excess every year', 'Volume', 'Media', 'Policy']) {
+    await expect(ins).toContainText(k);
+  }
+  // ...along with everything the dossier modal used to hold on its own.
+  for (const k of ['What is going on', 'Who collects it', 'Why nobody can just make more',
+    'Already being built', 'What solving it requires', 'What would kill it',
+    'Substitutes and adjacent routes', 'Every figure, and where it came from']) {
+    await expect(ins).toContainText(k);
+  }
+  // Per-figure provenance, including the attention row, and the score formula.
+  await expect(ins.locator('.dtab tr')).toHaveCount(7);
+  await expect(ins.locator('.meth').last()).toContainText('30% gap + 28% excess');
+
+  // There is no longer a second thing to open.
+  await expect(page.locator('#openDossier')).toHaveCount(0);
+  await expect(page.locator('#rentModal')).toHaveCount(0);
+});
+
+test('entity ids resolve to names everywhere they are rendered', async ({ page }) => {
+  // gm.who and conc.sup[].id are COMPANIES keys. They resolved in the stat
+  // block and leaked in the provenance table underneath it — same value, two
+  // call sites, one of them missed. This checks the rendered panel instead of
+  // the call sites, so a third render path cannot reintroduce it.
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  for (const id of ['HBM', 'DDR5', 'COWOS', 'NEARLINE', 'XFMR', 'COPPER']) {
+    await page.locator(`#rlist .trow[data-r="${id}"]`).click();
+    const txt = await page.locator('#rinspector').textContent();
+    const leaked = await page.evaluate((t) => {
+      // Strip every resolved display name first, longest first — "BHP Group"
+      // contains "BHP", so hunting for bare ids without this flags correct
+      // output as a leak.
+      const ids = window.__ids || [];
+      let rest = t;
+      for (const c of [...ids].sort((a, b) => b.name.length - a.name.length)) {
+        rest = rest.split(c.name).join(' ');
+      }
+      return ids.filter((c) => new RegExp(`\\b${c.id}\\b`).test(rest));
+    }, txt);
+    expect(leaked.map((c) => c.id), `${id} renders a raw entity id`).toEqual([]);
+  }
 });
 
 test('a supplier chip returns to the map with that entity selected', async ({ page }) => {
@@ -706,18 +734,30 @@ test('the within-reach board is a separate set with its own columns and sorts', 
   await expect(page.locator('#rinspector')).toContainText('Pays itself back in');
 });
 
-test('the within-reach dossier explains what you need and what would end it', async ({ page }) => {
+test('the small-operator click-in answers what it costs and what would end it', async ({ page }) => {
   await page.goto(PAGE_URL + '#view=rents&scale=micro');
   await page.locator('#rlist .trow').first().click();
-  await page.locator('#openDossier').click();
-  const body = page.locator('#rdBody');
-  await expect(page.locator('#rentModal')).toHaveClass(/show/);
-  await expect(body).toContainText('What you actually need');
-  await expect(body).toContainText('Why it stays expensive');
-  await expect(body).toContainText('What would end it');
-  await expect(body).toContainText('Cost to start');
-  // The board never claims a published price, and the footer says so.
-  await expect(page.locator('#rdFoot')).toContainText('Nothing on this board is a published price');
-  await page.keyboard.press('Escape');
-  await expect(page.locator('#rentModal')).not.toHaveClass(/show/);
+  const ins = page.locator('#rinspector');
+  for (const k of ['Cost to start', 'Until the first invoice', 'Pays itself back in', 'Gap',
+    'Whole niche', 'Media', 'Policy', 'What you actually need', 'Who buys it',
+    'Why it stays expensive', 'What would end it', 'Every figure, and where it came from']) {
+    await expect(ins).toContainText(k);
+  }
+  // The board never claims a published price, and the click-in says so twice:
+  // once as a verdict and once in the scoring footnote.
+  await expect(ins.locator('.verdict')).toContainText('Nothing on this board is a published price');
+  await expect(ins.locator('.meth').last()).toContainText('check every number yourself');
+  await expect(page.locator('#openDossier')).toHaveCount(0);
+});
+
+test('the board table is a grid, and its bars are not silent', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  // role=listbox with row children was invalid once the list became a table.
+  await expect(page.locator('#rlist')).toHaveAttribute('role', 'grid');
+  expect(await page.locator('#rlist > *').evaluateAll((ns) => ns.map((n) => n.getAttribute('role'))))
+    .toEqual(['rowgroup', 'rowgroup']);
+  // A meter with no text announces as an empty cell.
+  const row = page.locator('#rlist .trow').first();
+  await expect(row.locator('.td').nth(6)).toHaveAttribute('aria-label', 'Media');
+  await expect(row.locator('.meter').first()).toHaveAttribute('aria-label', /^\d+ out of 100$/);
 });
