@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import {
   RENTS, ARCHIVE, CATS, BARS, RENT_ASOF,
   rMult, rentScore, rentProv, rentConf, rentFields, RW,
+  rTrend, rRun, rVol, rSubs, rBars,
 } from '../../src/rents.js';
 import { COMPANIES } from '../../src/data.js';
 
@@ -267,4 +268,31 @@ test('the thesis carries each row prose, so no two rows read alike', () => {
     assert.ok(!seen.has(e.th), `two entries share a thesis — the list would read as generated`);
     seen.add(e.th);
   }
+});
+
+test('the derived evaluation columns come out of the entry, not out of thin air', () => {
+  for (const e of RENTS) {
+    const s = e.ser;
+    // Trend is the last leg of the series, not the whole run.
+    assert.ok(Math.abs(rTrend(e) - (s[s.length - 1].v / s[s.length - 2].v - 1)) < 1e-9, `${e.id} trend drifted`);
+    // Years-high can never exceed the series it counts over.
+    const run = rRun(e);
+    assert.ok(run >= 0 && run <= s.length, `${e.id} years-high ${run} outside its ${s.length}-point series`);
+    assert.strictEqual(run, s.filter((p) => p.v >= e.base.v * 1.5).length, `${e.id} years-high drifted`);
+    // Volatility is the largest single step, so it bounds every individual step.
+    const vol = rVol(e);
+    for (let i = 1; i < s.length; i++) {
+      assert.ok(Math.abs(s[i].v / s[i - 1].v - 1) <= vol + 1e-9, `${e.id} volatility misses a step`);
+    }
+    assert.strictEqual(rSubs(e), e.sub.length);
+    assert.strictEqual(rBars(e), e.bar.length);
+  }
+});
+
+test('a flat series has no trend and no volatility', () => {
+  const flat = { ...RENTS[0], base: { ...RENTS[0].base, v: 10 }, ser: [{ t: '2024', v: 10 }, { t: '2025', v: 10 }, { t: '2026', v: 10 }] };
+  assert.strictEqual(rTrend(flat), 0);
+  assert.strictEqual(rVol(flat), 0);
+  // 10 is not >= 1.5x its own baseline of 10, so nothing counts as elevated.
+  assert.strictEqual(rRun(flat), 0);
 });

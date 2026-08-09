@@ -108,6 +108,30 @@ export function rentScore(e) {
 }
 
 /** The key figures a signal rests on — the inputs to both provenance measures. */
+/* Derived evaluation dimensions. Every one of these comes out of fields the
+   entries already carry — the price series, the substitute list, the barrier
+   list — so widening the board never means hand-typing another number that can
+   drift from the rest. */
+
+/* Latest year-on-year move in the price series. */
+export const rTrend = (e) => {
+  const s = e.ser;
+  return s.length < 2 ? 0 : s[s.length - 1].v / s[s.length - 2].v - 1;
+};
+/* How many points in the series sit at or above 1.5x the baseline — how long
+   this has been a rent rather than a price. */
+export const rRun = (e) => e.ser.filter((p) => p.v >= e.base.v * 1.5).length;
+/* Largest single-period move, up or down. A rent that lurches is a rent that
+   can lurch back. */
+export const rVol = (e) => {
+  let m = 0;
+  for (let i = 1; i < e.ser.length; i++) m = Math.max(m, Math.abs(e.ser[i].v / e.ser[i - 1].v - 1));
+  return m;
+};
+/* Fewer ways around it means the rent holds. */
+export const rSubs = (e) => e.sub.length;
+export const rBars = (e) => e.bar.length;
+
 export const rentFields = (e) => [e.px, e.base, e.pool, e.gm, e.conc, e.ttr];
 
 /** Headline provenance is the WEAKEST tier, not an average: a signal is only as
