@@ -628,3 +628,81 @@ test('one back press returns from a supplier jump to the board', async ({ page }
   await expect(page.locator('#app')).toHaveAttribute('data-view', 'rents');
   await expect(page.locator('#rinspector .ihead .nm')).toContainText('HBM');
 });
+
+test('the row chart draws the price against its baseline', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  const top = page.locator('#rlist .rrow').first();
+
+  // Inline SVG, one per row — the trace, the shaded gap, and the dashed baseline
+  // that makes the gap mean something.
+  const svg = top.locator('svg.spk');
+  await expect(svg).toHaveCount(1);
+  await expect(svg.locator('path')).toHaveCount(2);
+  await expect(svg.locator('line[stroke-dasharray]')).toHaveCount(1);
+  await expect(page.locator('#rlist svg.spk')).toHaveCount(await page.locator('#rlist .rrow').count());
+
+  // The chart is labelled with the span it covers.
+  await expect(top.locator('.cx')).toContainText('baseline');
+});
+
+test('every row carries the full column set', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  const cols = page.locator('#rlist .rrow').first().locator('.rcols div');
+  await expect(cols).toHaveCount(10);
+  const labels = await cols.locator('dt').allTextContents();
+  expect(labels).toEqual(['Multiple', 'Excess / yr', 'Top 3', 'Relief', 'Margin',
+    'Last year', 'Years high', 'Biggest swing', 'Ways round', 'Barriers']);
+  // Values are rendered, not blank placeholders.
+  for (const v of await cols.locator('dd').allTextContents()) expect(v.trim()).not.toBe('');
+});
+
+test('the within-reach board is a separate set with its own columns and sorts', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  const rows = page.locator('#rlist .rrow');
+  const industrial = await rows.count();
+
+  await page.locator('#rScaleTab button[data-sc="micro"]').click();
+  await expect(page.locator('#rttl')).toHaveText('Within Reach');
+  expect(await rows.count()).not.toBe(industrial);
+
+  // Micro columns answer the question the industrial ones do not: could you do it.
+  const labels = await rows.first().locator('.rcols dt').allTextContents();
+  expect(labels).toContain('Cost to start');
+  expect(labels).toContain('First invoice');
+  expect(labels).toContain('Payback');
+  expect(labels).toContain('Annual take');
+
+  // Its own sort menu and its own categories — the two enums both contain
+  // "materials" and "regulated", so a shared filter map would cross-wire them.
+  await expect(page.locator('#rsort .fr').first()).toHaveText('Best for a small team');
+  await expect(page.locator('#rcats .fr').first()).toContainText('Electronics & parts');
+
+  // The scale is in the hash, and a deep link boots straight into it.
+  await rows.first().click();
+  await expect(page).toHaveURL(/scale=micro/);
+  const id = await rows.first().getAttribute('data-r');
+  await page.goto(PAGE_URL + `#view=rents&scale=micro&r=${id}`);
+  await expect(page.locator('#rttl')).toHaveText('Within Reach');
+  // The switch has to agree with the board it is sitting above.
+  await expect(page.locator('#rScaleTab button[data-sc="micro"]')).toHaveClass(/on/);
+  await expect(page.locator('#rScaleTab button[data-sc="big"]')).not.toHaveClass(/on/);
+  await expect(page.locator(`#rlist .rrow[data-r="${id}"]`)).toHaveClass(/on/);
+  await expect(page.locator('#rinspector')).toContainText('Cost to start');
+  await expect(page.locator('#rinspector')).toContainText('Pays itself back in');
+});
+
+test('the within-reach dossier explains what you need and what would end it', async ({ page }) => {
+  await page.goto(PAGE_URL + '#view=rents&scale=micro');
+  await page.locator('#rlist .rrow').first().click();
+  await page.locator('#openDossier').click();
+  const body = page.locator('#rdBody');
+  await expect(page.locator('#rentModal')).toHaveClass(/show/);
+  await expect(body).toContainText('What you actually need');
+  await expect(body).toContainText('Why it stays expensive');
+  await expect(body).toContainText('What would end it');
+  await expect(body).toContainText('Cost to start');
+  // The board never claims a published price, and the footer says so.
+  await expect(page.locator('#rdFoot')).toContainText('Nothing on this board is a published price');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#rentModal')).not.toHaveClass(/show/);
+});

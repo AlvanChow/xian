@@ -38,9 +38,9 @@
       <div class="seg" id="sizeBy"><button data-by="mcap" class="on">Market cap</button><button data-by="rev">Revenue</button></div>
     </div>
     <div class="hgrp v-rents">
-      <div class="hstat"><b id="hRN">—</b> on the board</div>
-      <div class="hstat"><b id="hRP">—</b> a year in excess</div>
-      <div class="hstat">typically eases in <b id="hRT">—</b></div>
+      <div class="hstat"><b id="hRN">—</b> <span data-hlab data-g="on the board" data-m="within reach">on the board</span></div>
+      <div class="hstat"><b id="hRP">—</b> <span data-hlab data-g="a year in excess" data-m="typical annual billing">a year in excess</span></div>
+      <div class="hstat"><span data-hlab data-g="typically eases in" data-m="typical cost to start">typically eases in</span> <b id="hRT">—</b></div>
     </div>
     <div class="hright">
       <button class="tbtn" id="aboutBtn">About the data</button>
@@ -87,8 +87,11 @@
     </div>
     <div class="v-rents" id="centerRents">
       <div class="rhead">
+        <div class="seg scaleseg" id="rScaleTab" role="tablist" aria-label="Board scale">
+          <button data-sc="big" class="on" role="tab" aria-selected="true">Industrial</button><button data-sc="micro" role="tab" aria-selected="false">Within reach</button>
+        </div>
         <div>
-          <div class="rttl">The Scarcity Board</div>
+          <div class="rttl" id="rttl">The Scarcity Board</div>
           <div class="rsub" id="rsub">Where price is asking for supply that does not exist yet.</div>
         </div>
       </div>

@@ -183,7 +183,9 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 #centerMap,#centerRents{position:absolute;inset:0}
 #centerRents{display:flex;flex-direction:column;background:var(--bg)}
 
-.rhead{display:flex;align-items:flex-start;gap:14px;padding:28px 26px 20px;border-bottom:1px solid var(--line)}
+.rhead{display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:22px 26px 20px;border-bottom:1px solid var(--line)}
+.scaleseg{align-self:flex-start}
+.scaleseg button{padding:6px 14px;font-size:12.5px}
 .rttl{font-size:24px;font-weight:600;letter-spacing:-.02em}
 .rsub{color:var(--mut);font-size:13.5px;margin-top:7px;line-height:1.6;max-width:56ch}
 .rhead .tbtn{margin-left:auto;flex-shrink:0}
@@ -214,6 +216,20 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .rrow.on .rpx b{color:var(--txt)}
 .rrow .rpx .u{display:block;font-size:11.5px;color:var(--mut);margin-top:1px;max-width:17ch;margin-left:auto;line-height:1.4}
 .rrow .rpx .was{display:block;font-size:11.5px;color:var(--mut);margin-top:6px;white-space:nowrap}
+/* Row chart. The dashed rule is the baseline, so the shaded gap between trace
+   and rule IS the rent — the picture makes the same argument the number does. */
+.rrow .chart{display:block;margin-top:10px;color:var(--mut)}
+.rrow .spk{display:block}
+.rrow .cx{display:flex;justify-content:space-between;font-size:10px;color:var(--mut);margin-top:2px}
+.rrow .cx i{font-style:normal}
+.rrow .cx i:nth-child(2){opacity:.7}
+/* The columns. A ranking answers one question; these are the others a reader
+   asks before believing it. Wrapping grid so a narrow rail never truncates. */
+.rcols{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px 14px;margin:14px 0 0;padding:13px 0 0;border-top:1px solid var(--line)}
+.rcols div{min-width:0}
+.rcols dt{font-size:10.5px;color:var(--mut);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcols dd{margin:2px 0 0;font-size:13.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+.rrow.on .rcols dd{color:var(--txt)}
 .rrow .rsay{font-size:14.5px;line-height:1.65;color:var(--dim);margin-top:13px;max-width:62ch}
 .rrow .rfoot{font-size:12.5px;color:var(--mut);margin-top:9px;line-height:1.6;max-width:62ch}
 .rcdot{width:9px;height:9px;border-radius:3px;flex-shrink:0;align-self:center}

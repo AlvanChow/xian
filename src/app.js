@@ -7,7 +7,8 @@ import { COMPANIES, FLOWS, STATE_SHARES, FLOW_VINTAGE } from './data.js';
 import * as GEN from './facts.js';
 const FACTS=GEN.FACTS, MCAPS=GEN.MCAPS||{}, MCAP_ASOF=GEN.MCAP_ASOF||null, YEAR_MULT=GEN.YEAR_MULT||{};
 import { PERIODS } from './years.js';
-import { RENTS, ARCHIVE, CATS, BARS, BARWHY, RENT_ASOF, rMult, rentScore, rentProv } from './rents.js';
+import { RENTS, ARCHIVE, CATS, BARS, BARWHY, RENT_ASOF, rMult, rentScore, rentProv, rTrend, rRun, rVol, rSubs, rBars } from './rents.js';
+import { MICRO, MCATS, MCAT, MBARS, MBARWHY, MICRO_ASOF, mMult, mPayback, microScore, microProv } from './micro.js';
 
 const C=COMPANIES, FL=FLOWS;
 const byId=Object.fromEntries(C.map(c=>[c.id,c]));
@@ -557,7 +558,7 @@ window.addEventListener('keydown',e=>{
    above the cost of new supply because supply cannot respond. Same provenance
    machinery as the map (PCOL / PNAME / .tag), different question. */
 const RCAT={compute:'#5b8cff',power:'#f5b042',materials:'#ed8f00',pharma:'#3fd68a',labor:'#f472b6',logistics:'#a78bfa',infra:'#2dd4e8',agri:'#1fb979',defense:'#ff6b7a',regulated:'#e2e8f0'};
-const RBY=Object.fromEntries(RENTS.map(e=>[e.id,e])),ABY=Object.fromEntries(ARCHIVE.map(a=>[a.id,a]));
+const ABY=Object.fromEntries(ARCHIVE.map(a=>[a.id,a]));
 // rMult / rentScore / rentProv / rentConf live in rents.js beside the data, so
 // the unit tests score exactly what the board scores.
 const rProv=rentProv;
@@ -567,25 +568,55 @@ const rnum=v=>v>=10000?Math.round(v).toLocaleString('en-US'):v>=100?v.toFixed(0)
 const rmo=m=>m>=24?(m/12).toFixed(m%12?1:0)+' yr':m+' mo';
 const rpct=v=>(v*100).toFixed(0)+'%';
 
-let tab='map',rCatOn={},rBarOn={},rSort='score',rSel=null,rQ='';
-Object.keys(CATS).forEach(k=>rCatOn[k]=1);
-Object.keys(BARS).forEach(k=>rBarOn[k]=1);
-// Sort keys stay stable for the hash; only the labels are plain-language.
-const RSORTS={score:'Worst overall',mult:'Most overpriced',pool:'Most money',ttr:'Slowest to fix',gm:'Fattest margins'};
-const rSortVal=(e,k)=>k==='mult'?rMult(e):k==='pool'?e.pool.v:k==='ttr'?e.ttr.mo:k==='gm'?e.gm.v:rentScore(e);
+let tab='map',rSort='score',rSel=null,rQ='',rScale='big';
+
+/* Two boards, one machine. The industrial set asks how big the rent is; the
+   micro set asks whether a person could actually go and take it. Everything
+   that differs between them — the data, the enums, the score, the sort menu,
+   the columns — hangs off this descriptor, so the list, filters, inspector and
+   hash code below are written once. */
+const BOARDS={
+  big:{
+    set:RENTS,cats:CATS,ccol:RCAT,bars:BARS,barwhy:BARWHY,asof:RENT_ASOF,
+    score:rentScore,prov:rentProv,mult:rMult,
+    sorts:{score:'Worst overall',mult:'Most overpriced',pool:'Most money',ttr:'Slowest to fix',
+      gm:'Fattest margins',trend:'Rising fastest',run:'Longest running',conc:'Most concentrated'},
+    // Negated where smaller is "more" — the list always sorts descending.
+    sortVal:(e,k)=>k==='mult'?rMult(e):k==='pool'?e.pool.v:k==='ttr'?e.ttr.mo:k==='gm'?e.gm.v
+      :k==='trend'?rTrend(e):k==='run'?rRun(e):k==='conc'?e.conc.top3:rentScore(e),
+    hay:e=>[e.id,e.n,e.pn,e.th,CATS[e.cat],...e.bar.map(b=>BARS[b]),...e.conc.sup.map(s=>s.n||s.id||'')],
+  },
+  micro:{
+    set:MICRO,cats:MCATS,ccol:MCAT,bars:MBARS,barwhy:MBARWHY,asof:MICRO_ASOF,
+    score:microScore,prov:microProv,mult:mMult,
+    sorts:{score:'Best for a small team',mult:'Most overpriced',pay:'Fastest payback',ramp:'Quickest to start',
+      take:'Biggest annual take',entry:'Cheapest to start',mkt:'Biggest niche',moat:'Hardest to copy'},
+    sortVal:(e,k)=>k==='mult'?mMult(e):k==='pay'?-mPayback(e):k==='ramp'?-e.ramp.mo:k==='take'?e.take.v
+      :k==='entry'?-e.entry.v:k==='mkt'?e.mkt.v:k==='moat'?e.bar.length:microScore(e),
+    hay:e=>[e.id,e.n,e.pn,e.th,MCATS[e.cat],...e.bar.map(b=>MBARS[b]),...e.who,...e.need],
+  },
+};
+const B=()=>BOARDS[rScale];
+// Filter state is per board: the two category enums both contain "materials"
+// and "regulated", so a single flat map would cross-wire them.
+const rCatOn={big:{},micro:{}},rBarOn={big:{},micro:{}};
+Object.keys(CATS).forEach(k=>rCatOn.big[k]=1);
+Object.keys(BARS).forEach(k=>rBarOn.big[k]=1);
+Object.keys(MCATS).forEach(k=>rCatOn.micro[k]=1);
+Object.keys(MBARS).forEach(k=>rBarOn.micro[k]=1);
 
 function rMatch(e,q){
   if(!q)return true;
-  const hay=[e.id,e.n,e.th,CATS[e.cat],...e.bar.map(b=>BARS[b]),...e.conc.sup.map(s=>s.n||s.id||'')].join(' ').toLowerCase();
-  return hay.includes(q);
+  return B().hay(e).join(' ').toLowerCase().includes(q);
 }
 // Barrier filter is ANY-match: an entry stuck behind three barriers stays
 // visible while any one of them is still selected.
-const rVis=()=>RENTS.filter(e=>rCatOn[e.cat]&&e.bar.some(b=>rBarOn[b])&&rMatch(e,rQ))
-  .sort((a,b)=>rSortVal(b,rSort)-rSortVal(a,rSort));
+const rVis=()=>B().set.filter(e=>rCatOn[rScale][e.cat]&&e.bar.some(b=>rBarOn[rScale][b])&&rMatch(e,rQ))
+  .sort((a,b)=>B().sortVal(b,rSort)-B().sortVal(a,rSort));
 // Rank is always by score and always over the FULL set, so a filtered view
 // still shows each signal's true position on the board.
-const rRankAll=()=>{const o=[...RENTS].sort((a,b)=>rentScore(b)-rentScore(a));return Object.fromEntries(o.map((e,i)=>[e.id,i+1]));};
+const rRankAll=()=>{const b=B(),o=[...b.set].sort((x,y)=>b.score(y)-b.score(x));return Object.fromEntries(o.map((e,i)=>[e.id,i+1]));};
+const rById=id=>B().set.find(e=>e.id===id);
 
 const appEl=document.getElementById('app');
 // push: true pushes a history entry, false replaces in place, null skips the
@@ -603,30 +634,38 @@ function setTab(v,push){
 }
 document.querySelectorAll('#viewTab button').forEach(b=>b.onclick=()=>setTab(b.dataset.v,true));
 
-function buildRentBoard(){buildRentFilters();buildRentList();refreshRentStats();if(!rSel)renderRentEmpty();}
+function buildRentBoard(){syncScaleTab();buildRentFilters();buildRentList();refreshRentStats();if(!rSel)renderRentEmpty();}
+// The switch is also set by the hash, so its pressed state is derived here
+// rather than only in its own click handler — a deep link into the micro board
+// used to leave "Industrial" highlighted above a board titled Within Reach.
+function syncScaleTab(){
+  document.querySelectorAll('#rScaleTab button').forEach(x=>{const on=x.dataset.sc===rScale;
+    x.classList.toggle('on',on);x.setAttribute('aria-selected',on?'true':'false');});
+}
 
 function buildRentFilters(){
   // Plain typographic rows, not bordered pills. Ten colour-filled chips with
   // count badges is what made the rail read as a debug widget rather than the
   // contents page of something written.
-  document.getElementById('rsort').innerHTML=Object.keys(RSORTS).map(k=>
-    `<button class="fr ${rSort===k?'on':''}" data-rs="${k}" aria-pressed="${rSort===k?'true':'false'}"><span class="t">${RSORTS[k]}</span></button>`).join('');
-  const cc={};RENTS.forEach(e=>cc[e.cat]=(cc[e.cat]||0)+1);
-  document.getElementById('rcats').innerHTML=Object.keys(CATS).map(k=>
-    `<button class="fr ${rCatOn[k]?'on':''}" data-rc="${k}" aria-pressed="${rCatOn[k]?'true':'false'}"><span class="d" style="background:${RCAT[k]}"></span><span class="t">${esc(CATS[k])}</span><span class="ct">${cc[k]||0}</span></button>`).join('');
-  const bc={};RENTS.forEach(e=>e.bar.forEach(b=>bc[b]=(bc[b]||0)+1));
-  document.getElementById('rbars').innerHTML=Object.keys(BARS).map(k=>
-    `<button class="fr ${rBarOn[k]?'on':''}" data-rb="${k}" aria-pressed="${rBarOn[k]?'true':'false'}"><span class="t">${esc(BARS[k])}</span><span class="ct">${bc[k]||0}</span></button>`).join('');
+  const b=B();
+  document.getElementById('rsort').innerHTML=Object.keys(b.sorts).map(k=>
+    `<button class="fr ${rSort===k?'on':''}" data-rs="${k}" aria-pressed="${rSort===k?'true':'false'}"><span class="t">${b.sorts[k]}</span></button>`).join('');
+  const cc={};b.set.forEach(e=>cc[e.cat]=(cc[e.cat]||0)+1);
+  document.getElementById('rcats').innerHTML=Object.keys(b.cats).map(k=>
+    `<button class="fr ${rCatOn[rScale][k]?'on':''}" data-rc="${k}" aria-pressed="${rCatOn[rScale][k]?'true':'false'}"><span class="d" style="background:${b.ccol[k]}"></span><span class="t">${esc(b.cats[k])}</span><span class="ct">${cc[k]||0}</span></button>`).join('');
+  const bc={};b.set.forEach(e=>e.bar.forEach(k=>bc[k]=(bc[k]||0)+1));
+  document.getElementById('rbars').innerHTML=Object.keys(b.bars).map(k=>
+    `<button class="fr ${rBarOn[rScale][k]?'on':''}" data-rb="${k}" aria-pressed="${rBarOn[rScale][k]?'true':'false'}"><span class="t">${esc(b.bars[k])}</span><span class="ct">${bc[k]||0}</span></button>`).join('');
   // The fold is closed by default, so the summary has to say when something
   // inside is actually filtering — otherwise a narrowed board looks unexplained.
   // Every barrier starts on, so "all on" is the neutral state and stays quiet.
-  const off=Object.keys(BARS).filter(k=>!rBarOn[k]).length;
+  const off=Object.keys(b.bars).filter(k=>!rBarOn[rScale][k]).length;
   const cv=document.getElementById('rbarcv');
-  cv.textContent=off?`${off} off`:`${Object.keys(BARS).length}`;
+  cv.textContent=off?`${off} off`:`${Object.keys(b.bars).length}`;
   cv.style.color=off?'var(--accent)':'';
-  document.querySelectorAll('[data-rs]').forEach(b=>b.onclick=()=>{rSort=b.dataset.rs;buildRentBoard();;syncHash(false);});
-  document.querySelectorAll('[data-rc]').forEach(b=>b.onclick=()=>{rCatOn[b.dataset.rc]=!rCatOn[b.dataset.rc];buildRentBoard();;syncHash(false);});
-  document.querySelectorAll('[data-rb]').forEach(b=>b.onclick=()=>{rBarOn[b.dataset.rb]=!rBarOn[b.dataset.rb];buildRentBoard();;syncHash(false);});
+  document.querySelectorAll('[data-rs]').forEach(n=>n.onclick=()=>{rSort=n.dataset.rs;buildRentBoard();syncHash(false);});
+  document.querySelectorAll('[data-rc]').forEach(n=>n.onclick=()=>{rCatOn[rScale][n.dataset.rc]=!rCatOn[rScale][n.dataset.rc];buildRentBoard();syncHash(false);});
+  document.querySelectorAll('[data-rb]').forEach(n=>n.onclick=()=>{rBarOn[rScale][n.dataset.rb]=!rBarOn[rScale][n.dataset.rb];buildRentBoard();syncHash(false);});
 }
 
 /* The row reads as a sentence, and every clause of it is derived — nothing here
@@ -669,42 +708,107 @@ function rFacts(e){
   return `${fmt(e.pool.v)} a year in excess`+(who?`, collected by ${who}`:'')
     +`, holding ${rpct(e.conc.top3)} between them. ${relief}`;
 }
+function mFacts(e){
+  return `About ${mk(e.take.v)} a year for one to five people, on ${mk(e.entry.v)} to start `
+    +`and ${e.ramp.mo} month${e.ramp.mo===1?'':'s'} before the first invoice. `
+    +`Pays back in ${Math.round(mPayback(e))} months.`;
+}
+const mk=v=>v>=1000?'$'+(v/1000).toFixed(1)+'M':'$'+Math.round(v)+'K';
+
+/* Row chart. Inline SVG rather than a canvas: 26 of these need no lifecycle,
+   no DPR handling and no redraw on tab switch, and they stay crisp when the
+   browser zooms. The dashed line is the baseline — the whole point of the
+   picture is the gap between the trace and that line. */
+function spark(e,col,w=168,h=40){
+  const s=e.ser;if(!s||s.length<2)return '';
+  const vs=s.map(p=>p.v),lo=Math.min(...vs,e.base.v),hi=Math.max(...vs,e.base.v);
+  const pad=(hi-lo)*0.12||1,mn=lo-pad,mx=hi+pad;
+  const X=i=>(i/(s.length-1)*(w-2)+1),Y=v=>h-3-((v-mn)/(mx-mn))*(h-6);
+  const line=s.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p.v).toFixed(1)}`).join(' ');
+  const area=`${line} L${X(s.length-1).toFixed(1)} ${h} L${X(0).toFixed(1)} ${h} Z`;
+  const by=Y(e.base.v).toFixed(1),id='g'+e.id;
+  return `<svg class="spk" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img"
+      aria-label="Price from ${esc(s[0].t)} to ${esc(s[s.length-1].t)}, against the baseline">
+    <defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="${col}" stop-opacity=".28"/><stop offset="1" stop-color="${col}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#${id})"/>
+    <line x1="0" y1="${by}" x2="${w}" y2="${by}" stroke="currentColor" stroke-width="1" stroke-dasharray="2 3" opacity=".55"/>
+    <path d="${line}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${X(s.length-1).toFixed(1)}" cy="${Y(vs[vs.length-1]).toFixed(1)}" r="2.4" fill="${col}"/>
+  </svg>`;
+}
+const sgn=v=>(v>0?'+':'')+(v*100).toFixed(0)+'%';
+/* The columns. Both boards get a strip of labelled figures under the thesis —
+   the ranking answers one question, and these are the others a reader would
+   ask before believing it. Every value is derived from the entry. */
+function rCols(e){
+  return [['Multiple',rMult(e).toFixed(1)+'×'],['Excess / yr',fmt(e.pool.v)],
+    ['Top 3',rpct(e.conc.top3)],['Relief',rmo(e.ttr.mo)],['Margin',rpct(e.gm.v)],
+    ['Last year',sgn(rTrend(e))],['Years high',String(rRun(e))],
+    ['Biggest swing',sgn(rVol(e))],['Ways round',String(rSubs(e))],['Barriers',String(rBars(e))]];
+}
+function mCols(e){
+  return [['Multiple',mMult(e).toFixed(1)+'×'],['Cost to start',mk(e.entry.v)],
+    ['First invoice',e.ramp.mo+' mo'],['Payback',Math.round(mPayback(e))+' mo'],
+    ['Annual take',mk(e.take.v)],['Niche size',mk(e.mkt.v)],
+    ['Last year',sgn(rTrend(e))],['Barriers',String(e.bar.length)],['Ways round',String(e.sub.length)]];
+}
+const colStrip=cols=>`<dl class="rcols">${cols.map(([k,v])=>
+  `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
 function buildRentList(){
   const rows=rVis(),rank=rRankAll(),el=document.getElementById('rlist');
   if(!rows.length){el.innerHTML='<div class="rempty">Nothing matches those filters.<br>Switch a category back on to bring the board back.</div>';return;}
+  const b=B(),micro=rScale==='micro';
   el.innerHTML=rows.map(e=>{
-    const p=rProv(e);
-    return `<div class="rrow ${rSel===e.id?'on':''}" role="option" tabindex="0" aria-selected="${rSel===e.id?'true':'false'}" data-r="${e.id}" data-cat="${e.cat}" aria-label="Number ${rank[e.id]}, ${esc(e.pn)}, ${rPrice(e.px.v,e.u)} ${esc(rUnit(e.u))}, ${rMult(e).toFixed(1)} times the ${rPrice(e.base.v,e.u)} it used to be. ${rFacts(e)}">
+    const p=b.prov(e),col=b.ccol[e.cat],facts=micro?mFacts(e):rFacts(e);
+    return `<div class="rrow ${rSel===e.id?'on':''}" role="option" tabindex="0" aria-selected="${rSel===e.id?'true':'false'}" data-r="${e.id}" data-cat="${e.cat}" aria-label="Number ${rank[e.id]}, ${esc(e.pn)}, ${rPrice(e.px.v,e.u)} ${esc(rUnit(e.u))}, ${b.mult(e).toFixed(1)} times the ${rPrice(e.base.v,e.u)} it used to be. ${facts}">
       <div class="rk">${rank[e.id]}</div>
       <div class="rbody">
         <div class="r1">
           <div class="rttlwrap">
             <div class="rn">${esc(e.pn)}</div>
-            <div class="rsrc">${esc(CATS[e.cat])} · ${esc(e.n)}</div>
+            <div class="rsrc">${esc(b.cats[e.cat])} · ${esc(e.n)}</div>
           </div>
           <div class="rpx"><b>${esc(rPrice(e.px.v,e.u))}</b><span class="u">${esc(rUnit(e.u))}</span>
-            <span class="was">${rMult(e).toFixed(1)}× the ${esc(rPrice(e.base.v,e.u))} it used to be</span></div>
+            <span class="was">${b.mult(e).toFixed(1)}× the ${esc(rPrice(e.base.v,e.u))} it used to be</span>
+            <span class="chart">${spark(e,col)}<span class="cx"><i>${esc(e.ser[0].t)}</i><i>baseline</i><i>${esc(e.ser[e.ser.length-1].t)}</i></span></span></div>
         </div>
         <div class="rsay">${esc(e.th)}</div>
-        <div class="rfoot">${esc(rFacts(e))}${p==='R'?' Every figure published.':` Figures ${p==='E'?'estimated':'modelled'}.`}</div>
+        ${colStrip(micro?mCols(e):rCols(e))}
+        <div class="rfoot">${esc(facts)}${p==='R'?' Every figure published.':` Figures ${p==='E'?'estimated':'modelled'}.`}</div>
       </div></div>`;}).join('');
   el.querySelectorAll('[data-r]').forEach(r=>{const go=()=>selectRent(r.dataset.r,true);r.onclick=go;r.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
 }
 
 function refreshRentStats(){
-  const rows=rVis();
-  document.getElementById('hRN').textContent=rows.length;
-  document.getElementById('hRP').textContent=fmt(rows.reduce((a,e)=>a+e.pool.v,0));
-  const mos=rows.map(e=>e.ttr.mo).sort((a,b)=>a-b);
-  document.getElementById('hRT').textContent=mos.length?rmo(mos[mos.length>>1]):'—';
-  document.getElementById('rsub').textContent=`Things that cost far more than they should, because nobody can make more of them yet. ${RENTS.length} of them, ranked worst first. ${ARCHIVE.length} more have already come back down.`;
-  // Same idea as the map's provenance mix: what share of the money on screen
+  const rows=rVis(),b=B(),micro=rScale==='micro';
+  const hRN=document.getElementById('hRN'),hRP=document.getElementById('hRP'),hRT=document.getElementById('hRT');
+  hRN.textContent=rows.length;
+  if(micro){
+    hRP.textContent=rows.length?mk(Math.round(rows.reduce((a,e)=>a+e.take.v,0)/rows.length)):'—';
+    const en=rows.map(e=>e.entry.v).sort((x,y)=>x-y);
+    hRT.textContent=en.length?mk(en[en.length>>1]):'—';
+  }else{
+    hRP.textContent=fmt(rows.reduce((a,e)=>a+e.pool.v,0));
+    const mos=rows.map(e=>e.ttr.mo).sort((x,y)=>x-y);
+    hRT.textContent=mos.length?rmo(mos[mos.length>>1]):'—';
+  }
+  document.querySelectorAll('[data-hlab]').forEach(n=>{n.textContent=n.dataset[micro?'m':'g'];});
+  document.getElementById('rttl').textContent=micro?'Within Reach':'The Scarcity Board';
+  document.getElementById('rsub').textContent=micro
+    ?`The same thing at a size one person or a small team could actually enter. Not a fab — a certification, a skill, or a machine. ${MICRO.length} of them, best-for-a-small-team first.`
+    :`Things that cost far more than they should, because nobody can make more of them yet. ${RENTS.length} of them, ranked worst first. ${ARCHIVE.length} more have already come back down.`;
+  // Same idea as the map's provenance mix: what share of what is on screen
   // rests on figures we could actually verify.
-  const mix={R:0,E:0,I:0};rows.forEach(e=>mix[rProv(e)]+=e.pool.v);
+  const wt=e=>micro?e.mkt.v:e.pool.v;
+  const mix={R:0,E:0,I:0};rows.forEach(e=>mix[b.prov(e)]+=wt(e));
   const tot=mix.R+mix.E+mix.I||1;
   document.getElementById('rprovmix').innerHTML=['R','E','I'].map(k=>
     `<div class="mixrow"><div class="h"><b style="color:${PCOL[k]}">${PNAME[k]}</b><span>${(mix[k]/tot*100).toFixed(0)}%</span></div><div class="track"><i style="width:${mix[k]/tot*100}%;background:${PCOL[k]}"></i></div></div>`).join('')+
-    `<div class="note">Share of visible rent pool by the weakest figure behind each signal. Contract prices for packaging slots, CDMO lines and bilateral isotope supply are not publicly quoted — most of this board is modeled, and says so.</div>`;
+    `<div class="note">${micro
+      ?'Weighted by the size of each niche. Nothing on this board is a published price — small-lot work is quoted bilaterally and never printed. These are modelled well enough to rank, not well enough to underwrite. Do your own diligence before spending money.'
+      :'Share of visible rent pool by the weakest figure behind each signal. Contract prices for packaging slots, CDMO lines and bilateral isotope supply are not publicly quoted — most of this board is modeled, and says so.'}</div>`;
 }
 
 function renderRentEmpty(){
@@ -712,9 +816,43 @@ function renderRentEmpty(){
   const l=document.getElementById('rabLink');if(l)l.onclick=ev=>{ev.preventDefault();openAbout();};
 }
 
+
+/* The micro inspector leads with the three numbers a person weighing this up
+   actually needs — what to spend, how long until money comes in, and what it
+   pays back — before any of the market framing. */
+function renderMicroInspector(e){
+  const p=microProv(e),rank=rRankAll()[e.id];
+  document.getElementById('rinspector').innerHTML=`
+   <div class="ihead"><div class="tk">No. ${rank} of ${MICRO.length}</div><div class="nm">${esc(e.n)}</div>
+     <div class="meta"><span class="pill"><span class="d" style="background:${MCAT[e.cat]}"></span>${esc(MCATS[e.cat])}</span><span class="pill" title="Unit the price is quoted in">${esc(e.u)}</span></div></div>
+   <div class="stats">
+     <div class="stat"><div class="k">Cost to start</div><div class="v">${mk(e.entry.v)}<span class="tag ${e.entry.p}">${PWORD[e.entry.p]}</span></div><div class="k" style="margin-top:2px">${esc(e.entry.m)}</div></div>
+     <div class="stat"><div class="k">Until the first invoice</div><div class="v">${e.ramp.mo} mo<span class="tag ${e.ramp.p}">${PWORD[e.ramp.p]}</span></div><div class="k" style="margin-top:2px">${esc(e.ramp.m)}</div></div>
+     <div class="stat"><div class="k">A year of billing</div><div class="v">${mk(e.take.v)}<span class="tag ${e.take.p}">${PWORD[e.take.p]}</span></div><div class="k" style="margin-top:2px">one to five people</div></div>
+     <div class="stat"><div class="k">Pays itself back in</div><div class="v">${Math.round(mPayback(e))} mo</div><div class="k" style="margin-top:2px">start-up cost over billing</div></div>
+     <div class="stat"><div class="k">Costs this much more</div><div class="v">${mMult(e).toFixed(1)}×<span class="tag ${e.px.p}">${PWORD[e.px.p]}</span></div><div class="k" style="margin-top:2px">${rPrice(e.px.v,e.u)} now, ${rPrice(e.base.v,e.u)} if supply could respond</div></div>
+     <div class="stat"><div class="k">Whole niche is worth</div><div class="v">${mk(e.mkt.v)}<span class="tag ${e.mkt.p}">${PWORD[e.mkt.p]}</span></div><div class="k" style="margin-top:2px">a year, everyone in it combined</div></div>
+   </div>
+   <div class="nsw"><div class="k">Price · ${esc(e.u)}</div><canvas id="rspark" aria-label="Price history for ${esc(e.n)}"></canvas><div class="yrs"><span>${esc(e.ser[0].t)}</span><span>${esc(e.ser[e.ser.length-1].t)}</span></div></div>
+   <button class="ddbtn" id="openDossier">Full dossier →</button>
+   <div class="verdict warn">Nothing on this board is a published price — work at this size is quoted bilaterally and never printed. ${esc(e.take.m)} Modelled well enough to rank, not well enough to underwrite. Check it yourself before you spend anything.</div>
+   <div class="flowsec"><div class="lbl">What is going on</div><div style="font-size:12.5px;line-height:1.6;color:var(--dim)">${esc(e.th)}</div></div>
+   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">What you actually need <span>${e.need.length}</span></div>
+     ${e.need.map(n=>`<div class="prov-txt" style="margin:0 0 8px">${esc(n)}</div>`).join('')}</div>
+   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Who buys it <span>${e.who.length}</span></div>
+     ${e.who.map(w=>`<div class="rkv"><span class="k">${esc(w)}</span></div>`).join('')}</div>
+   <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Why it stays expensive <span>${e.bar.length}</span></div>
+     ${e.bar.map(b=>`<div class="rkv"><span class="k">${esc(MBARS[b])}</span></div>`).join('')}</div>
+   <div class="mblock"><div class="lbl">What would end it</div>
+     ${e.kill.map(k=>`<div class="prov-txt" style="margin:0 0 8px">${esc(k)}</div>`).join('')}
+     <div class="meth" style="color:var(--mut);font-size:11px;margin-top:6px">Provenance: ${PNAME[p]} at its weakest figure.</div></div>`;
+  const btn=document.getElementById('openDossier');if(btn)btn.onclick=()=>openDossier(e.id);
+}
+
 function selectRent(id,push){
-  const e=RBY[id];if(!e)return;
+  const e=rById(id);if(!e)return;
   rSel=id;
+  if(rScale==='micro'){renderMicroInspector(e);drawRSpark(e);buildRentList();syncHash(push);return;}
   const p=rProv(e),rank=rRankAll()[id],mult=rMult(e),an=e.an?ABY[e.an]:null;
   const supRow=s=>{const c=s.id&&byId[s.id];
     return `<div class="rsup"><span style="width:9px;height:9px;border-radius:50%;background:${c?SEC[c.sec]:'var(--mut)'};display:inline-block"></span>${c?`<span class="cplink" data-go="${s.id}" role="button" tabindex="0" title="Show ${esc(c.name)} on the map">${esc(c.name)}</span>`:`<span class="plain">${esc(s.n||s.id)}</span>`}<span class="sh">${rpct(s.sh)}</span></div>`;};
@@ -770,8 +908,17 @@ function drawRSpark(e){
   g.textAlign='left';g.fillStyle=PCOL.E;g.fillText('baseline '+rnum(e.base.v),10,Math.min(h-2,Y(e.base.v)+11));
 }
 
-window.addEventListener('resize',()=>{if(rSel&&RBY[rSel])drawRSpark(RBY[rSel]);});
+window.addEventListener('resize',()=>{if(rSel&&rById(rSel))drawRSpark(rById(rSel));});
 const rsrch=document.getElementById('rsrch');
+/* Scale switch. Selection, sort and filters are per board, so moving between
+   them resets the selection rather than carrying a dangling id across. */
+document.querySelectorAll('#rScaleTab button').forEach(btn=>btn.onclick=()=>{
+  const v=btn.dataset.sc==='micro'?'micro':'big';
+  if(v===rScale)return;
+  rScale=v;rSel=null;rSort='score';rQ='';rsrch.value='';
+  buildRentBoard();syncHash(true);
+});
+
 rsrch.oninput=()=>{rQ=rsrch.value.toLowerCase().trim();buildRentList();refreshRentStats();;};
 rsrch.onkeydown=ev=>{if(ev.key==='Escape'){ev.stopPropagation();rsrch.value='';rQ='';buildRentList();refreshRentStats();;}};
 
@@ -781,9 +928,41 @@ let rdPrevFocus=null;
 function provRow(label,f,extra){
   return `<tr><td>${esc(label)}</td><td><span class="tag ${f.p}">${PNAME[f.p]}</span> · source quality ${(f.c*100|0)}%${extra?' · '+esc(extra):''}<br>${f.m?'<b>Method.</b> '+esc(f.m)+'<br>':''}<b>Source.</b> ${esc(f.s)}${f.url?` · <a href="${esc(f.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">verify ↗</a>`:''}</td></tr>`;
 }
+
+/* Micro dossier. Same long-form treatment as the industrial one, organised
+   around doing the thing rather than around the market for it. */
+function openMicroDossier(e){
+  const p=microProv(e);
+  document.getElementById('rdTitle').textContent=e.n;
+  document.getElementById('rdBody').innerHTML=`
+   <p style="color:var(--txt);font-size:13.5px;line-height:1.6;margin:0 0 14px">${esc(e.th)}</p>
+   <div class="mblock"><div class="lbl">The numbers</div>
+     ${[['What buyers pay',`${rPrice(e.px.v,e.u)} ${rUnit(e.u)}`,e.px],
+        ['What it would cost if supply could respond',`${rPrice(e.base.v,e.u)} · ${e.base.per}`,e.base],
+        ['Whole niche, a year',mk(e.mkt.v),e.mkt],
+        ['A year of billing, one to five people',mk(e.take.v),e.take],
+        ['Cost to start',mk(e.entry.v),e.entry],
+        ['Months to the first invoice',String(e.ramp.mo),e.ramp]]
+       .map(([k,v,f])=>`<div class="rkv"><span class="k">${esc(k)}</span><span class="v">${esc(v)} <span class="tag ${f.p}">${PWORD[f.p]}</span></span></div>
+         <div class="prov-txt">${esc(f.m)} <i style="color:var(--mut)">${esc(f.s)}</i></div>`).join('')}</div>
+   <div class="mblock"><div class="lbl">What you actually need</div>
+     ${e.need.map(n=>`<div class="prov-txt" style="margin:0 0 8px">${esc(n)}</div>`).join('')}</div>
+   <div class="mblock"><div class="lbl">Why it stays expensive</div>
+     ${e.bar.map(b=>`<div class="rkv"><span class="k">${esc(MBARS[b])}</span></div><div class="prov-txt">${esc(MBARWHY[b])}</div>`).join('')}</div>
+   <div class="mblock"><div class="lbl">Who buys it</div>
+     ${e.who.map(w=>`<div class="rkv"><span class="k">${esc(w)}</span></div>`).join('')}</div>
+   <div class="mblock"><div class="lbl">What would end it</div>
+     ${e.kill.map(k=>`<div class="prov-txt" style="margin:0 0 8px">${esc(k)}</div>`).join('')}</div>
+   <div class="mblock"><div class="lbl">If this one closes</div>
+     ${e.sub.map(x=>`<div class="rkv"><span class="k">${esc(x)}</span></div>`).join('')}</div>`;
+  document.getElementById('rdFoot').innerHTML=`No. ${rRankAll()[e.id]} of ${MICRO.length} · score ${microScore(e).toFixed(0)} = 30% payback + 24% how overpriced + 20% speed to start + 16% annual take + 10% how hard to copy, computed from the fields above. Snapshot ${esc(MICRO_ASOF)}. Weakest figure here is ${PNAME[p]}. Nothing on this board is a published price — check every number yourself before you spend money on it.`;
+  rentModal.classList.add('show');document.getElementById('rdClose').focus();
+}
+
 function openDossier(id){
-  const e=RBY[id];if(!e)return;
+  const e=rById(id);if(!e)return;
   rdPrevFocus=document.activeElement;
+  if(rScale==='micro')return openMicroDossier(e);
   const an=e.an?ABY[e.an]:null;
   document.getElementById('rdTitle').textContent=e.n;
   document.getElementById('rdBody').innerHTML=`
@@ -853,8 +1032,9 @@ function syncHash(push){
   if(tab==='rents'){
     p.set('view','rents');
     if(rSel)p.set('r',rSel);
-    const coff=Object.keys(CATS).filter(k=>!rCatOn[k]);if(coff.length)p.set('rcat',coff.join(','));
-    const boff=Object.keys(BARS).filter(k=>!rBarOn[k]);if(boff.length)p.set('rbar',boff.join(','));
+    if(rScale!=='big')p.set('scale',rScale);
+    const coff=Object.keys(B().cats).filter(k=>!rCatOn[rScale][k]);if(coff.length)p.set('rcat',coff.join(','));
+    const boff=Object.keys(B().bars).filter(k=>!rBarOn[rScale][k]);if(boff.length)p.set('rbar',boff.join(','));
     if(rSort!=='score')p.set('rsort',rSort);
   }
   const h=p.toString()?'#'+p.toString():'';
@@ -873,17 +1053,18 @@ function applyHash(){
   if(p.has('layers')){const l=p.get('layers');['R','E','I'].forEach(k=>layerOn[k]=l.includes(k));}
   if(p.has('size')&&['mcap','rev'].includes(p.get('size'))){sizeBy=p.get('size');document.querySelectorAll('#sizeBy button').forEach(x=>x.classList.toggle('on',x.dataset.by===sizeBy));}
   buildSectors();buildLayers();refreshStats();
-  Object.keys(CATS).forEach(k=>rCatOn[k]=true);
-  if(p.has('rcat'))p.get('rcat').split(',').forEach(k=>{if(k in rCatOn)rCatOn[k]=false;});
-  Object.keys(BARS).forEach(k=>rBarOn[k]=true);
-  if(p.has('rbar'))p.get('rbar').split(',').forEach(k=>{if(k in rBarOn)rBarOn[k]=false;});
-  rSort=p.has('rsort')&&RSORTS[p.get('rsort')]?p.get('rsort'):'score';
+  rScale=p.get('scale')==='micro'?'micro':'big';
+  Object.keys(B().cats).forEach(k=>rCatOn[rScale][k]=true);
+  if(p.has('rcat'))p.get('rcat').split(',').forEach(k=>{if(k in rCatOn[rScale])rCatOn[rScale][k]=false;});
+  Object.keys(B().bars).forEach(k=>rBarOn[rScale][k]=true);
+  if(p.has('rbar'))p.get('rbar').split(',').forEach(k=>{if(k in rBarOn[rScale])rBarOn[rScale][k]=false;});
+  rSort=p.has('rsort')&&B().sorts[p.get('rsort')]?p.get('rsort'):'score';
   const wantRents=p.get('view')==='rents';
   setTab(wantRents?'rents':'map',false);
   let sel=false;
   if(wantRents){
     const rid=(p.get('r')||'').toUpperCase();
-    if(rid&&RBY[rid]){selectRent(rid,false);sel=true;}
+    if(rid&&rById(rid)){selectRent(rid,false);sel=true;}
     else{rSel=null;buildRentBoard();}
   }
   const nid=(p.get('node')||'').toUpperCase(); // ids are uppercase; accept #node=aapl
