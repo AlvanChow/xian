@@ -7,8 +7,8 @@ import { COMPANIES, FLOWS, STATE_SHARES, FLOW_VINTAGE } from './data.js';
 import * as GEN from './facts.js';
 const FACTS=GEN.FACTS, MCAPS=GEN.MCAPS||{}, MCAP_ASOF=GEN.MCAP_ASOF||null, YEAR_MULT=GEN.YEAR_MULT||{};
 import { PERIODS } from './years.js';
-import { RENTS, ARCHIVE, CATS, BARS, BARWHY, RENT_ASOF, rMult, rentScore, rentProv, rTrend, rRun, rVol, rSubs, rBars } from './rents.js';
-import { MICRO, MCATS, MCAT, MBARS, MBARWHY, MICRO_ASOF, mMult, mPayback, microScore, microProv } from './micro.js';
+import { RENTS, ARCHIVE, CATS, BARS, BARWHY, RENT_ASOF, rMult, rentScore, rentProv, rTrend, rRun, rVol, rSubs, rBars, rVolume } from './rents.js';
+import { MICRO, MCATS, MCAT, MBARS, MBARWHY, MICRO_ASOF, mMult, mPayback, microScore, microProv, mVolume } from './micro.js';
 
 const C=COMPANIES, FL=FLOWS;
 const byId=Object.fromEntries(C.map(c=>[c.id,c]));
@@ -568,7 +568,7 @@ const rnum=v=>v>=10000?Math.round(v).toLocaleString('en-US'):v>=100?v.toFixed(0)
 const rmo=m=>m>=24?(m/12).toFixed(m%12?1:0)+' yr':m+' mo';
 const rpct=v=>(v*100).toFixed(0)+'%';
 
-let tab='map',rSort='score',rSel=null,rQ='',rScale='big';
+let tab='map',rSort='score',rDir=-1,rSel=null,rQ='',rScale='big';
 
 /* Two boards, one machine. The industrial set asks how big the rent is; the
    micro set asks whether a person could actually go and take it. Everything
@@ -579,20 +579,52 @@ const BOARDS={
   big:{
     set:RENTS,cats:CATS,ccol:RCAT,bars:BARS,barwhy:BARWHY,asof:RENT_ASOF,
     score:rentScore,prov:rentProv,mult:rMult,
-    sorts:{score:'Worst overall',mult:'Most overpriced',pool:'Most money',ttr:'Slowest to fix',
-      gm:'Fattest margins',trend:'Rising fastest',run:'Longest running',conc:'Most concentrated'},
-    // Negated where smaller is "more" — the list always sorts descending.
-    sortVal:(e,k)=>k==='mult'?rMult(e):k==='pool'?e.pool.v:k==='ttr'?e.ttr.mo:k==='gm'?e.gm.v
-      :k==='trend'?rTrend(e):k==='run'?rRun(e):k==='conc'?e.conc.top3:rentScore(e),
+    // One definition per visible column, driving the header, the cell and the
+    // sort together — a table whose header can disagree with its own ordering
+    // is worse than no table.
+    cols:[
+      {k:'score',lab:'#',w:'34px',cls:'rk',ttl:'Overall score: 30% gap, 28% money, 20% persistence, 12% concentration, 10% margin',
+       get:e=>rentScore(e),cell:(e,rank)=>String(rank[e.id])},
+      {k:'name',lab:'Signal',w:'minmax(140px,1fr)',cls:'nm',txt:1,get:e=>e.pn,cell:e=>nameCell(e)},
+      {k:'px',lab:'$',w:'82px',ttl:'What a buyer pays today',get:e=>e.px.v,cell:e=>esc(rPrice(e.px.v,e.u))},
+      {k:'gap',lab:'Gap',w:'56px',ttl:'Price over the baseline it would cost if supply could respond',
+       get:e=>rMult(e),cell:e=>rMult(e).toFixed(1)+'×'},
+      {k:'pool',lab:'Excess / yr',w:'84px',ttl:'Annual spend above the baseline, across the whole market',
+       get:e=>e.pool.v,cell:e=>esc(fmt(e.pool.v))},
+      {k:'vol',lab:'Volume',w:'84px',ttl:'Units a year implied by the excess and the price gap',
+       get:e=>rVolume(e),cell:e=>esc(compact(rVolume(e)))},
+      {k:'media',lab:'Media',w:'70px',ttl:'How much this is being written about (0-100, editorial judgement, not a count)',
+       get:e=>e.att.media,cell:e=>meter(e.att.media)},
+      {k:'policy',lab:'Policy',w:'70px',ttl:'How much this is being legislated about (0-100, editorial judgement, not a count)',
+       get:e=>e.att.policy,cell:e=>meter(e.att.policy)},
+      {k:'ser',lab:'5 yr',w:'64px',cls:'ch',ttl:'Price against its baseline over the series',
+       get:e=>rTrend(e),cell:(e,_r,col)=>spark(e,col,62,20)},
+    ],
     hay:e=>[e.id,e.n,e.pn,e.th,CATS[e.cat],...e.bar.map(b=>BARS[b]),...e.conc.sup.map(s=>s.n||s.id||'')],
   },
   micro:{
     set:MICRO,cats:MCATS,ccol:MCAT,bars:MBARS,barwhy:MBARWHY,asof:MICRO_ASOF,
     score:microScore,prov:microProv,mult:mMult,
-    sorts:{score:'Best for a small team',mult:'Most overpriced',pay:'Fastest payback',ramp:'Quickest to start',
-      take:'Biggest annual take',entry:'Cheapest to start',mkt:'Biggest niche',moat:'Hardest to copy'},
-    sortVal:(e,k)=>k==='mult'?mMult(e):k==='pay'?-mPayback(e):k==='ramp'?-e.ramp.mo:k==='take'?e.take.v
-      :k==='entry'?-e.entry.v:k==='mkt'?e.mkt.v:k==='moat'?e.bar.length:microScore(e),
+    cols:[
+      {k:'score',lab:'#',w:'34px',cls:'rk',ttl:'Overall score: 30% payback, 24% gap, 20% speed to start, 16% take, 10% how hard to copy',
+       get:e=>microScore(e),cell:(e,rank)=>String(rank[e.id])},
+      {k:'name',lab:'Niche',w:'minmax(140px,1fr)',cls:'nm',txt:1,get:e=>e.pn,cell:e=>nameCell(e)},
+      {k:'px',lab:'$',w:'82px',ttl:'What a buyer pays today',get:e=>e.px.v,cell:e=>esc(rPrice(e.px.v,e.u))},
+      {k:'gap',lab:'Gap',w:'56px',ttl:'Price over what it would cost if supply could respond',
+       get:e=>mMult(e),cell:e=>mMult(e).toFixed(1)+'×'},
+      {k:'entry',lab:'To start',w:'72px',ttl:'Capital needed before the first invoice — lower is better, so this column sorts ascending first',
+       asc:1,get:e=>e.entry.v,cell:e=>esc(mk(e.entry.v))},
+      {k:'pay',lab:'Payback',w:'72px',ttl:'Months of billing to repay the start-up cost — lower is better',
+       asc:1,get:e=>mPayback(e),cell:e=>Math.round(mPayback(e))+' mo'},
+      {k:'take',lab:'Take / yr',w:'76px',ttl:'What one to five people could bill in a year',
+       get:e=>e.take.v,cell:e=>esc(mk(e.take.v))},
+      {k:'media',lab:'Media',w:'70px',ttl:'How much this is being written about (0-100, editorial judgement, not a count)',
+       get:e=>e.att.media,cell:e=>meter(e.att.media)},
+      {k:'policy',lab:'Policy',w:'70px',ttl:'How much this is being legislated about (0-100, editorial judgement, not a count)',
+       get:e=>e.att.policy,cell:e=>meter(e.att.policy)},
+      {k:'ser',lab:'5 yr',w:'64px',cls:'ch',ttl:'Price against its baseline over the series',
+       get:e=>rTrend(e),cell:(e,_r,col)=>spark(e,col,62,20)},
+    ],
     hay:e=>[e.id,e.n,e.pn,e.th,MCATS[e.cat],...e.bar.map(b=>MBARS[b]),...e.who,...e.need],
   },
 };
@@ -611,8 +643,15 @@ function rMatch(e,q){
 }
 // Barrier filter is ANY-match: an entry stuck behind three barriers stays
 // visible while any one of them is still selected.
-const rVis=()=>B().set.filter(e=>rCatOn[rScale][e.cat]&&e.bar.some(b=>rBarOn[rScale][b])&&rMatch(e,rQ))
-  .sort((a,b)=>B().sortVal(b,rSort)-B().sortVal(a,rSort));
+const rCol=k=>B().cols.find(c=>c.k===k)||B().cols[0];
+const rVis=()=>{
+  const c=rCol(rSort);
+  return B().set.filter(e=>rCatOn[rScale][e.cat]&&e.bar.some(b=>rBarOn[rScale][b])&&rMatch(e,rQ))
+    .sort((a,b)=>{
+      const x=c.get(a),y=c.get(b);
+      return (c.txt?String(x).localeCompare(String(y)):x-y)*rDir;
+    });
+};
 // Rank is always by score and always over the FULL set, so a filtered view
 // still shows each signal's true position on the board.
 const rRankAll=()=>{const b=B(),o=[...b.set].sort((x,y)=>b.score(y)-b.score(x));return Object.fromEntries(o.map((e,i)=>[e.id,i+1]));};
@@ -648,8 +687,6 @@ function buildRentFilters(){
   // count badges is what made the rail read as a debug widget rather than the
   // contents page of something written.
   const b=B();
-  document.getElementById('rsort').innerHTML=Object.keys(b.sorts).map(k=>
-    `<button class="fr ${rSort===k?'on':''}" data-rs="${k}" aria-pressed="${rSort===k?'true':'false'}"><span class="t">${b.sorts[k]}</span></button>`).join('');
   const cc={};b.set.forEach(e=>cc[e.cat]=(cc[e.cat]||0)+1);
   document.getElementById('rcats').innerHTML=Object.keys(b.cats).map(k=>
     `<button class="fr ${rCatOn[rScale][k]?'on':''}" data-rc="${k}" aria-pressed="${rCatOn[rScale][k]?'true':'false'}"><span class="d" style="background:${b.ccol[k]}"></span><span class="t">${esc(b.cats[k])}</span><span class="ct">${cc[k]||0}</span></button>`).join('');
@@ -663,7 +700,6 @@ function buildRentFilters(){
   const cv=document.getElementById('rbarcv');
   cv.textContent=off?`${off} off`:`${Object.keys(b.bars).length}`;
   cv.style.color=off?'var(--accent)':'';
-  document.querySelectorAll('[data-rs]').forEach(n=>n.onclick=()=>{rSort=n.dataset.rs;buildRentBoard();syncHash(false);});
   document.querySelectorAll('[data-rc]').forEach(n=>n.onclick=()=>{rCatOn[rScale][n.dataset.rc]=!rCatOn[rScale][n.dataset.rc];buildRentBoard();syncHash(false);});
   document.querySelectorAll('[data-rb]').forEach(n=>n.onclick=()=>{rBarOn[rScale][n.dataset.rb]=!rBarOn[rScale][n.dataset.rb];buildRentBoard();syncHash(false);});
 }
@@ -691,28 +727,6 @@ function rPrice(v,u){
   return '$'+n+(m&&m[1]?m[1]:'');
 }
 const rUnit=u=>{const m=/\bper\s+(.+)$/i.exec(u);return m?'per '+m[1]:u.replace(/^\$[A-Za-z]?\s*/,'');};
-// Name the suppliers rather than counting them. "three suppliers hold 95%" is
-// the same sentence 26 times and tells a reader nothing they can act on; the
-// names are the informative part, and they are already in the data.
-function supNames(e){
-  const ns=e.conc.sup.map(s=>{const c=s.id&&byId[s.id];return c?c.name:(s.n||s.id);});
-  const show=ns.slice(0,3),rest=ns.length-show.length;
-  let list=show.length>1?show.slice(0,-1).join(', ')+' and '+show[show.length-1]:show[0]||'';
-  if(rest>0)list+=` and ${rest} other${rest>1?'s':''}`;
-  return list;
-}
-// The facts sentence. Every clause is derived; nothing here is retyped prose.
-function rFacts(e){
-  const relief=e.ttr.mo>=96?'No end in sight.':`Eases around ${reliefYear(e)}.`;
-  const who=supNames(e);
-  return `${fmt(e.pool.v)} a year in excess`+(who?`, collected by ${who}`:'')
-    +`, holding ${rpct(e.conc.top3)} between them. ${relief}`;
-}
-function mFacts(e){
-  return `About ${mk(e.take.v)} a year for one to five people, on ${mk(e.entry.v)} to start `
-    +`and ${e.ramp.mo} month${e.ramp.mo===1?'':'s'} before the first invoice. `
-    +`Pays back in ${Math.round(mPayback(e))} months.`;
-}
 const mk=v=>v>=1000?'$'+(v/1000).toFixed(1)+'M':'$'+Math.round(v)+'K';
 
 /* Row chart. Inline SVG rather than a canvas: 26 of these need no lifecycle,
@@ -738,47 +752,50 @@ function spark(e,col,w=168,h=40){
     <circle cx="${X(s.length-1).toFixed(1)}" cy="${Y(vs[vs.length-1]).toFixed(1)}" r="2.4" fill="${col}"/>
   </svg>`;
 }
-const sgn=v=>(v>0?'+':'')+(v*100).toFixed(0)+'%';
-/* The columns. Both boards get a strip of labelled figures under the thesis —
-   the ranking answers one question, and these are the others a reader would
-   ask before believing it. Every value is derived from the entry. */
-function rCols(e){
-  return [['Multiple',rMult(e).toFixed(1)+'×'],['Excess / yr',fmt(e.pool.v)],
-    ['Top 3',rpct(e.conc.top3)],['Relief',rmo(e.ttr.mo)],['Margin',rpct(e.gm.v)],
-    ['Last year',sgn(rTrend(e))],['Years high',String(rRun(e))],
-    ['Biggest swing',sgn(rVol(e))],['Ways round',String(rSubs(e))],['Barriers',String(rBars(e))]];
+/* Compact magnitudes for the volume column: 1.9B, 57M, 340K. */
+function compact(v){
+  if(!isFinite(v)||v<=0)return '—';
+  const u=[[1e12,'T'],[1e9,'B'],[1e6,'M'],[1e3,'K']];
+  for(const [d,sfx] of u)if(v>=d)return (v/d).toFixed(v/d>=100?0:1)+sfx;
+  return String(Math.round(v));
 }
-function mCols(e){
-  return [['Multiple',mMult(e).toFixed(1)+'×'],['Cost to start',mk(e.entry.v)],
-    ['First invoice',e.ramp.mo+' mo'],['Payback',Math.round(mPayback(e))+' mo'],
-    ['Annual take',mk(e.take.v)],['Niche size',mk(e.mkt.v)],
-    ['Last year',sgn(rTrend(e))],['Barriers',String(e.bar.length)],['Ways round',String(e.sub.length)]];
-}
-const colStrip=cols=>`<dl class="rcols">${cols.map(([k,v])=>
-  `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
+/* Attention cells. A 0-100 judgement is easier to compare as a bar than as a
+   number, and the bar quietly signals "rating", not "measurement". */
+const meter=v=>`<span class="meter" title="${v} of 100"><i style="width:${v}%"></i></span>`;
+const nameCell=e=>`<span class="cdot" style="background:${B().ccol[e.cat]}"></span><span class="t" title="${esc(e.pn)} · ${esc(e.n)}">${esc(e.pn)}</span>`;
+
 function buildRentList(){
-  const rows=rVis(),rank=rRankAll(),el=document.getElementById('rlist');
-  if(!rows.length){el.innerHTML='<div class="rempty">Nothing matches those filters.<br>Switch a category back on to bring the board back.</div>';return;}
-  const b=B(),micro=rScale==='micro';
-  el.innerHTML=rows.map(e=>{
-    const p=b.prov(e),col=b.ccol[e.cat],facts=micro?mFacts(e):rFacts(e);
-    return `<div class="rrow ${rSel===e.id?'on':''}" role="option" tabindex="0" aria-selected="${rSel===e.id?'true':'false'}" data-r="${e.id}" data-cat="${e.cat}" aria-label="Number ${rank[e.id]}, ${esc(e.pn)}, ${rPrice(e.px.v,e.u)} ${esc(rUnit(e.u))}, ${b.mult(e).toFixed(1)} times the ${rPrice(e.base.v,e.u)} it used to be. ${facts}">
-      <div class="rk">${rank[e.id]}</div>
-      <div class="rbody">
-        <div class="r1">
-          <div class="rttlwrap">
-            <div class="rn">${esc(e.pn)}</div>
-            <div class="rsrc">${esc(b.cats[e.cat])} · ${esc(e.n)}</div>
-          </div>
-          <div class="rpx"><b>${esc(rPrice(e.px.v,e.u))}</b><span class="u">${esc(rUnit(e.u))}</span>
-            <span class="was">${b.mult(e).toFixed(1)}× the ${esc(rPrice(e.base.v,e.u))} it used to be</span>
-            <span class="chart">${spark(e,col)}<span class="cx"><i>${esc(e.ser[0].t)}</i><i>baseline</i><i>${esc(e.ser[e.ser.length-1].t)}</i></span></span></div>
-        </div>
-        <div class="rsay">${esc(e.th)}</div>
-        ${colStrip(micro?mCols(e):rCols(e))}
-        <div class="rfoot">${esc(facts)}${p==='R'?' Every figure published.':` Figures ${p==='E'?'estimated':'modelled'}.`}</div>
-      </div></div>`;}).join('');
-  el.querySelectorAll('[data-r]').forEach(r=>{const go=()=>selectRent(r.dataset.r,true);r.onclick=go;r.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
+  const rows=rVis(),rank=rRankAll(),el=document.getElementById('rlist'),b=B();
+  const grid=b.cols.map(c=>c.w).join(' ');
+  const head=`<div class="thead" style="grid-template-columns:${grid}" role="row">`+b.cols.map(c=>{
+    const on=rSort===c.k;
+    return `<button class="th ${c.cls||''} ${on?'on':''}" data-sc-col="${c.k}" role="columnheader"
+      aria-sort="${on?(rDir<0?'descending':'ascending'):'none'}" title="${esc(c.ttl||c.lab)}"
+      >${esc(c.lab)}<i class="ar">${on?(rDir<0?'▾':'▴'):''}</i></button>`;}).join('')+'</div>';
+  if(!rows.length){
+    el.innerHTML=head+'<div class="rempty">Nothing matches those filters.<br>Switch a category back on to bring the board back.</div>';
+    bindHeaders();return;
+  }
+  el.innerHTML=head+`<div class="tbody" role="rowgroup">`+rows.map(e=>{
+    const col=b.ccol[e.cat];
+    return `<div class="trow ${rSel===e.id?'on':''}" style="grid-template-columns:${grid}" role="row" tabindex="0"
+      aria-selected="${rSel===e.id?'true':'false'}" data-r="${e.id}"
+      aria-label="${esc(e.pn)}, ${rPrice(e.px.v,e.u)} ${esc(rUnit(e.u))}, ${b.mult(e).toFixed(1)} times baseline">`
+      +b.cols.map(c=>`<div class="td ${c.cls||''}" role="gridcell">${c.cell(e,rank,col)}</div>`).join('')
+      +'</div>';}).join('')+'</div>';
+  el.querySelectorAll('[data-r]').forEach(r=>{const go=()=>selectRent(r.dataset.r,true);r.onclick=go;
+    r.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
+  bindHeaders();
+}
+/* Clicking a header sorts by it. First click takes the column's natural
+   direction — descending for "more is more", ascending for cost and payback
+   where lower is the better result — and clicking again flips it. */
+function bindHeaders(){
+  document.querySelectorAll('[data-sc-col]').forEach(n=>n.onclick=()=>{
+    const c=rCol(n.dataset.scCol);
+    if(rSort===c.k)rDir=-rDir; else{rSort=c.k;rDir=c.asc?1:(c.txt?1:-1);}
+    buildRentList();syncHash(false);
+  });
 }
 
 function refreshRentStats(){
@@ -795,10 +812,10 @@ function refreshRentStats(){
     hRT.textContent=mos.length?rmo(mos[mos.length>>1]):'—';
   }
   document.querySelectorAll('[data-hlab]').forEach(n=>{n.textContent=n.dataset[micro?'m':'g'];});
-  document.getElementById('rttl').textContent=micro?'Within Reach':'The Scarcity Board';
+  document.getElementById('rttl').textContent=micro?'The Small-Operator Board':'The Scarcity Board';
   document.getElementById('rsub').textContent=micro
-    ?`The same thing at a size one person or a small team could actually enter. Not a fab — a certification, a skill, or a machine. ${MICRO.length} of them, best-for-a-small-team first.`
-    :`Things that cost far more than they should, because nobody can make more of them yet. ${RENTS.length} of them, ranked worst first. ${ARCHIVE.length} more have already come back down.`;
+    ?`The same thing at a size one person or a small team could actually take on. The barrier is a certification, a skill or a machine — not a fab. ${MICRO.length} of them. Sort by any column.`
+    :`Things that cost far more than they should, because nobody can make more of them yet. ${RENTS.length} of them, ${ARCHIVE.length} more already back down. Sort by any column.`;
   // Same idea as the map's provenance mix: what share of what is on screen
   // rests on figures we could actually verify.
   const wt=e=>micro?e.mkt.v:e.pool.v;
@@ -834,6 +851,11 @@ function renderMicroInspector(e){
      <div class="stat"><div class="k">Whole niche is worth</div><div class="v">${mk(e.mkt.v)}<span class="tag ${e.mkt.p}">${PWORD[e.mkt.p]}</span></div><div class="k" style="margin-top:2px">a year, everyone in it combined</div></div>
    </div>
    <div class="nsw"><div class="k">Price · ${esc(e.u)}</div><canvas id="rspark" aria-label="Price history for ${esc(e.n)}"></canvas><div class="yrs"><span>${esc(e.ser[0].t)}</span><span>${esc(e.ser[e.ser.length-1].t)}</span></div></div>
+   <dl class="minor">${[['Last year',(rTrend(e)>0?'+':'')+(rTrend(e)*100).toFixed(0)+'%'],
+      ['Barriers',String(e.bar.length)],['Ways round',String(e.sub.length)],
+      ['Units a year',compact(mVolume(e))],
+      ['Media',String(e.att.media)+'/100'],['Policy',String(e.att.policy)+'/100']]
+      .map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
    <button class="ddbtn" id="openDossier">Full dossier →</button>
    <div class="verdict warn">Nothing on this board is a published price — work at this size is quoted bilaterally and never printed. ${esc(e.take.m)} Modelled well enough to rank, not well enough to underwrite. Check it yourself before you spend anything.</div>
    <div class="flowsec"><div class="lbl">What is going on</div><div style="font-size:12.5px;line-height:1.6;color:var(--dim)">${esc(e.th)}</div></div>
@@ -862,12 +884,17 @@ function selectRent(id,push){
    <div class="stats">
      <div class="stat"><div class="k">Costs this much more</div><div class="v">${mult.toFixed(1)}×<span class="tag ${e.px.p}">${PWORD[e.px.p]}</span></div><div class="k" style="margin-top:2px">${rPrice(e.px.v,e.u)} now, ${rPrice(e.base.v,e.u)} before</div></div>
      <div class="stat"><div class="k">Excess paid every year</div><div class="v">${fmt(e.pool.v)}<span class="tag ${e.pool.p}">${PWORD[e.pool.p]}</span></div><div class="k" style="margin-top:2px">above what it used to cost</div></div>
-     <div class="stat"><div class="k">Until it eases</div><div class="v">${rmo(e.ttr.mo)}<span class="tag ${e.ttr.p}">${PWORD[e.ttr.p]}</span></div></div>
+     <div class="stat"><div class="k">Until it eases</div><div class="v">${rmo(e.ttr.mo)}<span class="tag ${e.ttr.p}">${PWORD[e.ttr.p]}</span></div><div class="k" style="margin-top:2px">${e.ttr.mo>=96?'no end in sight':'around '+reliefYear(e)}</div></div>
      <div class="stat"><div class="k">Held by the top three</div><div class="v">${rpct(e.conc.top3)}<span class="tag ${e.conc.p}">${PWORD[e.conc.p]}</span></div></div>
      <div class="stat"><div class="k">Their gross margin</div><div class="v">${rpct(e.gm.v)}<span class="tag ${e.gm.p}">${PWORD[e.gm.p]}</span></div><div class="k" style="margin-top:2px">${esc(byId[e.gm.who]?byId[e.gm.who].name:e.gm.who)}</div></div>
      <div class="stat"><div class="k">Where it ranks</div><div class="v">No. ${rank}</div><div class="k" style="margin-top:2px">of ${RENTS.length} on the board</div></div>
    </div>
    <div class="nsw"><div class="k">Price · ${esc(e.u)}</div><canvas id="rspark" aria-label="Price history for ${esc(e.n)}"></canvas><div class="yrs"><span>${esc(e.ser[0].t)}</span><span>${esc(e.ser[e.ser.length-1].t)}</span></div></div>
+   <dl class="minor">${[['Last year',(rTrend(e)>0?'+':'')+(rTrend(e)*100).toFixed(0)+'%'],
+      ['Years high',String(rRun(e))],['Biggest swing',(rVol(e)*100).toFixed(0)+'%'],
+      ['Ways round',String(rSubs(e))],['Barriers',String(rBars(e))],
+      ['Media',String(e.att.media)+'/100'],['Policy',String(e.att.policy)+'/100']]
+      .map(([k,v])=>`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
    <button class="ddbtn" id="openDossier">Full dossier →</button>
    ${p==='R'?`<div class="verdict ok">Every headline number here comes from a published source. That is rare on this board — most of these things are sold under private contracts and the prices are never printed anywhere.</div>`
       :`<div class="verdict warn">The softest number here is ${p==='E'?'an estimate':'a model'}, not something published. ${esc(e.pool.m)} So read the position on this list as a rough guide, not a measurement.</div>`}
@@ -915,7 +942,7 @@ const rsrch=document.getElementById('rsrch');
 document.querySelectorAll('#rScaleTab button').forEach(btn=>btn.onclick=()=>{
   const v=btn.dataset.sc==='micro'?'micro':'big';
   if(v===rScale)return;
-  rScale=v;rSel=null;rSort='score';rQ='';rsrch.value='';
+  rScale=v;rSel=null;rSort='score';rDir=-1;rQ='';rsrch.value='';
   buildRentBoard();syncHash(true);
 });
 
@@ -1033,6 +1060,7 @@ function syncHash(push){
     p.set('view','rents');
     if(rSel)p.set('r',rSel);
     if(rScale!=='big')p.set('scale',rScale);
+    if(rDir>0)p.set('rdir','asc');
     const coff=Object.keys(B().cats).filter(k=>!rCatOn[rScale][k]);if(coff.length)p.set('rcat',coff.join(','));
     const boff=Object.keys(B().bars).filter(k=>!rBarOn[rScale][k]);if(boff.length)p.set('rbar',boff.join(','));
     if(rSort!=='score')p.set('rsort',rSort);
@@ -1058,7 +1086,8 @@ function applyHash(){
   if(p.has('rcat'))p.get('rcat').split(',').forEach(k=>{if(k in rCatOn[rScale])rCatOn[rScale][k]=false;});
   Object.keys(B().bars).forEach(k=>rBarOn[rScale][k]=true);
   if(p.has('rbar'))p.get('rbar').split(',').forEach(k=>{if(k in rBarOn[rScale])rBarOn[rScale][k]=false;});
-  rSort=p.has('rsort')&&B().sorts[p.get('rsort')]?p.get('rsort'):'score';
+  rSort=p.has('rsort')&&B().cols.some(c=>c.k===p.get('rsort'))?p.get('rsort'):'score';
+  rDir=p.get('rdir')==='asc'?1:-1;
   const wantRents=p.get('view')==='rents';
   setTab(wantRents?'rents':'map',false);
   let sel=false;

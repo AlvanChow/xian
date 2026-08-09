@@ -132,6 +132,15 @@ export const rVol = (e) => {
 export const rSubs = (e) => e.sub.length;
 export const rBars = (e) => e.bar.length;
 
+/* Implied annual volume. The rent pool is (price - baseline) x quantity, so the
+   quantity falls straight out of two numbers already on the entry. It is the
+   only way this board can say how BIG a market is in units rather than dollars,
+   and it inherits the softness of the pool it comes from. */
+export const rVolume = (e) => {
+  const gap = e.px.v - e.base.v;
+  return gap > 0 ? (e.pool.v * 1e9) / gap : 0;
+};
+
 export const rentFields = (e) => [e.px, e.base, e.pool, e.gm, e.conc, e.ttr];
 
 /** Headline provenance is the WEAKEST tier, not an average: a signal is only as
@@ -147,9 +156,24 @@ export const rentConf = (e) => {
   return f.reduce((a, b) => a + b.c, 0) / f.length;
 };
 
+/* Attention. Two dimensions the price series cannot see: how much this is being
+   written about, and how much it is being legislated about. Both matter for
+   whether a rent persists — press attention pulls in entrants, policy attention
+   pulls in subsidy, tariff or mandate.
+
+   These are 0-100 EDITORIAL JUDGEMENTS, reviewed at each snapshot. They are
+   deliberately NOT presented as counts: no honest article-count or bill-mention
+   tally exists across these categories, and inventing one would dress a guess up
+   as a measurement. Tagged I everywhere, and excluded from the rank score for
+   the same reason provenance is — an entry should rank on its economics, not on
+   how loud it is. */
+const ATT_M = 'Editorial judgement on a 0-100 scale, not a measured count. No consistent article or bill-mention tally spans these categories, so this is a reviewed opinion about salience and is tagged Inferred throughout.';
+const att = (media, policy) => ({ media, policy, p: 'I', c: 0.25, m: ATT_M, s: 'Editorial judgement, reviewed at each snapshot' });
+
 export const RENTS = [
   {
     id: 'HBM',
+    att: att(92, 70),
     n: 'HBM3E / HBM4 stacked memory',
     pn: 'Stacked memory for AI chips',
     cat: 'compute',
@@ -177,6 +201,7 @@ export const RENTS = [
   },
   {
     id: 'DDR5',
+    att: att(74, 45),
     n: 'Server DDR5 conventional DRAM',
     pn: 'Server memory',
     cat: 'compute',
@@ -204,6 +229,7 @@ export const RENTS = [
   },
   {
     id: 'COWOS',
+    att: att(78, 55),
     n: 'CoWoS / SoIC advanced packaging slots',
     pn: 'Advanced chip packaging',
     cat: 'compute',
@@ -231,6 +257,7 @@ export const RENTS = [
   },
   {
     id: 'HIGHNA',
+    att: att(66, 62),
     n: 'High-NA EUV lithography scanners',
     pn: 'The machines that print the finest chips',
     cat: 'compute',
@@ -258,6 +285,7 @@ export const RENTS = [
   },
   {
     id: 'NEARLINE',
+    att: att(40, 12),
     n: 'Nearline enterprise HDD',
     pn: 'High-capacity storage drives',
     cat: 'compute',
@@ -285,6 +313,7 @@ export const RENTS = [
   },
   {
     id: 'XFMR',
+    att: att(55, 72),
     n: 'Large power transformers (HV/EHV)',
     pn: 'Grid transformers',
     cat: 'power',
@@ -313,6 +342,7 @@ export const RENTS = [
   },
   {
     id: 'GASTURB',
+    att: att(48, 50),
     n: 'Heavy-duty gas turbine slots',
     pn: 'Large gas turbines',
     cat: 'power',
@@ -340,6 +370,7 @@ export const RENTS = [
   },
   {
     id: 'SWU',
+    att: att(60, 88),
     n: 'Uranium enrichment (SWU)',
     pn: 'Enriched uranium for reactors',
     cat: 'power',
@@ -367,6 +398,7 @@ export const RENTS = [
   },
   {
     id: 'DCPOWER',
+    att: att(84, 80),
     n: 'Datacenter-ready grid capacity',
     pn: 'Grid power for datacenters',
     cat: 'power',
@@ -395,6 +427,7 @@ export const RENTS = [
   },
   {
     id: 'COPPER',
+    att: att(70, 48),
     n: 'Copper cathode',
     pn: 'Copper',
     cat: 'materials',
@@ -423,6 +456,7 @@ export const RENTS = [
   },
   {
     id: 'NDPR',
+    att: att(62, 85),
     n: 'NdPr oxide (magnet rare earths)',
     pn: 'Magnet metals for motors',
     cat: 'materials',
@@ -451,6 +485,7 @@ export const RENTS = [
   },
   {
     id: 'ANTIMONY',
+    att: att(34, 68),
     n: 'Antimony',
     pn: 'Antimony',
     cat: 'materials',
@@ -478,6 +513,7 @@ export const RENTS = [
   },
   {
     id: 'HELIUM',
+    att: att(30, 25),
     n: 'Grade-A helium',
     pn: 'Helium',
     cat: 'materials',
@@ -505,6 +541,7 @@ export const RENTS = [
   },
   {
     id: 'FILLFINISH',
+    att: att(44, 52),
     n: 'Sterile fill-finish CDMO capacity',
     pn: 'Filling injectable drugs into vials',
     cat: 'pharma',
@@ -533,6 +570,7 @@ export const RENTS = [
   },
   {
     id: 'ISOTOPE',
+    att: att(38, 58),
     n: 'Ac-225 and Lu-177 medical isotopes',
     pn: 'Isotopes for cancer treatment',
     cat: 'pharma',
@@ -561,6 +599,7 @@ export const RENTS = [
   },
   {
     id: 'ATC',
+    att: att(72, 78),
     n: 'Air traffic controllers',
     pn: 'Air traffic controllers',
     cat: 'labor',
@@ -589,6 +628,7 @@ export const RENTS = [
   },
   {
     id: 'WELDERS',
+    att: att(42, 40),
     n: 'Nuclear-qualified and pipe welders',
     pn: 'Certified welders',
     cat: 'labor',
@@ -617,6 +657,7 @@ export const RENTS = [
   },
   {
     id: 'DCELEC',
+    att: att(46, 30),
     n: 'Datacenter electricians',
     pn: 'Datacenter electricians',
     cat: 'labor',
@@ -644,6 +685,7 @@ export const RENTS = [
   },
   {
     id: 'NARROWBODY',
+    att: att(68, 42),
     n: 'Narrowbody aircraft delivery slots',
     pn: 'A delivery slot for a new airliner',
     cat: 'logistics',
@@ -672,6 +714,7 @@ export const RENTS = [
   },
   {
     id: 'ENGINEMRO',
+    att: att(44, 28),
     n: 'LEAP / GTF engine shop-visit slots',
     pn: 'Jet engine overhauls',
     cat: 'logistics',
@@ -700,6 +743,7 @@ export const RENTS = [
   },
   {
     id: 'DCSHELL',
+    att: att(76, 55),
     n: 'Powered datacenter shell',
     pn: 'A powered, ready-to-fit-out datacenter',
     cat: 'infra',
@@ -728,6 +772,7 @@ export const RENTS = [
   },
   {
     id: 'COCOA',
+    att: att(66, 30),
     n: 'Cocoa',
     pn: 'Cocoa',
     cat: 'agri',
@@ -756,6 +801,7 @@ export const RENTS = [
   },
   {
     id: 'SHELLS155',
+    att: att(80, 90),
     n: '155 mm artillery shells',
     pn: 'Artillery shells',
     cat: 'defense',
@@ -784,6 +830,7 @@ export const RENTS = [
   },
   {
     id: 'SRM',
+    att: att(52, 74),
     n: 'Solid rocket motors',
     pn: 'Rocket motors',
     cat: 'defense',
@@ -812,6 +859,7 @@ export const RENTS = [
   },
   {
     id: 'CDR',
+    att: att(58, 66),
     n: 'Durable carbon removal',
     pn: 'Permanent carbon removal',
     cat: 'regulated',
@@ -840,6 +888,7 @@ export const RENTS = [
   },
   {
     id: 'SPECTRUM',
+    att: att(50, 82),
     n: 'Mid-band spectrum licenses',
     pn: 'Mobile spectrum licences',
     cat: 'regulated',

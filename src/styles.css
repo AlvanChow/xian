@@ -194,45 +194,45 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
    the x-axis tick labels as soon as more than six categories were visible. */
 
 #rlist{flex:1;overflow-y:auto;padding:6px 0 18px}
-/* Editorial rows. The old layout stacked four bands of micro-type per entry and
-   read like a terminal; this one is a headline, a sentence, and a quiet
-   footnote, at sizes a person reads rather than scans. */
-.rrow{display:flex;gap:16px;align-items:baseline;padding:20px 26px;border-bottom:1px solid var(--line);cursor:pointer}
-.rrow:hover{background:var(--panel2)}
-.rrow.on{background:var(--panel);box-shadow:inset 3px 0 0 var(--accent)}
-.rrow .rk{font-size:13px;color:var(--mut);width:22px;flex-shrink:0;text-align:right;font-variant-numeric:tabular-nums}
-.rrow .rbody{flex:1;min-width:0}
-.rrow .r1{display:flex;align-items:baseline;gap:28px}
-.rrow .rttlwrap{min-width:0}
-.rrow .rn{font-weight:600;font-size:18px;letter-spacing:-.01em;line-height:1.3}
-/* The technical name and the sector are information, not decoration. They sat
-   in the dossier for one pass and the row read as a headline with nothing
-   under it — a reader could not tell what the thing actually was. */
-.rrow .rsrc{font-size:12px;color:var(--mut);margin-top:4px;line-height:1.45}
-/* Price block. A bare multiple floats free — 5.9x of what? — so the row now
-   anchors it to the actual quoted price and the baseline underneath. */
-.rrow .rpx{margin-left:auto;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
-.rrow .rpx b{font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--dim)}
-.rrow.on .rpx b{color:var(--txt)}
-.rrow .rpx .u{display:block;font-size:11.5px;color:var(--mut);margin-top:1px;max-width:17ch;margin-left:auto;line-height:1.4}
-.rrow .rpx .was{display:block;font-size:11.5px;color:var(--mut);margin-top:6px;white-space:nowrap}
-/* Row chart. The dashed rule is the baseline, so the shaded gap between trace
-   and rule IS the rent — the picture makes the same argument the number does. */
-.rrow .chart{display:block;margin-top:10px;color:var(--mut)}
-.rrow .spk{display:block}
-.rrow .cx{display:flex;justify-content:space-between;font-size:10px;color:var(--mut);margin-top:2px}
-.rrow .cx i{font-style:normal}
-.rrow .cx i:nth-child(2){opacity:.7}
-/* The columns. A ranking answers one question; these are the others a reader
-   asks before believing it. Wrapping grid so a narrow rail never truncates. */
-.rcols{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px 14px;margin:14px 0 0;padding:13px 0 0;border-top:1px solid var(--line)}
-.rcols div{min-width:0}
-.rcols dt{font-size:10.5px;color:var(--mut);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rcols dd{margin:2px 0 0;font-size:13.5px;color:var(--dim);font-variant-numeric:tabular-nums}
-.rrow.on .rcols dd{color:var(--txt)}
-.rrow .rsay{font-size:14.5px;line-height:1.65;color:var(--dim);margin-top:13px;max-width:62ch}
-.rrow .rfoot{font-size:12.5px;color:var(--mut);margin-top:9px;line-height:1.6;max-width:62ch}
-.rcdot{width:9px;height:9px;border-radius:3px;flex-shrink:0;align-self:center}
+/* The board is a table. It spent a revision as editorial cards ~280px tall,
+   which read beautifully and let four things fit on a screen; a ranked board
+   whose ranking you cannot see is not doing its job. Rows are ~34px now, and
+   the detail those cards carried lives in the inspector beside them.
+
+   Header and rows share one grid-template, set per board from the column
+   definitions in app.js, so the two can never drift apart. */
+#rlist{overflow:auto}
+.thead,.trow{display:grid;align-items:center;column-gap:8px;min-width:700px}
+.thead{position:sticky;top:0;z-index:3;background:var(--bg);border-bottom:1px solid var(--line);padding:0 18px}
+.th{display:flex;align-items:center;gap:3px;justify-content:flex-end;background:none;border:0;padding:9px 0;
+  font-family:var(--sans);font-size:11px;font-weight:600;color:var(--mut);cursor:pointer;white-space:nowrap;
+  letter-spacing:.02em;transition:color .12s}
+.th:hover{color:var(--txt)}
+.th.on{color:var(--accent)}
+.th.nm,.th.rk{justify-content:flex-start}
+.th .ar{font-style:normal;font-size:9px;width:8px;text-align:left}
+.th:focus-visible{outline:2px solid var(--glow);outline-offset:-2px;border-radius:4px}
+.trow{padding:0 18px;border-bottom:1px solid var(--line);cursor:pointer;min-height:34px}
+.trow:hover{background:var(--panel2)}
+.trow.on{background:var(--panel);box-shadow:inset 3px 0 0 var(--accent)}
+.trow:focus-visible{outline:2px solid var(--glow);outline-offset:-2px}
+.td{font-size:12.5px;color:var(--dim);text-align:right;font-variant-numeric:tabular-nums;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:7px 0}
+.trow.on .td{color:var(--txt)}
+.td.rk{text-align:left;color:var(--mut);font-size:11.5px}
+.td.nm{text-align:left;display:flex;align-items:center;gap:8px;color:var(--txt);font-weight:500}
+.td.nm .t{overflow:hidden;text-overflow:ellipsis}
+.td .cdot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.td.ch{padding:4px 0;overflow:visible}
+.td.ch .spk{display:block;margin-left:auto;color:var(--mut)}
+/* A 0-100 judgement compares better as a bar than as a digit, and a bar reads
+   as "rating" rather than "measurement" — which is exactly what it is. */
+.meter{display:inline-block;width:44px;height:5px;border-radius:3px;background:var(--panel);overflow:hidden;vertical-align:middle}
+.meter i{display:block;height:100%;background:var(--accent);opacity:.75;border-radius:3px}
+/* Secondary measures under the inspector chart — what the row used to carry. */
+.minor{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:9px 12px;margin:0;padding:14px 18px 4px}
+.minor dt{font-size:10.5px;color:var(--mut)}
+.minor dd{margin:2px 0 0;font-size:12.5px;color:var(--dim);font-variant-numeric:tabular-nums}
 .rempty{padding:28px 18px;text-align:center;color:var(--mut);line-height:1.65}
 /* The board's inspector drops the map's uppercase letterspaced micro-labels.
    Scoped to #rinspector so the map keeps the instrument look it wants. */
@@ -326,17 +326,10 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   #app[data-view="rents"] #center{height:auto;min-height:calc(100svh - 60px)}
   #app[data-view="rents"] #left{order:3}
   #app[data-view="rents"] #right{order:2}
-  /* Side-by-side headline and price collapses badly on a phone: the title wraps
-     to three lines while the price column squeezes to nothing. Stack them and
-     lay the price out horizontally instead. */
-  .rrow{padding:18px 18px;gap:12px}
-  .rrow .r1{flex-direction:column;gap:6px}
-  .rrow .rpx{margin-left:0;text-align:left;display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}
-  .rrow .rpx b{font-size:17px;color:var(--txt)}
-  .rrow .rpx .u{display:inline;margin:0;max-width:none}
-  .rrow .rpx .was{display:inline;margin:0;flex-basis:100%;white-space:normal}
-  .rrow .rsay,.rrow .rfoot{max-width:none}
-  .rrow .rsay{margin-top:10px}
+  /* The table keeps every column on a phone and scrolls sideways for them —
+     hiding columns would remove sorts, which are the point of the table. */
+  .thead,.trow{padding:0 14px}
+  #rlist{-webkit-overflow-scrolling:touch}
 }
 @media (max-width:480px){
   #timebar{bottom:14px;gap:8px;padding:7px 10px}

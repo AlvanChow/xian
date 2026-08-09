@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   MICRO, MCATS, MCAT, MBARS, MBARWHY, MICRO_ASOF, MW,
-  mMult, mPayback, microScore, microProv, microConf, microFields,
+  mMult, mPayback, mVolume, microScore, microProv, microConf, microFields,
 } from '../../src/micro.js';
 
 const CAT_KEYS = new Set(Object.keys(MCATS));
@@ -121,6 +121,26 @@ test('plain names lead the board and never repeat the technical name verbatim', 
     assert.ok(e.pn.length <= 46, `${e.id}'s plain name is too long for a headline`);
     assert.ok(!seen.has(e.pn), `two entries share the plain name "${e.pn}"`);
     seen.add(e.pn);
+  }
+});
+
+test('attention is a labelled judgement, never dressed up as a count', () => {
+  for (const e of MICRO) {
+    for (const k of ['media', 'policy']) {
+      const v = e.att[k];
+      assert.ok(Number.isInteger(v) && v >= 0 && v <= 100, `${e.id}.att.${k} must be 0-100, got ${v}`);
+    }
+    // The one thing that must not slip: these are opinions about salience, and
+    // tagging them anything but Inferred would present a guess as a measurement.
+    assert.strictEqual(e.att.p, 'I', `${e.id}.att must stay Inferred`);
+    assert.match(e.att.m, /not a measured count/, `${e.id}.att must say plainly that it is not a count`);
+  }
+});
+
+test('implied volume falls out of spend over price', () => {
+  for (const e of MICRO) {
+    assert.ok(Math.abs(mVolume(e) - (e.mkt.v * 1e6) / e.px.v) < 1e-6, `${e.id} volume drifted`);
+    assert.ok(mVolume(e) > 0, `${e.id} volume must be positive`);
   }
 });
 

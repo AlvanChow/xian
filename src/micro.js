@@ -105,6 +105,10 @@ export function microScore(e) {
     MW.moat * clamp01(e.bar.length / 4));
 }
 
+/* Units bought a year across the whole niche: total spend over unit price.
+   mkt is $M/yr, px is dollars per unit. */
+export const mVolume = (e) => (e.mkt.v * 1e6) / e.px.v;
+
 export const microFields = (e) => [e.px, e.base, e.mkt, e.take, e.entry, e.ramp];
 export const microProv = (e) => {
   const t = microFields(e).map((f) => f.p);
@@ -115,9 +119,24 @@ export const microConf = (e) => {
   return f.reduce((a, x) => a + x.c, 0) / f.length;
 };
 
+/* Attention. Two dimensions the price series cannot see: how much this is being
+   written about, and how much it is being legislated about. Both matter for
+   whether a rent persists — press attention pulls in entrants, policy attention
+   pulls in subsidy, tariff or mandate.
+
+   These are 0-100 EDITORIAL JUDGEMENTS, reviewed at each snapshot. They are
+   deliberately NOT presented as counts: no honest article-count or bill-mention
+   tally exists across these categories, and inventing one would dress a guess up
+   as a measurement. Tagged I everywhere, and excluded from the rank score for
+   the same reason provenance is — an entry should rank on its economics, not on
+   how loud it is. */
+const ATT_M = 'Editorial judgement on a 0-100 scale, not a measured count. No consistent article or bill-mention tally spans these categories, so this is a reviewed opinion about salience and is tagged Inferred throughout.';
+const att = (media, policy) => ({ media, policy, p: 'I', c: 0.25, m: ATT_M, s: 'Editorial judgement, reviewed at each snapshot' });
+
 export const MICRO = [
   {
     id: 'LEGACYIC',
+    att: att(28, 30),
     n: 'End-of-life and obsolete semiconductor parts',
     pn: 'Chips nobody makes any more',
     cat: 'electronics',
@@ -145,6 +164,7 @@ export const MICRO = [
   },
   {
     id: 'CALIB',
+    att: att(12, 20),
     n: 'ISO 17025 accredited instrument calibration',
     pn: 'Calibrating other people’s instruments',
     cat: 'lab',
@@ -172,6 +192,7 @@ export const MICRO = [
   },
   {
     id: 'ELEVPART',
+    att: att(10, 18),
     n: 'Control boards for discontinued elevator models',
     pn: 'Spare parts for lifts nobody supports',
     cat: 'electronics',
@@ -199,6 +220,7 @@ export const MICRO = [
   },
   {
     id: 'COBOL',
+    att: att(55, 40),
     n: 'Mainframe and COBOL maintenance contracting',
     pn: 'Maintaining code older than most developers',
     cat: 'digital',
@@ -226,6 +248,7 @@ export const MICRO = [
   },
   {
     id: 'AS9100',
+    att: att(22, 35),
     n: 'Small-batch aerospace-qualified machining',
     pn: 'Machining parts for aircraft in small runs',
     cat: 'industrial',
@@ -253,6 +276,7 @@ export const MICRO = [
   },
   {
     id: 'CLINCOUR',
+    att: att(18, 25),
     n: 'Clinical trial sample cold-chain courier',
     pn: 'Moving trial samples that must stay cold',
     cat: 'regulated',
@@ -280,6 +304,7 @@ export const MICRO = [
   },
   {
     id: 'RARELANG',
+    att: att(48, 30),
     n: 'Low-resource language annotation and localisation',
     pn: 'Annotating languages the big datasets skipped',
     cat: 'digital',
@@ -307,6 +332,7 @@ export const MICRO = [
   },
   {
     id: 'FAILANA',
+    att: att(20, 22),
     n: 'Semiconductor failure analysis lab time',
     pn: 'Finding out why a chip failed',
     cat: 'lab',
@@ -334,6 +360,7 @@ export const MICRO = [
   },
   {
     id: 'SEMIREFURB',
+    att: att(26, 34),
     n: 'Semiconductor tool subsystem refurbishment',
     pn: 'Rebuilding parts for chip-making machines',
     cat: 'industrial',
@@ -361,6 +388,7 @@ export const MICRO = [
   },
   {
     id: 'GASCYL',
+    att: att(8, 24),
     n: 'Compressed gas cylinder requalification',
     pn: 'Recertifying gas cylinders',
     cat: 'regulated',
@@ -388,6 +416,7 @@ export const MICRO = [
   },
   {
     id: 'HERITAGE',
+    att: att(24, 38),
     n: 'Reclaimed heritage building materials',
     pn: 'Salvaged materials for listed buildings',
     cat: 'materials',
@@ -415,6 +444,7 @@ export const MICRO = [
   },
   {
     id: 'WIREHARN',
+    att: att(14, 32),
     n: 'Low-volume defence wire harness assembly',
     pn: 'Hand-building cable looms to spec',
     cat: 'industrial',
@@ -442,6 +472,7 @@ export const MICRO = [
   },
   {
     id: 'ANALOGIC',
+    att: att(34, 26),
     n: 'Analog and mixed-signal IC design contracting',
     pn: 'Designing the analog parts of chips',
     cat: 'electronics',
@@ -469,6 +500,7 @@ export const MICRO = [
   },
   {
     id: 'NDT',
+    att: att(16, 30),
     n: 'Certified non-destructive testing inspection',
     pn: 'Inspecting welds without cutting them open',
     cat: 'regulated',
@@ -496,6 +528,7 @@ export const MICRO = [
   },
   {
     id: 'DRONESURV',
+    att: att(40, 44),
     n: 'Industrial asset inspection by drone',
     pn: 'Inspecting towers and roofs by drone',
     cat: 'industrial',
@@ -523,6 +556,7 @@ export const MICRO = [
   },
   {
     id: 'OPTICS',
+    att: att(18, 24),
     n: 'Precision optical component fabrication',
     pn: 'Grinding custom lenses and mirrors',
     cat: 'lab',
