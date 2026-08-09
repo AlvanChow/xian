@@ -982,11 +982,18 @@ let restoring=false;
 function syncHash(push){
   if(restoring)return;
   const p=new URLSearchParams();
-  if(selected)p.set('node',selected);
-  if(tIdx!==PERIODS.length-1)p.set('t',PERIODS[tIdx]);
-  const off=Object.keys(SEC).filter(s=>!secOn[s]);if(off.length)p.set('hide',off.join(','));
-  const lay=['R','E','I'].filter(k=>layerOn[k]).join('');if(lay!=='REI')p.set('layers',lay);
-  if(sizeBy!=='mcap')p.set('size',sizeBy);
+  // Map keys are only emitted while the map is the active view, exactly as the
+  // board's are below. Without this the map's boot auto-select rode along in
+  // every board URL — a link to a scarcity signal arrived carrying node=NVDA,
+  // and the selection is still held in memory anyway, so switching back to the
+  // map restores it without the hash having to say so.
+  if(tab==='map'){
+    if(selected)p.set('node',selected);
+    if(tIdx!==PERIODS.length-1)p.set('t',PERIODS[tIdx]);
+    const off=Object.keys(SEC).filter(s=>!secOn[s]);if(off.length)p.set('hide',off.join(','));
+    const lay=['R','E','I'].filter(k=>layerOn[k]).join('');if(lay!=='REI')p.set('layers',lay);
+    if(sizeBy!=='mcap')p.set('size',sizeBy);
+  }
   // Board state rides in the same hash. It is only emitted while the board is
   // the active view, so map links stay as short as they were.
   if(tab==='rents'){

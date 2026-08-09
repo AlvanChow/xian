@@ -750,6 +750,42 @@ test('the small-operator click-in answers what it costs and what would end it', 
   await expect(page.locator('#openDossier')).toHaveCount(0);
 });
 
+test('map state stays out of board URLs, and survives the round trip', async ({ page }) => {
+  // The map auto-selects NVDA on boot. That selection used to ride along in
+  // every board URL, so a link to a scarcity signal arrived carrying node=NVDA.
+  const params = async () => new URLSearchParams(
+    (await page.evaluate(() => location.hash)).replace(/^#/, ''));
+
+  await expect.poll(async () => (await params()).get('node')).toBe('NVDA');
+  await page.locator('#scrub').fill('2');
+  await expect.poll(async () => (await params()).get('t')).toBeTruthy();
+  const mapHash = await page.evaluate(() => location.hash);
+
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  await page.locator('#rlist .trow[data-r="COCOA"]').click();
+  let q = await params();
+  for (const k of ['node', 't', 'hide', 'layers', 'size']) {
+    expect(q.get(k), `${k} leaked into a board URL`).toBeNull();
+  }
+  // The board's own state is still there — this is a split, not a purge.
+  expect(q.get('view')).toBe('rents');
+  expect(q.get('r')).toBe('COCOA');
+
+  // Returning to the map restores it from memory; the hash never had to carry it.
+  await page.locator('#viewTab button[data-v="map"]').click();
+  await expect.poll(() => page.evaluate(() => location.hash)).toBe(mapHash);
+  await expect(page.locator('#inspector .ihead .nm')).toContainText('NVIDIA');
+});
+
+test('a board link opened cold carries no map selection', async ({ page }) => {
+  await page.goto(PAGE_URL + '#view=rents&r=HBM');
+  await expect(page.locator('#rlist .trow[data-r="HBM"]')).toHaveClass(/on/);
+  // The boot demo must not fire behind the board and repopulate the hash.
+  await page.waitForTimeout(700);
+  const q = new URLSearchParams((await page.evaluate(() => location.hash)).replace(/^#/, ''));
+  expect(q.get('node')).toBeNull();
+});
+
 test('the board table is a grid, and its bars are not silent', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
   // role=listbox with row children was invalid once the list became a table.

@@ -73,7 +73,10 @@ own fields and unit-tested for monotonicity. Provenance is deliberately *exclude
 a weakly-sourced signal ranks where its numbers put it and shows an **I** badge, rather than being
 quietly demoted inside a number.
 
-Deep-linkable: `#view=rents&r=HBM`, with scale, category, barrier, sort column and sort direction all carried in the hash.
+Deep-linkable: `#view=rents&r=HBM`, with scale, category, barrier, sort column and sort direction all
+carried in the hash. Each view emits only its own keys — a board link never carries the map's
+selected node or period, and the map's state is held in memory across a tab switch rather than in
+the URL.
 
 ## The provenance model (R / E / I)
 
