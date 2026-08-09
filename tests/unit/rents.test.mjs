@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import {
   RENTS, ARCHIVE, CATS, BARS, RENT_ASOF,
   rMult, rentScore, rentProv, rentConf, rentFields, RW,
-  rTrend, rRun, rVol, rSubs, rBars,
+  rTrend, rRun, rVol, rSubs, rBars, rVolume,
 } from '../../src/rents.js';
 import { COMPANIES } from '../../src/data.js';
 
@@ -295,4 +295,34 @@ test('a flat series has no trend and no volatility', () => {
   assert.strictEqual(rVol(flat), 0);
   // 10 is not >= 1.5x its own baseline of 10, so nothing counts as elevated.
   assert.strictEqual(rRun(flat), 0);
+});
+
+test('attention is a labelled judgement, never dressed up as a count', () => {
+  for (const e of RENTS) {
+    for (const k of ['media', 'policy']) {
+      const v = e.att[k];
+      assert.ok(Number.isInteger(v) && v >= 0 && v <= 100, `${e.id}.att.${k} must be 0-100, got ${v}`);
+    }
+    assert.strictEqual(e.att.p, 'I', `${e.id}.att must stay Inferred — it is an opinion about salience`);
+    assert.match(e.att.m, /not a measured count/, `${e.id}.att must say plainly that it is not a count`);
+  }
+});
+
+test('attention never leaks into the rank score', () => {
+  // The board should rank on economics, not on how loud something is. Moving
+  // both attention dials to their extremes must leave the score untouched.
+  for (const e of RENTS) {
+    const loud = { ...e, att: { ...e.att, media: 100, policy: 100 } };
+    const quiet = { ...e, att: { ...e.att, media: 0, policy: 0 } };
+    assert.strictEqual(rentScore(loud), rentScore(quiet), `${e.id}: attention moved the score`);
+  }
+});
+
+test('implied volume inverts the rent pool identity', () => {
+  for (const e of RENTS) {
+    const v = rVolume(e);
+    assert.ok(v > 0 && Number.isFinite(v), `${e.id} volume must be finite and positive`);
+    // pool = (price - baseline) x quantity, so multiplying back must return it.
+    assert.ok(Math.abs(v * (e.px.v - e.base.v) - e.pool.v * 1e9) < 1, `${e.id} volume does not invert its own pool`);
+  }
 });

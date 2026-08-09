@@ -31,22 +31,31 @@ requires**, and what would kill the trade. Named suppliers that exist on the map
 one click jumps to that entity's flow network.
 
 - **Two scales.** *Industrial* is the 26 signals nobody can act on alone — a fab, an enrichment
-  cascade, a transformer plant. *Within reach* (`src/micro.js`) is the same phenomenon at a size one
-  person or a small team could enter: 16 niches where the barrier is a certification, a skill, a
-  machine or an approved-vendor listing rather than $10B of capex. Each of those additionally answers
-  what it costs to start, how long until the first invoice, and what one to five people could bill.
-  Nothing on that board is a published price and it says so on every entry.
-- **A ranked list, read as prose** — each row leads with a plain-language name (`pn`), carries the
-  entry's own written thesis as its sentence, and closes on a line of derived figures. Nothing in a
-  row is retyped — the only prose the data files store is the plain name and the thesis; the rest is
-  assembled from the same fields the score reads.
+  cascade, a transformer plant. *Small operator* (`src/micro.js`) is the same phenomenon at a size
+  one person or a small team could take on: 16 niches where the barrier is a certification queue, a
+  tacit skill, one machine or an approved-vendor listing rather than $10B of capex. Those entries
+  additionally answer what it costs to start, how long until the first invoice, what one to five
+  people could bill, and how many months that takes to pay back. Nothing on that board is a
+  published price, and it says so on every entry.
+- **A sortable table.** Nine visible columns on the industrial board, ten on the small-operator one,
+  and every one of them sorts — click a header, click again to flip. Each column is declared once in
+  `app.js` and drives the header, the cell and the ordering together, so a header can never disagree
+  with the ordering underneath it. Header and rows share one `grid-template`, so their alignment
+  cannot drift either. Rows are ~34px; the board spent one revision as ~280px editorial cards, which
+  read beautifully and let four things fit on a screen — a ranked board whose ranking you cannot see
+  is not doing its job. The prose those cards carried lives in the inspector beside the table.
 - **A chart in every row** — inline SVG, the price series against a dashed baseline, so the shaded
   gap between the two *is* the rent. A scatter plot sat above the list for one revision and was cut:
   it was the most technical thing on the page and its bubbles piled up in the 3–5 year band.
-- **Ten evaluation columns per row** (nine on the micro board) — multiple, excess per year,
-  concentration, relief, incumbent margin, last year's move, years elevated, biggest swing,
-  substitutes, barriers. All derived (`rTrend`, `rRun`, `rVol`, `rSubs`, `rBars`), so widening the
-  board never means hand-typing another number that can drift. Every column is also a sort.
+- **Derived measures, never typed** — implied unit volume (`rVolume`, which inverts the rent-pool
+  identity), last year's move, years elevated, biggest swing, substitutes, barriers. All computed
+  from fields the entries already carry, so widening the board never introduces a number that can
+  drift from the rest.
+- **Media and policy attention** — 0–100 *editorial judgements* of how much something is being
+  written about and legislated about. They are deliberately **not** counts: no honest article- or
+  bill-mention tally spans these categories, and inventing one would dress a guess up as a
+  measurement. Tagged `I` throughout, rendered as bars rather than digits, and unit-tested to stay
+  out of the rank score — an entry should rank on its economics, not on how loud it is.
 - **A dossier per signal** — the long-form breakdown, including a per-figure provenance table. The
   technical name, the unit, and the barrier taxonomy live here rather than in the row.
 - **A reverted-signals archive** — DRAM 2018, container freight 2021, lithium 2022, travel nurses
@@ -60,7 +69,7 @@ own fields and unit-tested for monotonicity. Provenance is deliberately *exclude
 a weakly-sourced signal ranks where its numbers put it and shows an **I** badge, rather than being
 quietly demoted inside a number.
 
-Deep-linkable: `#view=rents&r=HBM`, with category, barrier and sort filters carried in the hash too.
+Deep-linkable: `#view=rents&r=HBM`, with scale, category, barrier, sort column and sort direction all carried in the hash.
 
 ## The provenance model (R / E / I)
 

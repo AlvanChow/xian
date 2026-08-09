@@ -457,7 +457,7 @@ test('the Scarcity tab swaps the view and the map loop stops', async ({ page }) 
 
 test('the board ranks every signal and rank 1 leads', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
-  const rows = page.locator('#rlist .rrow');
+  const rows = page.locator('#rlist .trow');
 
   const expected = await page.evaluate(() => Number(document.getElementById('hRN').textContent));
   await expect(rows).toHaveCount(expected);
@@ -476,7 +476,7 @@ test('the board ranks every signal and rank 1 leads', async ({ page }) => {
 
 test('selecting a signal fills the inspector and opens its dossier', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
-  await page.locator('#rlist .rrow').first().click();
+  await page.locator('#rlist .trow').first().click();
 
   const ins = page.locator('#rinspector');
   await expect(ins.locator('.ihead .nm')).not.toHaveText('');
@@ -500,7 +500,7 @@ test('selecting a signal fills the inspector and opens its dossier', async ({ pa
 test('a supplier chip returns to the map with that entity selected', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
   // HBM's suppliers are all memory makers that exist as map nodes.
-  await page.locator('#rlist .rrow[data-r="HBM"]').click();
+  await page.locator('#rlist .trow[data-r="HBM"]').click();
 
   const link = page.locator('#rinspector .cplink').first();
   const wantId = await link.getAttribute('data-go');
@@ -512,7 +512,7 @@ test('a supplier chip returns to the map with that entity selected', async ({ pa
 
 test('board filters narrow the list and the hash deep-links a signal', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
-  const rows = page.locator('#rlist .rrow');
+  const rows = page.locator('#rlist .trow');
   const all = await rows.count();
 
   // Turning a category off must drop exactly that category's entries.
@@ -529,7 +529,7 @@ test('board filters narrow the list and the hash deep-links a signal', async ({ 
   await expect(rows).toHaveCount(all);
 
   // Selection is addressable.
-  await page.locator('#rlist .rrow[data-r="COCOA"]').click();
+  await page.locator('#rlist .trow[data-r="COCOA"]').click();
   await expect(page).toHaveURL(/view=rents/);
   await expect(page).toHaveURL(/r=COCOA/);
 });
@@ -557,7 +557,7 @@ test('the barrier fold stays shut until asked for, then filters and says so', as
   // entry survives while any of its other barriers is still selected. Clearing
   // the whole set is what empties the board, and proves the chips inside the
   // fold are really wired to the list.
-  const rows = page.locator('#rlist .rrow');
+  const rows = page.locator('#rlist .trow');
   expect(await rows.count()).toBeGreaterThan(0);
   for (const k of ['physics', 'permit', 'labor', 'export', 'ip', 'feedstock', 'grid', 'capital']) {
     await page.locator(`#rbars button[data-rb="${k}"]`).click();
@@ -573,7 +573,7 @@ test('a deep link boots straight into the board with the signal selected', async
 
   await expect(page.locator('#app')).toHaveAttribute('data-view', 'rents');
   await expect(page.locator('#rinspector .ihead .nm')).toContainText('HBM');
-  await expect(page.locator('#rlist .rrow[data-r="HBM"]')).toHaveClass(/on/);
+  await expect(page.locator('#rlist .trow[data-r="HBM"]')).toHaveClass(/on/);
 
   // The map's demo auto-select must not fire and rewrite the hash out from under
   // a deep link into the board.
@@ -582,42 +582,74 @@ test('a deep link boots straight into the board with the signal selected', async
   await expect(page).toHaveURL(/r=HBM/);
 });
 
-test('every row reads as plain language, not a spec sheet', async ({ page }) => {
+test('a row is a compact table line, not a card', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
+  const rows = page.locator('#rlist .trow');
 
-  // The plot is gone entirely — not hidden behind a toggle.
-  await expect(page.locator('#rscatWrap')).toHaveCount(0);
-  await expect(page.locator('#rscatter')).toHaveCount(0);
+  // The whole point of the rewrite: a ranked board you can actually see ranked.
+  // Cards ran ~280px and fitted three; this must stay in table territory.
+  const h = await rows.first().evaluate((n) => n.getBoundingClientRect().height);
+  expect(h).toBeLessThan(48);
+  const onScreen = await rows.evaluateAll((ns) => ns.filter((n) => n.getBoundingClientRect().bottom < 900).length);
+  expect(onScreen).toBeGreaterThan(12);
 
-  const top = page.locator('#rlist .rrow').first();
-  // Headline is the plain name; the technical name is kept but subordinated to
-  // it, so the row says what the thing is without leading with a part number.
-  await expect(top.locator('.rn')).toHaveText('Stacked memory for AI chips');
-  await expect(top.locator('.rsrc')).toContainText('HBM3E');
-  await expect(top.locator('.rsrc')).toContainText('Compute & semiconductors');
+  // Header and rows are laid out from one column definition, so their grids
+  // must be identical — a header that can drift from its own body is the bug
+  // this shares-one-template design exists to prevent.
+  const headGrid = await page.locator('#rlist .thead').evaluate((n) => getComputedStyle(n).gridTemplateColumns);
+  const rowGrid = await rows.first().evaluate((n) => getComputedStyle(n).gridTemplateColumns);
+  expect(rowGrid).toBe(headGrid);
 
-  // A multiple with no price behind it is not information: the row carries the
-  // quoted price, its unit, and the baseline it is measured against.
-  await expect(top.locator('.rpx b')).toHaveText('$20.00');
-  await expect(top.locator('.rpx .u')).toHaveText('per GB of stacked DRAM');
-  await expect(top.locator('.rpx .was')).toHaveText('5.9\u00d7 the $3.40 it used to be');
+  // Every column fits without a sideways scrollbar once the pane is wide enough.
+  // Below that the table scrolls rather than dropping columns — hiding a column
+  // would remove its sort, and the sorts are the point of the table.
+  await page.setViewportSize({ width: 1500, height: 900 });
+  await expect
+    .poll(() => page.locator('#rlist').evaluate((n) => n.scrollWidth > n.clientWidth))
+    .toBe(false);
+  await page.setViewportSize({ width: 1000, height: 900 });
+  await expect.poll(() => page.locator('#rlist').evaluate((n) => n.scrollWidth > n.clientWidth)).toBe(true);
+  expect(await page.locator('#rlist').evaluate((n) => getComputedStyle(n).overflowX)).toBe('auto');
+  // No column is lost at the narrow width, only pushed off-screen.
+  await expect(page.locator('#rlist .thead .th')).toHaveCount(9);
+});
 
-  // Suppliers are named, not counted.
-  await expect(top.locator('.rfoot')).toContainText('SK Hynix');
+test('every visible column sorts, both ways, and says which way', async ({ page }) => {
+  await page.locator('#viewTab button[data-v="rents"]').click();
+  const heads = page.locator('#rlist .thead .th');
+  expect(await heads.allTextContents()).toEqual(
+    ['#▾', 'Signal', '$', 'Gap', 'Excess / yr', 'Volume', 'Media', 'Policy', '5 yr']);
 
-  // The prose is the entry's own thesis, so consecutive rows do not repeat a
-  // template sentence — that was the tell that made the list read as generated.
-  const says = await page.locator('#rlist .rrow .rsay').allTextContents();
-  expect(new Set(says).size).toBe(says.length);
+  const val = (k) => page.locator(`#rlist .trow`).first().locator(`.td`).nth(k).textContent();
 
-  // Derived facts line: money, who holds it, and when it eases.
-  await expect(top.locator('.rfoot')).toContainText('a year in excess');
-  await expect(top.locator('.rfoot')).toContainText(/Eases around \d{4}|No end in sight/);
+  // Gap: first click gives descending, second ascending, and the header says so.
+  await page.locator('.th[data-sc-col="gap"]').click();
+  await expect(page.locator('.th[data-sc-col="gap"]')).toHaveAttribute('aria-sort', 'descending');
+  const hi = parseFloat(await val(3));
+  await page.locator('.th[data-sc-col="gap"]').click();
+  await expect(page.locator('.th[data-sc-col="gap"]')).toHaveAttribute('aria-sort', 'ascending');
+  const lo = parseFloat(await val(3));
+  expect(hi).toBeGreaterThan(lo);
+
+  // The ordering is actually monotone, not just the endpoints.
+  const gaps = (await page.locator('#rlist .trow .td:nth-child(4)').allTextContents()).map(parseFloat);
+  expect(gaps).toEqual([...gaps].sort((x, y) => x - y));
+
+  // Sorting is shareable.
+  await expect(page).toHaveURL(/rsort=gap/);
+  await expect(page).toHaveURL(/rdir=asc/);
+
+  // The two attention columns sort too — they are the reason they exist.
+  await page.locator('.th[data-sc-col="policy"]').click();
+  await expect(page.locator('.th[data-sc-col="policy"]')).toHaveAttribute('aria-sort', 'descending');
+  const meters = await page.locator('#rlist .trow .meter').evaluateAll(
+    (ns) => ns.filter((_, i) => i % 2 === 1).map((n) => parseFloat(n.firstElementChild.style.width)));
+  expect(meters).toEqual([...meters].sort((x, y) => y - x));
 });
 
 test('one back press returns from a supplier jump to the board', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
-  await page.locator('#rlist .rrow[data-r="HBM"]').click();
+  await page.locator('#rlist .trow[data-r="HBM"]').click();
   await expect(page).toHaveURL(/r=HBM/);
 
   await page.locator('#rinspector .cplink').first().click();
@@ -631,50 +663,33 @@ test('one back press returns from a supplier jump to the board', async ({ page }
 
 test('the row chart draws the price against its baseline', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
-  const top = page.locator('#rlist .rrow').first();
+  const top = page.locator('#rlist .trow').first();
 
   // Inline SVG, one per row — the trace, the shaded gap, and the dashed baseline
   // that makes the gap mean something.
-  const svg = top.locator('svg.spk');
+  const svg = top.locator('.td.ch svg.spk');
   await expect(svg).toHaveCount(1);
   await expect(svg.locator('path')).toHaveCount(2);
   await expect(svg.locator('line[stroke-dasharray]')).toHaveCount(1);
-  await expect(page.locator('#rlist svg.spk')).toHaveCount(await page.locator('#rlist .rrow').count());
+  await expect(page.locator('#rlist svg.spk')).toHaveCount(await page.locator('#rlist .trow').count());
 
-  // The chart is labelled with the span it covers.
-  await expect(top.locator('.cx')).toContainText('baseline');
-});
-
-test('every row carries the full column set', async ({ page }) => {
-  await page.locator('#viewTab button[data-v="rents"]').click();
-  const cols = page.locator('#rlist .rrow').first().locator('.rcols div');
-  await expect(cols).toHaveCount(10);
-  const labels = await cols.locator('dt').allTextContents();
-  expect(labels).toEqual(['Multiple', 'Excess / yr', 'Top 3', 'Relief', 'Margin',
-    'Last year', 'Years high', 'Biggest swing', 'Ways round', 'Barriers']);
-  // Values are rendered, not blank placeholders.
-  for (const v of await cols.locator('dd').allTextContents()) expect(v.trim()).not.toBe('');
 });
 
 test('the within-reach board is a separate set with its own columns and sorts', async ({ page }) => {
   await page.locator('#viewTab button[data-v="rents"]').click();
-  const rows = page.locator('#rlist .rrow');
+  const rows = page.locator('#rlist .trow');
   const industrial = await rows.count();
 
   await page.locator('#rScaleTab button[data-sc="micro"]').click();
-  await expect(page.locator('#rttl')).toHaveText('Within Reach');
+  await expect(page.locator('#rttl')).toHaveText('The Small-Operator Board');
   expect(await rows.count()).not.toBe(industrial);
 
-  // Micro columns answer the question the industrial ones do not: could you do it.
-  const labels = await rows.first().locator('.rcols dt').allTextContents();
-  expect(labels).toContain('Cost to start');
-  expect(labels).toContain('First invoice');
-  expect(labels).toContain('Payback');
-  expect(labels).toContain('Annual take');
+  // Its columns answer the question the industrial ones do not: could you do it.
+  expect(await page.locator('#rlist .thead .th').allTextContents()).toEqual(
+    ['#▾', 'Niche', '$', 'Gap', 'To start', 'Payback', 'Take / yr', 'Media', 'Policy', '5 yr']);
 
-  // Its own sort menu and its own categories — the two enums both contain
-  // "materials" and "regulated", so a shared filter map would cross-wire them.
-  await expect(page.locator('#rsort .fr').first()).toHaveText('Best for a small team');
+  // Its own categories — the two enums both contain "materials" and
+  // "regulated", so a shared filter map would cross-wire them.
   await expect(page.locator('#rcats .fr').first()).toContainText('Electronics & parts');
 
   // The scale is in the hash, and a deep link boots straight into it.
@@ -682,18 +697,18 @@ test('the within-reach board is a separate set with its own columns and sorts', 
   await expect(page).toHaveURL(/scale=micro/);
   const id = await rows.first().getAttribute('data-r');
   await page.goto(PAGE_URL + `#view=rents&scale=micro&r=${id}`);
-  await expect(page.locator('#rttl')).toHaveText('Within Reach');
+  await expect(page.locator('#rttl')).toHaveText('The Small-Operator Board');
   // The switch has to agree with the board it is sitting above.
   await expect(page.locator('#rScaleTab button[data-sc="micro"]')).toHaveClass(/on/);
   await expect(page.locator('#rScaleTab button[data-sc="big"]')).not.toHaveClass(/on/);
-  await expect(page.locator(`#rlist .rrow[data-r="${id}"]`)).toHaveClass(/on/);
+  await expect(page.locator(`#rlist .trow[data-r="${id}"]`)).toHaveClass(/on/);
   await expect(page.locator('#rinspector')).toContainText('Cost to start');
   await expect(page.locator('#rinspector')).toContainText('Pays itself back in');
 });
 
 test('the within-reach dossier explains what you need and what would end it', async ({ page }) => {
   await page.goto(PAGE_URL + '#view=rents&scale=micro');
-  await page.locator('#rlist .rrow').first().click();
+  await page.locator('#rlist .trow').first().click();
   await page.locator('#openDossier').click();
   const body = page.locator('#rdBody');
   await expect(page.locator('#rentModal')).toHaveClass(/show/);
