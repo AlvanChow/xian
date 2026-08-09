@@ -7,7 +7,7 @@ import { COMPANIES, FLOWS, STATE_SHARES, FLOW_VINTAGE } from './data.js';
 import * as GEN from './facts.js';
 const FACTS=GEN.FACTS, MCAPS=GEN.MCAPS||{}, MCAP_ASOF=GEN.MCAP_ASOF||null, YEAR_MULT=GEN.YEAR_MULT||{};
 import { PERIODS } from './years.js';
-import { RENTS, ARCHIVE, CATS, BARS, BARWHY, RENT_ASOF, rMult, rentScore, rentProv, rentConf } from './rents.js';
+import { RENTS, ARCHIVE, CATS, BARS, BARWHY, RENT_ASOF, rMult, rentScore, rentProv } from './rents.js';
 
 const C=COMPANIES, FL=FLOWS;
 const byId=Object.fromEntries(C.map(c=>[c.id,c]));
@@ -560,8 +560,9 @@ const RCAT={compute:'#5b8cff',power:'#f5b042',materials:'#ed8f00',pharma:'#3fd68
 const RBY=Object.fromEntries(RENTS.map(e=>[e.id,e])),ABY=Object.fromEntries(ARCHIVE.map(a=>[a.id,a]));
 // rMult / rentScore / rentProv / rentConf live in rents.js beside the data, so
 // the unit tests score exactly what the board scores.
-const rProv=rentProv,rConf=rentConf;
+const rProv=rentProv;
 // Prices here span $/GB to $M/tool, so significant digits scale with magnitude.
+const PWORD={R:'published',E:'estimated',I:'modelled'};
 const rnum=v=>v>=10000?Math.round(v).toLocaleString('en-US'):v>=100?v.toFixed(0):v>=10?v.toFixed(1):v.toFixed(2);
 const rmo=m=>m>=24?(m/12).toFixed(m%12?1:0)+' yr':m+' mo';
 const rpct=v=>(v*100).toFixed(0)+'%';
@@ -605,14 +606,17 @@ document.querySelectorAll('#viewTab button').forEach(b=>b.onclick=()=>setTab(b.d
 function buildRentBoard(){buildRentFilters();buildRentList();refreshRentStats();if(!rSel)renderRentEmpty();}
 
 function buildRentFilters(){
+  // Plain typographic rows, not bordered pills. Ten colour-filled chips with
+  // count badges is what made the rail read as a debug widget rather than the
+  // contents page of something written.
   document.getElementById('rsort').innerHTML=Object.keys(RSORTS).map(k=>
-    `<button class="chip ${rSort===k?'on':''}" data-rs="${k}"${rSort===k?' style="background:rgba(91,140,255,.12);border-color:rgba(91,140,255,.45)"':''}><span class="l"><span class="t">${RSORTS[k]}</span></span></button>`).join('');
+    `<button class="fr ${rSort===k?'on':''}" data-rs="${k}" aria-pressed="${rSort===k?'true':'false'}"><span class="t">${RSORTS[k]}</span></button>`).join('');
   const cc={};RENTS.forEach(e=>cc[e.cat]=(cc[e.cat]||0)+1);
   document.getElementById('rcats').innerHTML=Object.keys(CATS).map(k=>
-    `<button class="chip ${rCatOn[k]?'on':''}" data-rc="${k}" aria-pressed="${rCatOn[k]?'true':'false'}" title="${esc(CATS[k])}"${rCatOn[k]?` style="background:${RCAT[k]}1a;border-color:${RCAT[k]}66"`:''}><span class="l"><span class="d" style="background:${RCAT[k]}"></span><span class="t">${esc(CATS[k])}</span></span><span class="ct">${cc[k]||0}</span></button>`).join('');
+    `<button class="fr ${rCatOn[k]?'on':''}" data-rc="${k}" aria-pressed="${rCatOn[k]?'true':'false'}"><span class="d" style="background:${RCAT[k]}"></span><span class="t">${esc(CATS[k])}</span><span class="ct">${cc[k]||0}</span></button>`).join('');
   const bc={};RENTS.forEach(e=>e.bar.forEach(b=>bc[b]=(bc[b]||0)+1));
   document.getElementById('rbars').innerHTML=Object.keys(BARS).map(k=>
-    `<button class="chip ${rBarOn[k]?'on':''}" data-rb="${k}" aria-pressed="${rBarOn[k]?'true':'false'}" title="${esc(BARS[k])}"><span class="l"><span class="t">${esc(BARS[k])}</span></span><span class="ct">${bc[k]||0}</span></button>`).join('');
+    `<button class="fr ${rBarOn[k]?'on':''}" data-rb="${k}" aria-pressed="${rBarOn[k]?'true':'false'}"><span class="t">${esc(BARS[k])}</span><span class="ct">${bc[k]||0}</span></button>`).join('');
   // The fold is closed by default, so the summary has to say when something
   // inside is actually filtering — otherwise a narrowed board looks unexplained.
   // Every barrier starts on, so "all on" is the neutral state and stays quiet.
@@ -629,8 +633,6 @@ function buildRentFilters(){
    is a second copy of a number that could drift from the one in the dossier.
    The only prose the data file carries is `pn`, the plain name; the rest is
    assembled from the same fields the score and the inspector read. */
-const WORD=['no','one','two','three','four','five','six','seven','eight','nine','ten'];
-const nWord=n=>WORD[n]||String(n);
 // Snapshot month plus months-to-relief, rounded to the year. Deliberately
 // hedged in the copy ("around 2029") — ttr is an estimate on most entries and
 // a bare year would read as a promise.
@@ -639,25 +641,52 @@ function reliefYear(e){
   const t=new Date(Date.UTC(y,m-1+e.ttr.mo,1));
   return t.getUTCFullYear();
 }
-// The facts line. The row's *prose* is the entry's own thesis — 26 sentences of
-// the same shape read as a mail merge, and each entry already carries a written
-// one. This stays a terse run of derived figures underneath it.
+// Units read "$ per GB of stacked DRAM" or "$M premium per shop visit". Split
+// them: the currency (and any multiplier) belongs on the number, the
+// denominator belongs under it. A bare "20.0" in the price slot is not a price.
+function rPrice(v,u){
+  const m=/^\$([A-Za-z]?)/.exec(u);
+  // Prices get their own scale rather than rnum's: money below three figures
+  // always carries two decimals, so a column never mixes $20.0 with $9.50.
+  const n=v>=1000?Math.round(v).toLocaleString('en-US'):v>=100?v.toFixed(0):v.toFixed(2);
+  return '$'+n+(m&&m[1]?m[1]:'');
+}
+const rUnit=u=>{const m=/\bper\s+(.+)$/i.exec(u);return m?'per '+m[1]:u.replace(/^\$[A-Za-z]?\s*/,'');};
+// Name the suppliers rather than counting them. "three suppliers hold 95%" is
+// the same sentence 26 times and tells a reader nothing they can act on; the
+// names are the informative part, and they are already in the data.
+function supNames(e){
+  const ns=e.conc.sup.map(s=>{const c=s.id&&byId[s.id];return c?c.name:(s.n||s.id);});
+  const show=ns.slice(0,3),rest=ns.length-show.length;
+  let list=show.length>1?show.slice(0,-1).join(', ')+' and '+show[show.length-1]:show[0]||'';
+  if(rest>0)list+=` and ${rest} other${rest>1?'s':''}`;
+  return list;
+}
+// The facts sentence. Every clause is derived; nothing here is retyped prose.
 function rFacts(e){
-  const sup=nWord(e.conc.sup.length),who=e.conc.sup.length===1?'supplier holds':'suppliers hold';
-  const relief=e.ttr.mo>=96?'no fix in sight':`eases around ${reliefYear(e)}`;
-  return `${fmt(e.pool.v)} a year in excess · ${sup} ${who} ${rpct(e.conc.top3)} · ${relief}`;
+  const relief=e.ttr.mo>=96?'No end in sight.':`Eases around ${reliefYear(e)}.`;
+  const who=supNames(e);
+  return `${fmt(e.pool.v)} a year in excess`+(who?`, collected by ${who}`:'')
+    +`, holding ${rpct(e.conc.top3)} between them. ${relief}`;
 }
 function buildRentList(){
   const rows=rVis(),rank=rRankAll(),el=document.getElementById('rlist');
   if(!rows.length){el.innerHTML='<div class="rempty">Nothing matches those filters.<br>Switch a category back on to bring the board back.</div>';return;}
   el.innerHTML=rows.map(e=>{
     const p=rProv(e);
-    return `<div class="rrow ${rSel===e.id?'on':''}" role="option" tabindex="0" aria-selected="${rSel===e.id?'true':'false'}" data-r="${e.id}" aria-label="Number ${rank[e.id]}, ${esc(e.pn)}, costs ${rMult(e).toFixed(1)} times what it used to, ${rFacts(e)}">
+    return `<div class="rrow ${rSel===e.id?'on':''}" role="option" tabindex="0" aria-selected="${rSel===e.id?'true':'false'}" data-r="${e.id}" data-cat="${e.cat}" aria-label="Number ${rank[e.id]}, ${esc(e.pn)}, ${rPrice(e.px.v,e.u)} ${esc(rUnit(e.u))}, ${rMult(e).toFixed(1)} times the ${rPrice(e.base.v,e.u)} it used to be. ${rFacts(e)}">
       <div class="rk">${rank[e.id]}</div>
       <div class="rbody">
-        <div class="r1"><span class="rn">${esc(e.pn)}</span><span class="rmult" title="Price now against the baseline it is priced over">${rMult(e).toFixed(1)}× <span class="u">what it used to</span></span></div>
+        <div class="r1">
+          <div class="rttlwrap">
+            <div class="rn">${esc(e.pn)}</div>
+            <div class="rsrc">${esc(CATS[e.cat])} · ${esc(e.n)}</div>
+          </div>
+          <div class="rpx"><b>${esc(rPrice(e.px.v,e.u))}</b><span class="u">${esc(rUnit(e.u))}</span>
+            <span class="was">${rMult(e).toFixed(1)}× the ${esc(rPrice(e.base.v,e.u))} it used to be</span></div>
+        </div>
         <div class="rsay">${esc(e.th)}</div>
-        <div class="rfoot"><span class="rcdot" style="background:${RCAT[e.cat]}"></span>${esc(rFacts(e))}${p==='R'?'':` · ${p==='E'?'estimated' :'modelled'} figures`}</div>
+        <div class="rfoot">${esc(rFacts(e))}${p==='R'?' Every figure published.':` Figures ${p==='E'?'estimated':'modelled'}.`}</div>
       </div></div>`;}).join('');
   el.querySelectorAll('[data-r]').forEach(r=>{const go=()=>selectRent(r.dataset.r,true);r.onclick=go;r.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();go();}};});
 }
@@ -693,17 +722,17 @@ function selectRent(id,push){
    <div class="ihead"><div class="tk">No. ${rank} of ${RENTS.length}</div><div class="nm">${esc(e.n)}</div>
      <div class="meta"><span class="pill"><span class="d" style="background:${RCAT[e.cat]}"></span>${esc(CATS[e.cat])}</span><span class="pill" title="Unit the price is quoted in">${esc(e.u)}</span></div></div>
    <div class="stats">
-     <div class="stat"><div class="k">Costs this much more</div><div class="v">${mult.toFixed(1)}×<span class="tag ${e.px.p}">${e.px.p}</span></div><div class="k" style="margin-top:2px">${rnum(e.px.v)} now, ${rnum(e.base.v)} before</div></div>
-     <div class="stat"><div class="k">Excess paid every year</div><div class="v">${fmt(e.pool.v)}<span class="tag ${e.pool.p}">${e.pool.p}</span></div><div class="k" style="margin-top:2px">above what it used to cost</div></div>
-     <div class="stat"><div class="k">Until it eases</div><div class="v">${rmo(e.ttr.mo)}<span class="tag ${e.ttr.p}">${e.ttr.p}</span></div></div>
-     <div class="stat"><div class="k">Held by the top three</div><div class="v">${rpct(e.conc.top3)}<span class="tag ${e.conc.p}">${e.conc.p}</span></div></div>
-     <div class="stat"><div class="k">Their gross margin</div><div class="v">${rpct(e.gm.v)}<span class="tag ${e.gm.p}">${e.gm.p}</span></div><div class="k" style="margin-top:2px">${esc(e.gm.who)}</div></div>
-     <div class="stat"><div class="k">Score</div><div class="v">${rentScore(e).toFixed(0)}</div><div class="k" style="margin-top:2px">source quality ${(rConf(e)*100|0)}%</div></div>
+     <div class="stat"><div class="k">Costs this much more</div><div class="v">${mult.toFixed(1)}×<span class="tag ${e.px.p}">${PWORD[e.px.p]}</span></div><div class="k" style="margin-top:2px">${rPrice(e.px.v,e.u)} now, ${rPrice(e.base.v,e.u)} before</div></div>
+     <div class="stat"><div class="k">Excess paid every year</div><div class="v">${fmt(e.pool.v)}<span class="tag ${e.pool.p}">${PWORD[e.pool.p]}</span></div><div class="k" style="margin-top:2px">above what it used to cost</div></div>
+     <div class="stat"><div class="k">Until it eases</div><div class="v">${rmo(e.ttr.mo)}<span class="tag ${e.ttr.p}">${PWORD[e.ttr.p]}</span></div></div>
+     <div class="stat"><div class="k">Held by the top three</div><div class="v">${rpct(e.conc.top3)}<span class="tag ${e.conc.p}">${PWORD[e.conc.p]}</span></div></div>
+     <div class="stat"><div class="k">Their gross margin</div><div class="v">${rpct(e.gm.v)}<span class="tag ${e.gm.p}">${PWORD[e.gm.p]}</span></div><div class="k" style="margin-top:2px">${esc(byId[e.gm.who]?byId[e.gm.who].name:e.gm.who)}</div></div>
+     <div class="stat"><div class="k">Where it ranks</div><div class="v">No. ${rank}</div><div class="k" style="margin-top:2px">of ${RENTS.length} on the board</div></div>
    </div>
    <div class="nsw"><div class="k">Price · ${esc(e.u)}</div><canvas id="rspark" aria-label="Price history for ${esc(e.n)}"></canvas><div class="yrs"><span>${esc(e.ser[0].t)}</span><span>${esc(e.ser[e.ser.length-1].t)}</span></div></div>
    <button class="ddbtn" id="openDossier">Full dossier →</button>
-   ${p==='R'?`<div class="verdict ok">✓ Every headline number here comes from a published source. That is rare on this board — most of these things are sold under private contracts and the prices are never printed anywhere.</div>`
-      :`<div class="verdict warn">⚠ The softest number here is ${p==='E'?'an estimate':'a model'}, not something published. ${esc(e.pool.m)} So read the position on this list as a rough guide, not a measurement.</div>`}
+   ${p==='R'?`<div class="verdict ok">Every headline number here comes from a published source. That is rare on this board — most of these things are sold under private contracts and the prices are never printed anywhere.</div>`
+      :`<div class="verdict warn">The softest number here is ${p==='E'?'an estimate':'a model'}, not something published. ${esc(e.pool.m)} So read the position on this list as a rough guide, not a measurement.</div>`}
    <div class="flowsec"><div class="lbl">What is going on</div><div style="font-size:12.5px;line-height:1.6;color:var(--dim)">${esc(e.th)}</div></div>
    <div class="flowsec" style="border-top:1px solid var(--line)"><div class="lbl">Who collects it <span>${e.conc.sup.length}</span></div>${e.conc.sup.map(supRow).join('')}
      <div class="meth" style="color:var(--mut);font-size:11px;margin-top:8px">${esc(e.conc.s)}. Named suppliers already on the map are clickable.</div></div>
