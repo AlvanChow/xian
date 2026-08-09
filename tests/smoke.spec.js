@@ -590,9 +590,20 @@ test('every row reads as plain language, not a spec sheet', async ({ page }) => 
   await expect(page.locator('#rscatter')).toHaveCount(0);
 
   const top = page.locator('#rlist .rrow').first();
-  // Headline is the plain name, and the part number is NOT in the row.
+  // Headline is the plain name; the technical name is kept but subordinated to
+  // it, so the row says what the thing is without leading with a part number.
   await expect(top.locator('.rn')).toHaveText('Stacked memory for AI chips');
-  await expect(top).not.toContainText('HBM3E');
+  await expect(top.locator('.rsrc')).toContainText('HBM3E');
+  await expect(top.locator('.rsrc')).toContainText('Compute & semiconductors');
+
+  // A multiple with no price behind it is not information: the row carries the
+  // quoted price, its unit, and the baseline it is measured against.
+  await expect(top.locator('.rpx b')).toHaveText('$20.00');
+  await expect(top.locator('.rpx .u')).toHaveText('per GB of stacked DRAM');
+  await expect(top.locator('.rpx .was')).toHaveText('5.9\u00d7 the $3.40 it used to be');
+
+  // Suppliers are named, not counted.
+  await expect(top.locator('.rfoot')).toContainText('SK Hynix');
 
   // The prose is the entry's own thesis, so consecutive rows do not repeat a
   // template sentence — that was the tell that made the list read as generated.
@@ -601,8 +612,7 @@ test('every row reads as plain language, not a spec sheet', async ({ page }) => 
 
   // Derived facts line: money, who holds it, and when it eases.
   await expect(top.locator('.rfoot')).toContainText('a year in excess');
-  await expect(top.locator('.rfoot')).toContainText('suppliers hold');
-  await expect(top.locator('.rfoot')).toContainText(/eases around \d{4}|no fix in sight/);
+  await expect(top.locator('.rfoot')).toContainText(/Eases around \d{4}|No end in sight/);
 });
 
 test('one back press returns from a supplier jump to the board', async ({ page }) => {
