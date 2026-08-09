@@ -43,6 +43,7 @@ export default [
         console: 'readonly',
         process: 'readonly',
         URL: 'readonly',
+        URLSearchParams: 'readonly',
         fetch: 'readonly',
         setTimeout: 'readonly',
         Promise: 'readonly',
