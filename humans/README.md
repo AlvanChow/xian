@@ -37,6 +37,15 @@ the company's HQ city to go on, because home addresses are not public — severa
 so explicitly. Treat `city` as where the fortune is anchored rather than where the person
 sleeps, and the region charts as accurate at regional resolution rather than street level.
 
+**Gross beneficial ownership, except where a pass said otherwise.** Most records price a
+disclosed share count at a fetched close, without netting tax or option strike. That is the
+census convention and it runs *high* for anyone whose stake is mostly options or whose exit
+was a cash-out. One pass — San Diego, where biotech wealth is overwhelmingly option-based —
+applied strike and tax haircuts to completed cash-outs and said so on each record, which
+makes those figures roughly half what the gross convention would have produced. The two
+conventions are not reconciled. Where a record nets something down, its `m` says so; where
+it does not, assume gross.
+
 **US means residence, not citizenship.** The census maps where money sits, so a Barbadian
 or Canadian citizen living in Los Angeles is in it, and an American living in Monaco is not.
 
