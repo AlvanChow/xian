@@ -81,6 +81,9 @@ function derive(r) {
     ...r,
     band: bandOf(r.nw).id,
     ageb: ageBandOf(r.age),
+    // the year the fortune crossed $100M — the closest thing the data has to a
+    // date of wealth creation. Derived, so it cannot drift from started/toFirst100.
+    y100: r.started != null && r.toFirst100 != null ? r.started + r.toFirst100 : null,
     u45: r.age != null ? r.age < 45 : null,      // the census's primary cut
     years,                                                  // time taken to reach today's figure
     // $M of net worth accumulated per year since starting. The single most

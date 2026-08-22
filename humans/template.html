@@ -70,6 +70,12 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .slgd .rk{color:var(--mut);font-size:10.5px}
 .slgd .ct{color:var(--txt);font-variant-numeric:tabular-nums;font-weight:600}
 .hint{color:var(--mut);font-size:11.5px;margin:0 0 10px;font-family:var(--mono)}
+.modes{display:flex;gap:2px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:2px;margin:0 0 14px;width:fit-content}
+.modes button{background:none;border:0;padding:6px 12px;cursor:pointer;font-family:var(--sans);font-size:12px;color:var(--dim);border-radius:6px}
+.modes button.on{background:var(--accent-fill);color:#fff;font-weight:600}
+.modes button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.caveat{margin:12px 0 0;font-size:11.5px;line-height:1.6;color:var(--mut);border-left:2px solid var(--line);padding-left:11px}
+.caveat b{color:var(--dim)}
 .fig{background:var(--bg);padding:14px 16px 12px;min-width:0}
 .fig h3{margin:0 0 2px;font-size:12.5px;font-weight:600;color:var(--txt)}
 .fig p.sub{margin:0 0 10px;font-size:11.5px;color:var(--mut);line-height:1.45}
@@ -184,6 +190,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
     <nav class="tabs" id="tabs">
       <button data-p="dist" class="on">Distribution</button>
       <button data-p="age">Age &amp; speed</button>
+      <button data-p="time">Over time</button>
       <button data-p="geo">Geography</button>
     </nav>
 
@@ -217,6 +224,28 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
           <p class="sub">Sector, split by the 45 line. A sector that is mostly blue is a fast route to $100M; mostly amber means it takes a career.</p>
           <div id="cSect" role="img" aria-label="People by sector, split under and over 45"></div>
           <div class="lgd" id="lSect"></div>
+        </figure>
+      </div>
+    </section>
+
+    <section class="pane" id="p-time">
+      <div class="charts">
+        <figure class="fig wide">
+          <h3>What kind of wealth each era made</h3>
+          <p class="sub" id="timeSub"></p>
+          <div class="modes" id="timeModes">
+            <button data-m="share" class="on">Share of cohort</button>
+            <button data-m="people">People</button>
+            <button data-m="worth">$B held today</button>
+          </div>
+          <div id="cTime" role="img" aria-label="Sector composition of each five-year cohort, by the year each fortune crossed 100 million dollars"></div>
+          <div class="slgd" id="lTime"></div>
+          <p class="caveat" id="timeCaveat"></p>
+        </figure>
+        <figure class="fig wide">
+          <h3>How long each era took</h3>
+          <p class="sub">Median years from starting out to the first $100M, by the era the fortune crossed it. Falling means fortunes are arriving faster.</p>
+          <div id="cSpeed" role="img" aria-label="Median years to first 100 million dollars by cohort"></div>
         </figure>
       </div>
     </section>
@@ -431,6 +460,95 @@ function distChart(el, rs, slots){
   el.innerHTML = s+'</svg>';
 }
 
+/* Five-year cohorts, positioned on a real year axis rather than as equal-width
+   categories — the spacing is proportional to time, so a gap in the record shows
+   as a gap. Cohort = the year the fortune crossed $100M. */
+const CO_LO = 1980, CO_HI = 2030, CO_W = 5;
+const COHORTS = Array.from({length:(CO_HI-CO_LO)/CO_W}, (_,i)=>({lo:CO_LO+i*CO_W, hi:CO_LO+(i+1)*CO_W}));
+const cohortOf = (y)=> y==null ? null : Math.min(CO_HI-CO_W, Math.max(CO_LO, Math.floor(y/CO_W)*CO_W));
+let timeMode = 'share';
+
+function timeChart(el, rs, slots){
+  const w=1000, h=320, padL=54, padR=14, padT=14, padB=54;
+  const cells = COHORTS.map((c)=>{
+    const inC = rs.filter((r)=>cohortOf(r.y100)===c.lo);
+    return {...c, n:inC.length, worth:inC.reduce((a,r)=>a+r.nw,0),
+      seg: slots.map((s)=>{
+        const m = inC.filter((r)=> s.k==='__other' ? s.members.includes(r.sect) : r.sect===s.k);
+        return {...s, n:m.length, worth:m.reduce((a,r)=>a+r.nw,0)};
+      })};
+  });
+  const val = (c)=> timeMode==='people' ? c.n : timeMode==='worth' ? c.worth : (c.n?1:0);
+  const segVal = (sg,c)=> timeMode==='people' ? sg.n : timeMode==='worth' ? sg.worth
+    : (c.n ? (sg.n/c.n) : 0);
+  const max = timeMode==='share' ? 1 : Math.max(1, ...cells.map(val));
+  const step = timeMode==='share' ? 0.25 : max<=20?5:max<=60?20:25;
+  const top = timeMode==='share' ? 1 : Math.ceil(max/step)*step;
+  const X=(y)=>padL+((y-CO_LO)/(CO_HI-CO_LO))*(w-padL-padR);
+  const Y=(v)=>padT+(1-v/top)*(h-padT-padB);
+  const yfmt=(v)=> timeMode==='share' ? Math.round(v*100)+'%' : timeMode==='worth' ? '$'+v+'B' : v;
+  let s=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`;
+  for(let g=0; g<=top+1e-9; g+=step){
+    s+=`<line x1="${padL}" y1="${Y(g).toFixed(1)}" x2="${w-padR}" y2="${Y(g).toFixed(1)}" stroke="${GRID}" stroke-width="1" stroke-dasharray="${g?'2 4':'0'}"></line>`;
+    s+=`<text x="${padL-8}" y="${(Y(g)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="${MUT}" font-variant-numeric="tabular-nums">${yfmt(g)}</text>`;
+  }
+  const bw=(X(CO_LO+CO_W)-X(CO_LO)), gap=Math.min(10,bw*0.16);
+  const MIN_SHARE = 5;   // a share bar drawn from one or two people reads as 100% of nothing
+  cells.forEach((c)=>{
+    if(!c.n) return;
+    if(timeMode==='share' && c.n<MIN_SHARE){
+      const x0=X(c.lo)+gap/2;
+      s+=`<rect x="${x0.toFixed(1)}" y="${Y(1).toFixed(1)}" width="${(bw-gap).toFixed(1)}" height="${(h-padT-padB).toFixed(1)}" fill="none" stroke="${GRID}" stroke-width="1" stroke-dasharray="3 3"></rect>`;
+      s+=`<text x="${(x0+(bw-gap)/2).toFixed(1)}" y="${(padT+(h-padT-padB)/2).toFixed(1)}" text-anchor="middle" font-size="10" fill="${MUT}">n=${c.n}</text>`;
+      return;
+    }
+    const x=X(c.lo)+gap/2, cw=bw-gap;
+    let yTop=Y(0);
+    c.seg.forEach((sg)=>{
+      const v=segVal(sg,c); if(!v) return;
+      const sh=(v/top)*(h-padT-padB);
+      s+=`<rect x="${x.toFixed(1)}" y="${(yTop-sh).toFixed(1)}" width="${cw.toFixed(1)}" height="${Math.max(1,sh-2).toFixed(1)}" fill="${sg.col}" data-co="${c.lo}" data-sect="${sg.k}"></rect>`;
+      yTop-=sh;
+    });
+    const lab = timeMode==='worth' ? '$'+Math.round(c.worth)+'B' : c.n;
+    s+=`<text x="${(x+cw/2).toFixed(1)}" y="${(Y(timeMode==='share'?1:val(c))-7).toFixed(1)}" text-anchor="middle" font-size="10.5" fill="${MUT}" font-variant-numeric="tabular-nums" font-weight="600">${lab}</text>`;
+  });
+  for(let y=CO_LO; y<=CO_HI-CO_W; y+=10)
+    s+=`<text x="${X(y+CO_W/2).toFixed(1)}" y="${h-padB+18}" text-anchor="middle" font-size="11" fill="${MUT}" font-family="var(--mono)">${y}</text>`;
+  s+=`<text x="${padL+(w-padL-padR)/2}" y="${h-8}" text-anchor="middle" font-size="11" fill="${MUT}" font-family="var(--mono)">year the fortune crossed $100M</text>`;
+  el.innerHTML=s+'</svg>';
+  return cells;
+}
+
+/* Median years to the first $100M, by cohort. A falling line means fortunes are
+   arriving faster; it is also the measure most exposed to the survivorship caveat
+   below, so it is drawn small and beside its own warning. */
+function speedChart(el, rs){
+  const w=1000, h=170, padL=54, padR=14, padT=12, padB=42;
+  const pts = COHORTS.map((c)=>{
+    const v=rs.filter((r)=>cohortOf(r.y100)===c.lo).map((r)=>r.toFirst100).filter((x)=>x!=null).sort((a,b)=>a-b);
+    return {lo:c.lo, n:v.length, med: v.length ? (v.length%2 ? v[v.length>>1] : (v[(v.length>>1)-1]+v[v.length>>1])/2) : null};
+  }).filter((p)=>p.n>=3);
+  const max=Math.max(10,...pts.map((p)=>p.med));
+  const topv=Math.ceil(max/5)*5;
+  const X=(y)=>padL+((y+CO_W/2-CO_LO)/(CO_HI-CO_LO))*(w-padL-padR);
+  const Y=(v)=>padT+(1-v/topv)*(h-padT-padB);
+  let s=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`;
+  for(let g=0; g<=topv; g+=5){
+    s+=`<line x1="${padL}" y1="${Y(g).toFixed(1)}" x2="${w-padR}" y2="${Y(g).toFixed(1)}" stroke="${GRID}" stroke-width="1" stroke-dasharray="${g?'2 4':'0'}"></line>`;
+    s+=`<text x="${padL-8}" y="${(Y(g)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="${MUT}" font-variant-numeric="tabular-nums">${g}</text>`;
+  }
+  s+=`<path d="${pts.map((p,i)=>(i?'L':'M')+X(p.lo).toFixed(1)+' '+Y(p.med).toFixed(1)).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"></path>`;
+  pts.forEach((p)=>{
+    s+=`<circle cx="${X(p.lo).toFixed(1)}" cy="${Y(p.med).toFixed(1)}" r="4.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="2"></circle>`;
+    s+=`<text x="${X(p.lo).toFixed(1)}" y="${(Y(p.med)-11).toFixed(1)}" text-anchor="middle" font-size="10.5" fill="${MUT}" font-variant-numeric="tabular-nums">${p.med}</text>`;
+  });
+  for(let y=CO_LO; y<=CO_HI-CO_W; y+=10)
+    s+=`<text x="${X(y).toFixed(1)}" y="${h-padB+18}" text-anchor="middle" font-size="11" fill="${MUT}" font-family="var(--mono)">${y}</text>`;
+  s+=`<text x="14" y="${padT+(h-padT-padB)/2}" text-anchor="middle" font-size="11" fill="${MUT}" transform="rotate(-90 14 ${padT+(h-padT-padB)/2})">median yrs</text>`;
+  el.innerHTML=s+'</svg>';
+}
+
 function drawCharts(rs){
   const slots = sectorSlots(ROWS);
   distChart($('#cDist'), rs, slots);
@@ -462,6 +580,38 @@ function drawCharts(rs){
     .filter((d)=>d.a+d.b).sort((x,y)=>(y.a+y.b)-(x.a+x.b));
   stackChart($('#cSect'), sec, {label:(d)=>d.n});
   $('#lSect').innerHTML = `<span><i style="background:${U45C}"></i>Under 45</span><span><i style="background:${O45C}"></i>45 and over</span>`;
+  /* over time */
+  const cells = timeChart($('#cTime'), rs, slots);
+  speedChart($('#cSpeed'), rs);
+  $('#lTime').innerHTML = $('#lDist').innerHTML;
+  $('#lTime').querySelectorAll('button').forEach((b)=>b.onclick=()=>{
+    const k=b.dataset.s, keys = k==='__other' ? slots.find((x)=>x.k==='__other').members : [k];
+    const allOn = keys.every((x)=>F.sect.has(x));
+    keys.forEach((x)=> allOn ? F.sect.delete(x) : F.sect.add(x));
+    render();
+  });
+  // a sentence the data writes for itself, comparing the newest full cohort to the oldest
+  // only complete cohorts, and never let the Other bucket be the headline sector —
+  // naming an actual industry is the whole point of the sentence
+  const full = cells.filter((c)=>c.n>=10 && c.hi<=ASOF_YEAR);
+  if(full.length>=2){
+    const a=full[0], z=full[full.length-1];
+    const nameOf=(s)=> s.k==='__other' ? 'other industries' : SECTORS[s.k].toLowerCase();
+    const topZ=[...z.seg].filter((s)=>s.k!=='__other').sort((x,y)=>y.n-x.n)[0];
+    const thenS=a.seg.find((s)=>s.k===topZ.k);
+    const then=thenS ? Math.round(thenS.n/a.n*100) : 0;
+    const now=Math.round(topZ.n/z.n*100);
+    const B=(x)=>`<b style="color:var(--txt)">${x}</b>`;
+    $('#timeSub').innerHTML =
+      `Fortunes that crossed $100M in ${B(z.lo+'\u2013'+(z.hi-1))} are worth ${B('$'+Math.round(z.worth)+'B')} today, `
+      + `and ${B(now+'%')} of them came out of ${B(nameOf(topZ))} \u2014 against ${then}% of the ${a.lo}\u2013${a.hi-1} cohort. `
+      + `Each bar is a five-year cohort placed on a real year axis.`;
+  }
+  $('#timeCaveat').innerHTML = `<b>What this can and cannot show.</b> A person's era here is the year they first crossed $100M, `
+    + `derived from when they started plus how long it took. The bar heights in <em>$B held today</em> are current net worth, not money booked in that year &mdash; `
+    + `an older cohort has had decades to compound. The <em>share</em> view is the robust one: it asks what kind of business each era's fortunes came out of. `
+    + `Two biases run the other way and both flatter the recent past. This census only holds people currently worth $100M&ndash;$5B, so anyone who crossed the line in the 1980s `
+    + `and then passed $5B, lost it, or died is simply absent &mdash; older cohorts are survivors, not samples. Cohorts of fewer than five people are left as an outline in the share view rather than drawn as a percentage, because a share computed from one person is not a share. And the newest bar is a partial cohort: it can only hold fortunes that crossed the line by ${ASOF_YEAR}, so it is short by construction.`;
   const reg = Object.entries(REGIONS).map(([k,n])=>({n, ...split(rs,(r)=>r.region,k)}))
     .filter((d)=>d.a+d.b).sort((x,y)=>(y.a+y.b)-(x.a+x.b));
   stackChart($('#cRegion'), reg, {label:(d)=>d.n});
@@ -584,6 +734,12 @@ const tip=$('#tip');
 $('#tabs').querySelectorAll('button').forEach((b)=>b.onclick=()=>{
   $('#tabs').querySelectorAll('button').forEach((x)=>x.classList.toggle('on', x===b));
   document.querySelectorAll('.pane').forEach((p)=>p.classList.toggle('on', p.id==='p-'+b.dataset.p));
+  render();
+});
+
+$('#timeModes').querySelectorAll('button').forEach((b)=>b.onclick=()=>{
+  timeMode=b.dataset.m;
+  $('#timeModes').querySelectorAll('button').forEach((x)=>x.classList.toggle('on', x===b));
   render();
 });
 
