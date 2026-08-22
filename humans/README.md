@@ -31,6 +31,12 @@ people makes it denser; it never makes it complete. The table says so on its fac
 **The $5B cap is inclusive.** A figure of exactly $5.0B is in scope. One research pass read
 it as exclusive and dropped Stephen Mandel at $5.0B on that basis; he is a valid backfill.
 
+**`city` is best-effort residence, and sometimes it is the filing address.** The census
+means residence, and list-sourced records give it. But an SEC-derived record often has only
+the company's HQ city to go on, because home addresses are not public — several passes said
+so explicitly. Treat `city` as where the fortune is anchored rather than where the person
+sleeps, and the region charts as accurate at regional resolution rather than street level.
+
 **US means residence, not citizenship.** The census maps where money sits, so a Barbadian
 or Canadian citizen living in Los Angeles is in it, and an American living in Monaco is not.
 
