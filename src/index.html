@@ -27,7 +27,7 @@
   <div class="cell" id="top">
     <h1 class="logo"><span class="mk"></span>ValueGrid <small id="logoSub">· global capital-flow map</small></h1>
     <div class="seg" id="viewTab" role="tablist" aria-label="View">
-      <button data-v="map" class="on" role="tab" aria-selected="true">Map</button><button data-v="rents" role="tab" aria-selected="false">Scarcity</button>
+      <button data-v="map" class="on" role="tab" aria-selected="true">Map</button><button data-v="rents" role="tab" aria-selected="false">Scarcity</button><button data-v="humans" role="tab" aria-selected="false">Humans</button>
     </div>
     <div class="hsep"></div>
     <div class="hgrp v-map">
@@ -42,6 +42,11 @@
       <div class="hstat"><b id="hRP">—</b> <span data-hlab data-g="a year in excess" data-m="typical yearly billing">a year in excess</span></div>
       <div class="hstat"><span data-hlab data-g="typically eases in" data-m="typical cost to start">typically eases in</span> <b id="hRT">—</b></div>
     </div>
+    <div class="hgrp v-humans">
+      <div class="hstat"><b id="hHN">—</b> people</div>
+      <div class="hstat"><b id="hHS">—</b> states</div>
+      <div class="hstat"><b id="hHU">—</b> under 45</div>
+    </div>
     <div class="hright">
       <button class="tbtn" id="aboutBtn">About the data</button>
       <span class="livedot" id="liveDot"><i></i> Live</span>
@@ -55,6 +60,18 @@
       <div class="sec"><h4>Sectors</h4><div id="sectors"></div></div>
       <div class="sec"><h4>Data layers</h4><div id="layers"></div></div>
       <div class="sec" style="border:0"><h4>Provenance mix</h4><div id="provmix"></div></div>
+    </div>
+    <div class="v-humans" id="leftHumans">
+      <div class="sec">
+        <h4 class="plain">Search <button class="clr" id="hReset">reset all</button></h4>
+        <input class="srch" id="hQ" placeholder="Name, company, city&hellip;" autocomplete="off" aria-label="Search the census">
+      </div>
+      <div class="sec"><h4 class="plain">Age <button class="clr" id="hOnly45">only under 45</button></h4><div id="hfAge"></div></div>
+      <div class="sec"><h4 class="plain">Wealth band</h4><div id="hfBand"></div></div>
+      <div class="sec"><h4 class="plain">Region</h4><div id="hfRegion"></div></div>
+      <div class="sec"><h4 class="plain">Sector</h4><div id="hfSect"></div></div>
+      <div class="sec"><h4 class="plain">Origin</h4><div id="hfOrigin"></div></div>
+      <div class="sec"><h4 class="plain">Provenance</h4><div id="hfProv"></div></div>
     </div>
     <div class="v-rents" id="leftRents">
       <div class="sec"><input class="srch" id="rsrch" placeholder="Search signals, suppliers" aria-label="Search scarcity signals"></div>
@@ -102,6 +119,23 @@
       </div>
       <div id="rlist" role="grid" aria-label="Ranked scarcity signals"></div>
     </div>
+    <div class="v-humans" id="centerHumans">
+      <div class="rhead">
+        <div>
+          <div class="rttl">The $100M&ndash;$5B census</div>
+          <div class="rsub" id="hsub">American fortunes between $100M and $5B, and who reached them before 45.</div>
+        </div>
+      </div>
+      <nav class="seg htabs" id="hTabs" role="tablist" aria-label="Census view">
+        <button data-p="dist" class="on" role="tab" aria-selected="true">Distribution</button><button data-p="age" role="tab" aria-selected="false">Age &amp; speed</button><button data-p="time" role="tab" aria-selected="false">Over time</button><button data-p="geo" role="tab" aria-selected="false">Geography</button><button data-p="find" role="tab" aria-selected="false">What we learned</button>
+      </nav>
+      <div id="hBody">
+        <div id="hPanes"></div>
+        <div class="htbar" id="hStats"></div>
+        <div id="hScroll"><div class="hgrid hhd" id="hHead" role="row"></div><div id="hRows" role="grid" aria-label="The census"></div></div>
+        <p class="hnote" id="hNote"></p>
+      </div>
+    </div>
   </div>
 
   <div class="cell" id="right" role="region" aria-label="Inspector">
@@ -115,6 +149,9 @@
     </div>
     <div class="v-rents" id="rightRents">
       <div id="rinspector"></div>
+    </div>
+    <div class="v-humans" id="rightHumans">
+      <div id="hinspector"></div>
     </div>
   </div>
 </div>
