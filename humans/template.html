@@ -347,12 +347,17 @@ function timeline(r){
   const t0 = born ?? r.started, t1 = ASOF_YEAR, span = Math.max(1, t1-t0);
   const at = (y)=>((y-t0)/span*100);
   const c100 = r.toFirst100!=null ? r.started+r.toFirst100 : null;
+  // labels are centred on their point, so one at 0% or 100% would hang off the
+  // panel — pin the end ones to their edge instead of centring them
+  const lb=(pct,cls,txt)=>{ const p=at(pct);
+    const st = p<10 ? 'left:0;transform:none' : p>90 ? 'right:0;transform:none' : `left:${p.toFixed(1)}%`;
+    return `<div class="lb ${cls}" style="${st}">${txt}</div>`; };
   let s = `<div class="tl"><div class="ax"></div>`;
   s += `<div class="fill" style="left:${at(r.started).toFixed(1)}%;right:0"></div>`;
-  if(born){ s+=`<div class="pt" style="left:${at(born).toFixed(1)}%;background:var(--mut)"></div><div class="lb t" style="left:${at(born).toFixed(1)}%">born ${born}</div>`; }
-  s += `<div class="pt" style="left:${at(r.started).toFixed(1)}%;background:var(--accent)"></div><div class="lb b" style="left:${at(r.started).toFixed(1)}%">started ${r.started}, age ${r.startAge}</div>`;
-  if(c100) s+=`<div class="pt" style="left:${at(c100).toFixed(1)}%;background:var(--estimated)"></div><div class="lb t" style="left:${at(c100).toFixed(1)}%">$100M ${c100}</div>`;
-  s += `<div class="pt" style="left:100%;background:var(--reported)"></div><div class="lb b" style="left:98%">${money(r.nw)}</div>`;
+  if(born){ s+=`<div class="pt" style="left:${at(born).toFixed(1)}%;background:var(--mut)"></div>`+lb(born,'t',`born ${born}`); }
+  s += `<div class="pt" style="left:${at(r.started).toFixed(1)}%;background:var(--accent)"></div>`+lb(r.started,'b',`started ${r.started}, age ${r.startAge}`);
+  if(c100) s+=`<div class="pt" style="left:${at(c100).toFixed(1)}%;background:var(--estimated)"></div>`+lb(c100,'t',`$100M ${c100}`);
+  s += `<div class="pt" style="left:100%;background:var(--reported)"></div><div class="lb b" style="right:0;transform:none">${money(r.nw)}</div>`;
   return s+'</div>';
 }
 function drawDossier(){
