@@ -49,6 +49,20 @@ record**. Proxy statements print director ages — use them. If you cannot sourc
 **drop the person**; several otherwise-perfect records have been dropped across this census
 for exactly this reason and that is the correct outcome. Never guess an age.
 
+## Known dead ends — do not re-research these
+Other passes already spent budget establishing these. Believe them.
+- **Molly Boyle** (Columbia Sportswear, 3,042,207 shares ≈ $183M, own Portland address filed):
+  stake and residence are documented, birth year is not. Three separate attempts, including a
+  direct search. She is a valid record the moment anyone finds a birth year, and not before.
+- **Alaska and Hawaii**: EDGAR 13D/G full-text 2022-26 yields one Anchorage individual (already
+  in the census) and shell traffic for Honolulu. Anchorage has one listed operating company with
+  no individual 5% holder; Honolulu's listed set is institutionally held, and Matson's CEO
+  computes to about $60M. Confirmed thin, not un-researched.
+- **California's Central Valley**: 13D/G full-text against 22 farm and wine cities returns only
+  pre-2010 filings, dead microcaps and institutions. Use transaction prices there, not filings.
+- **Chicago proprietary trading** (Jump, DRW, Getco, Peak6): LLCs, no filings, principals 46-60.
+- **The LA Business Journal rich list** does not reach this band (rank 50 is $1.3B).
+
 ## Priorities, in order
 1. **In band** ($100M–$500M) and **sourceable**. Nothing else matters if these fail.
 2. **Under 45** — aim for half. The census is 24% under 45 and the young are concentrated in
