@@ -224,5 +224,20 @@ if (!process.argv.includes('--check')) {
     .replace('/*__SECTORS__*/null', JSON.stringify(SECTORS));
   if (page.includes('__DATA__')) { console.error('FATAL: data placeholder not substituted'); process.exit(1); }
   writeFileSync(join(HERE, 'index.html'), page);
-  console.log(`wrote humans/humans.json + humans/index.html (${(page.length / 1024).toFixed(0)} KB)`);
+
+  /* Artifact build. Same page, minus the document wrapper: the Artifact host
+     supplies <!doctype>/<html>/<head>/<body> and a CSS reset, so shipping our own
+     would nest a document inside a document. Everything else is already inline —
+     no external CSS, JS, fonts or images — which is what the Artifact CSP requires. */
+  const art = page
+    .replace(/^[\s\S]*?<meta name="viewport"[^>]*>\s*/, '')   // drop doctype/html/head open + meta
+    .replace(/<\/head>\s*<body>\s*/, '')
+    .replace(/\s*<\/body>\s*<\/html>\s*$/, '\n');
+  for (const tag of ['<!doctype', '<html', '<head>', '<body>', '</html>']) {
+    if (art.toLowerCase().includes(tag)) { console.error(`FATAL: artifact still contains ${tag}`); process.exit(1); }
+  }
+  if (!art.trimStart().startsWith('<title>')) { console.error('FATAL: artifact must open with <title>'); process.exit(1); }
+  writeFileSync(join(HERE, 'artifact.html'), art);
+  console.log(`wrote humans/humans.json + humans/index.html (${(page.length / 1024).toFixed(0)} KB)`
+    + ` + humans/artifact.html (${(art.length / 1024).toFixed(0)} KB)`);
 }

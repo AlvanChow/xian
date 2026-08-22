@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>The American $100M-$5B census - ValueGrid</title>
+<title>The $100M Census</title>
 <style>
 :root{
   --bg:#0a0e16; --bg2:#0d121d; --panel:#101725; --panel2:#0c121e; --line:#1c2536;
@@ -15,6 +15,12 @@
      dE 19.8, contrast PASS. Every use also carries a text label, so identity
      is never colour-alone. */
   --self:#5b8cff; --inherited:#c98500; --mixed:#199e70;
+  /* Eight stacked-segment slots. Validated as a set against --bg in dark mode on the
+     adjacent pairlist, which is what a stack is: lightness band, chroma, CVD worst
+     dE 8.4, normal-vision worst dE 19.3, contrast — all pass. Eight is the ceiling,
+     so the sector list folds to the top seven plus Other rather than cycling hues. */
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
   --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
   --mono:ui-monospace,'SF Mono','Roboto Mono',Menlo,Consolas,monospace;
 }
@@ -45,10 +51,31 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .clr{background:none;border:0;color:var(--accent);cursor:pointer;font-size:11px;font-family:var(--sans);padding:0}
 
 #main{overflow-y:auto;padding:0}
+.tabs{display:flex;gap:2px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--bg)}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:13px 14px 11px;cursor:pointer;
+  font-family:var(--sans);font-size:13px;font-weight:600;color:var(--mut);margin-bottom:-1px}
+.tabs button:hover{color:var(--dim)}
+.tabs button.on{color:var(--txt);border-bottom-color:var(--accent)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.pane{display:none}.pane.on{display:block}
 .charts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.fig.wide{grid-column:1/-1}
+.slgd{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.slgd button{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+  padding:5px 10px;cursor:pointer;font-family:var(--mono);font-size:11.5px;color:var(--dim);transition:.12s}
+.slgd button:hover{border-color:var(--dim);color:var(--txt)}
+.slgd button.on{border-color:var(--accent);color:var(--txt);background:var(--panel)}
+.slgd button.off{opacity:.42}
+.slgd i{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.slgd .rk{color:var(--mut);font-size:10.5px}
+.slgd .ct{color:var(--txt);font-variant-numeric:tabular-nums;font-weight:600}
+.hint{color:var(--mut);font-size:11.5px;margin:0 0 10px;font-family:var(--mono)}
 .fig{background:var(--bg);padding:14px 16px 12px;min-width:0}
 .fig h3{margin:0 0 2px;font-size:12.5px;font-weight:600;color:var(--txt)}
 .fig p.sub{margin:0 0 10px;font-size:11.5px;color:var(--mut);line-height:1.45}
+/* Each chart SVG carries width/height attributes as well as a viewBox. Without
+   them an SVG has no intrinsic aspect ratio, height:auto resolves to the CSS
+   default 150px, and the content letterboxes inside its own box. Do not remove. */
 .fig svg{display:block;width:100%;height:auto;overflow:visible}
 .lgd{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--dim)}
 .lgd i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
@@ -109,7 +136,23 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .tip b{color:var(--txt)}.tip span{color:var(--mut)}
 .note{padding:12px 16px;color:var(--mut);font-size:11.5px;line-height:1.6;border-top:1px solid var(--line)}
 .note b{color:var(--dim)}
-@media(max-width:1180px){#app{grid-template-columns:200px 1fr 320px}.charts{grid-template-columns:1fr}}
+@media(max-width:1180px){#app{grid-template-columns:196px 1fr 310px}.charts{grid-template-columns:1fr}}
+@media(max-width:900px){
+  body{overflow:auto}
+  #app{display:block;height:auto}
+  #top{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;gap:10px 16px;padding:10px 14px;height:auto}
+  .logo{font-size:14px}
+  #left,#right{border:0;border-top:1px solid var(--line);overflow:visible;max-height:none}
+  #left{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));align-items:start}
+  .sec{border-bottom:0;border-right:1px solid var(--line)}
+  #main{overflow:visible}
+  .charts{grid-template-columns:1fr}
+  .tbar{position:static;flex-wrap:wrap;gap:8px 14px}
+  /* the table is the one thing that must not reflow — let it scroll in its own box */
+  #rows,.hd{min-width:760px}
+  #tableScroll{overflow-x:auto}
+  .hd{position:static}
+}
 </style>
 </head>
 <body>
@@ -138,31 +181,55 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   </aside>
 
   <main id="main" class="cell">
-    <div class="charts">
-      <figure class="fig">
-        <h3>How old they are</h3>
-        <p class="sub">People per age band. Everything left of the 45 line reached $100M+ in under half a working life.</p>
-        <svg id="cAge" role="img" aria-label="Distribution of people across age bands"></svg>
-        <div class="lgd" id="lAge"></div>
-      </figure>
-      <figure class="fig">
-        <h3>Age against fortune</h3>
-        <p class="sub">Every person, by age and net worth. The left wall is the interesting edge &mdash; how young a $100M+ fortune gets, and what kind.</p>
-        <svg id="cScat" role="img" aria-label="Age against net worth, by origin of wealth"></svg>
-        <div class="lgd" id="lScat"></div>
-      </figure>
-      <figure class="fig">
-        <h3>Which routes are fast</h3>
-        <p class="sub">Sector, split by the 45 line. A sector that is mostly blue is a fast route to $100M; mostly amber means it takes a career.</p>
-        <svg id="cSect" role="img" aria-label="People by sector, split under and over 45"></svg>
-        <div class="lgd" id="lSect"></div>
-      </figure>
-      <figure class="fig">
-        <h3>Where they are</h3>
-        <p class="sub">US region, on the same split. Coverage tracks what is publicly documented, and disclosure is uneven by region &mdash; see the note below the table.</p>
-        <svg id="cRegion" role="img" aria-label="People by region, split under and over 45"></svg>
-      </figure>
-    </div>
+    <nav class="tabs" id="tabs">
+      <button data-p="dist" class="on">Distribution</button>
+      <button data-p="age">Age &amp; speed</button>
+      <button data-p="geo">Geography</button>
+    </nav>
+
+    <section class="pane on" id="p-dist">
+      <div class="charts">
+        <figure class="fig wide">
+          <h3>Individuals by net worth</h3>
+          <p class="sub" id="distSub"></p>
+          <div id="cDist" role="img" aria-label="Individuals by net worth band, stacked by sector"></div>
+          <div class="slgd" id="lDist"></div>
+        </figure>
+      </div>
+    </section>
+
+    <section class="pane" id="p-age">
+      <div class="charts">
+        <figure class="fig">
+          <h3>How old they are</h3>
+          <p class="sub">People per age band. Everything left of the 45 line reached $100M+ in under half a working life.</p>
+          <div id="cAge" role="img" aria-label="Distribution of people across age bands"></div>
+          <div class="lgd" id="lAge"></div>
+        </figure>
+        <figure class="fig">
+          <h3>Age against fortune</h3>
+          <p class="sub">Every person, by age and net worth. The left wall is the interesting edge &mdash; how young a $100M+ fortune gets, and what kind.</p>
+          <div id="cScat" role="img" aria-label="Age against net worth, by origin of wealth"></div>
+          <div class="lgd" id="lScat"></div>
+        </figure>
+        <figure class="fig wide">
+          <h3>Which routes are fast</h3>
+          <p class="sub">Sector, split by the 45 line. A sector that is mostly blue is a fast route to $100M; mostly amber means it takes a career.</p>
+          <div id="cSect" role="img" aria-label="People by sector, split under and over 45"></div>
+          <div class="lgd" id="lSect"></div>
+        </figure>
+      </div>
+    </section>
+
+    <section class="pane" id="p-geo">
+      <div class="charts">
+        <figure class="fig wide">
+          <h3>Where they are</h3>
+          <p class="sub">US region, split by the 45 line. Coverage tracks what is publicly documented, and disclosure is uneven by region &mdash; see the note below the table.</p>
+          <div id="cRegion" role="img" aria-label="People by region, split under and over 45"></div>
+        </figure>
+      </div>
+    </section>
 
     <div class="tbar">
       <span class="n"><b id="tCount">0</b> shown</span>
@@ -171,8 +238,10 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
       <span class="n">median years to fortune <b id="tYrs">-</b></span>
       <span class="n">median age started <b id="tAge">-</b></span>
     </div>
-    <div class="grid hd" id="hdRow"></div>
-    <div id="rows"></div>
+    <div id="tableScroll">
+      <div class="grid hd" id="hdRow"></div>
+      <div id="rows"></div>
+    </div>
     <p class="note" id="note"></p>
   </main>
 
@@ -198,7 +267,7 @@ const med = (a)=>{ if(!a.length) return null; const s=[...a].sort((x,y)=>x-y); c
   return s.length%2 ? s[m] : (s[m-1]+s[m])/2; };
 
 /* ---- state ---- */
-const F = {ageb:new Set(), band:new Set(), region:new Set(), sect:new Set(), origin:new Set(), p:new Set(), q:''};
+const F = {bin:null, ageb:new Set(), band:new Set(), region:new Set(), sect:new Set(), origin:new Set(), p:new Set(), q:''};
 let sortKey='nw', sortDir=-1, sel=null;
 
 /* Columns declared once — they drive the header, the cell and the ordering
@@ -222,6 +291,7 @@ const COLS = [
 function filtered(){
   const q = F.q.trim().toLowerCase();
   return ROWS.filter((r)=>{
+    if(F.bin!=null && binOf(r.nw)!==F.bin) return false;
     if(F.ageb.size && !F.ageb.has(r.ageb)) return false;
     if(F.band.size && !F.band.has(r.band)) return false;
     if(F.region.size && !F.region.has(r.region)) return false;
@@ -245,7 +315,7 @@ function barChart(el, items, opt){
   const {label, value, color, w=430} = opt;
   const rowH=opt.rowH||21, padL=opt.padL||104, padR=42, h=items.length*rowH+6;
   const max = Math.max(1, ...items.map(value));
-  let s=`<svg viewBox="0 0 ${w} ${h}">`;
+  let s=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`;
   items.forEach((d,i)=>{
     const y=i*rowH+3, bw=Math.max(2,(value(d)/max)*(w-padL-padR)), c=color?color(d):'var(--accent)';
     s+=`<text x="${padL-9}" y="${y+11}" text-anchor="end" font-size="11" fill="${TXT}">${esc(label(d))}</text>`;
@@ -261,7 +331,7 @@ function stackChart(el, items, opt){
   const {label, w=430} = opt, rowH=21, padL=opt.padL||132, padR=46, h=items.length*rowH+6;
   const max = Math.max(1, ...items.map((d)=>d.a+d.b));
   const span = w-padL-padR;
-  let s=`<svg viewBox="0 0 ${w} ${h}">`;
+  let s=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`;
   items.forEach((d,i)=>{
     const y=i*rowH+6, aw=(d.a/max)*span, bw=(d.b/max)*span;
     s+=`<text x="${padL-9}" y="${y+8}" text-anchor="end" font-size="11" fill="${TXT}">${esc(label(d))}</text>`;
@@ -280,7 +350,7 @@ function scatter(el, rs){
   const ly=(v)=>Math.log10(v), y0=ly(0.1), y1=ly(5);
   const X=(v)=>padL+((v-minX)/(maxX-minX))*(w-padL-padR);
   const Y=(v)=>padT+(1-(ly(v)-y0)/(y1-y0))*(h-padT-padB);
-  let s=`<svg viewBox="0 0 ${w} ${h}">`;
+  let s=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">`;
   [0.1,0.25,0.5,1,2.5,5].forEach((v)=>{
     s+=`<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${w-padR}" y2="${Y(v).toFixed(1)}" stroke="${GRID}" stroke-width="1"></line>`;
     s+=`<text x="${padL-6}" y="${(Y(v)+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="${MUT}">${v>=1?'$'+v+'B':'$'+v*1000+'M'}</text>`;
@@ -300,7 +370,84 @@ function scatter(el, rs){
 
 const split = (rs,fn,k)=>({a:rs.filter((r)=>fn(r)===k&&r.u45).length, b:rs.filter((r)=>fn(r)===k&&!r.u45).length});
 
+/* Log-spaced net-worth bins. The band spans 50x, so equal-width bins would put
+   two thirds of the census in one bar; equal ratios put the same multiplicative
+   distance in every bar, which is what makes the shape readable. */
+const NB = 10, LO = Math.log10(0.1), HI = Math.log10(5);
+const BINS = Array.from({length:NB}, (_,i)=>({
+  i, lo: Math.pow(10, LO+(HI-LO)*i/NB), hi: Math.pow(10, LO+(HI-LO)*(i+1)/NB) }));
+const binOf = (nw)=>Math.min(NB-1, Math.floor((Math.log10(nw)-LO)/((HI-LO)/NB)));
+const SCOL = ['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)','var(--s6)','var(--s7)','var(--s8)'];
+
+/* Seven named sectors plus Other. Eight is the ceiling for distinguishable
+   categorical hues — a ninth would have to be a generated colour, and a legend
+   whose swatches cannot be told apart is a legend that has stopped working. */
+function sectorSlots(rs){
+  const n = {}; rs.forEach((r)=>n[r.sect]=(n[r.sect]||0)+1);
+  const ranked = Object.entries(n).sort((a,b)=>b[1]-a[1]);
+  const top = ranked.slice(0,7).map(([k])=>k);
+  const slots = top.map((k,i)=>({k, n:SECTORS[k], c:n[k], col:SCOL[i]}));
+  const restC = ranked.slice(7).reduce((a,[,v])=>a+v,0);
+  if(restC) slots.push({k:'__other', n:'Other', c:restC, col:SCOL[7],
+    members:ranked.slice(7).map(([k])=>k)});
+  return slots;
+}
+
+function distChart(el, rs, slots){
+  const w=1000, h=330, padL=52, padR=14, padT=14, padB=92;
+  const cols = BINS.map((b)=>{
+    const inB = rs.filter((r)=>binOf(r.nw)===b.i);
+    return {...b, total:inB.length, seg: slots.map((s)=>({...s,
+      v: inB.filter((r)=> s.k==='__other' ? s.members.includes(r.sect) : r.sect===s.k).length}))};
+  });
+  const max = Math.max(1, ...cols.map((c)=>c.total));
+  // a round tick ceiling reads better than a ragged max
+  const step = max<=20?5:max<=60?10:max<=150?25:50, top = Math.ceil(max/step)*step;
+  const bw = (w-padL-padR)/NB, gap = Math.min(14, bw*0.22);
+  const Y=(v)=>padT+(1-v/top)*(h-padT-padB);
+  const fmt=(v)=> v>=1 ? '$'+(+v.toFixed(1))+'B' : '$'+Math.round(v*1000)+'M';
+  let s=`<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img">`;
+  for(let g=0; g<=top; g+=step){
+    s+=`<line x1="${padL}" y1="${Y(g).toFixed(1)}" x2="${w-padR}" y2="${Y(g).toFixed(1)}" stroke="${GRID}" stroke-width="1" stroke-dasharray="${g?'2 4':'0'}"></line>`;
+    s+=`<text x="${padL-8}" y="${(Y(g)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="${MUT}" font-variant-numeric="tabular-nums">${g}</text>`;
+  }
+  cols.forEach((c)=>{
+    const x = padL + c.i*bw + gap/2, cw = bw-gap;
+    let yTop = Y(0);
+    const on = F.bin===c.i;
+    if(on) s+=`<rect x="${(x-3).toFixed(1)}" y="${padT}" width="${(cw+6).toFixed(1)}" height="${h-padT-padB}" fill="var(--panel)" rx="4"></rect>`;
+    c.seg.forEach((sg)=>{
+      if(!sg.v) return;
+      const sh=(sg.v/top)*(h-padT-padB);
+      // 2px surface gap between segments so the boundary reads without a stroke
+      s+=`<rect x="${x.toFixed(1)}" y="${(yTop-sh).toFixed(1)}" width="${cw.toFixed(1)}" height="${Math.max(1,sh-2).toFixed(1)}" fill="${sg.col}" data-bin="${c.i}" data-sect="${sg.k}"></rect>`;
+      yTop -= sh;
+    });
+    if(c.total) s+=`<text x="${(x+cw/2).toFixed(1)}" y="${(Y(c.total)-7).toFixed(1)}" text-anchor="middle" font-size="11" fill="${on?'var(--txt)':MUT}" font-variant-numeric="tabular-nums" font-weight="600">${c.total}</text>`;
+    s+=`<text x="${(x+cw/2).toFixed(1)}" y="${h-padB+16}" text-anchor="end" font-size="10.5" fill="${on?'var(--txt)':MUT}" font-family="var(--mono)" transform="rotate(-38 ${(x+cw/2).toFixed(1)} ${h-padB+16})">${fmt(c.lo)}-${fmt(c.hi)}</text>`;
+  });
+  s+=`<text x="${padL+(w-padL-padR)/2}" y="${h-6}" text-anchor="middle" font-size="11" fill="${MUT}" font-family="var(--mono)">net worth, log scale</text>`;
+  s+=`<text x="14" y="${padT+(h-padT-padB)/2}" text-anchor="middle" font-size="11" fill="${MUT}" transform="rotate(-90 14 ${padT+(h-padT-padB)/2})">individuals</text>`;
+  el.innerHTML = s+'</svg>';
+}
+
 function drawCharts(rs){
+  const slots = sectorSlots(ROWS);
+  distChart($('#cDist'), rs, slots);
+  $('#distSub').innerHTML = `${rs.length} of ${ROWS.length} records shown &middot; bars stack by sector &middot; <b style="color:var(--dim)">click a bar to filter the table</b>`;
+  $('#lDist').innerHTML = slots.map((s,i)=>{
+    const shown = rs.filter((r)=> s.k==='__other' ? s.members.includes(r.sect) : r.sect===s.k).length;
+    const off = F.sect.size && !(s.k==='__other' ? s.members.some((m)=>F.sect.has(m)) : F.sect.has(s.k));
+    return `<button data-s="${s.k}" class="${off?'off':''}${!off&&F.sect.size?' on':''}">`
+      + `<span class="rk">${i+1}</span><i style="background:${s.col}"></i>${esc(s.n)}<span class="ct">${shown}</span></button>`;
+  }).join('');
+  $('#lDist').querySelectorAll('button').forEach((b)=>b.onclick=()=>{
+    const k=b.dataset.s;
+    const keys = k==='__other' ? (slots.find((x)=>x.k==='__other').members) : [k];
+    const allOn = keys.every((x)=>F.sect.has(x));
+    keys.forEach((x)=> allOn ? F.sect.delete(x) : F.sect.add(x));
+    render();
+  });
   barChart($('#cAge'), AGEBANDS.map((b)=>({...b, c:rs.filter((r)=>r.ageb===b.id).length})),
     {label:(d)=>d.n, value:(d)=>d.c, rowH:22, padL:74,
      color:(d)=>U45.includes(d.id)?U45C:O45C});
@@ -421,7 +568,7 @@ function render(){
 }
 
 $('#q').oninput = (e)=>{ F.q=e.target.value; render(); };
-$('#reset').onclick = ()=>{ [F.ageb,F.band,F.region,F.sect,F.origin,F.p].forEach((s)=>s.clear()); F.q=''; $('#q').value=''; render(); };
+$('#reset').onclick = ()=>{ F.bin=null; [F.ageb,F.band,F.region,F.sect,F.origin,F.p].forEach((s)=>s.clear()); F.q=''; $('#q').value=''; render(); };
 $('#only45').onclick = ()=>{ const on=U45.every((k)=>F.ageb.has(k)) && F.ageb.size===4;
   F.ageb.clear(); if(!on) U45.forEach((k)=>F.ageb.add(k)); render(); };
 $('#hU45').textContent = ROWS.filter((r)=>r.u45).length;
@@ -431,8 +578,36 @@ $('#hStates').textContent = new Set(ROWS.map((r)=>r.state)).size;
 $('#hTotal').textContent = '$'+Math.round(ROWS.reduce((a,r)=>a+r.nw,0))+'B';
 $('#note').innerHTML = `<b>What this is, and what it is not.</b> There is no complete list of America&rsquo;s $100M&ndash;$5B fortunes, and there cannot be: on the standard estimates something like 12,000&ndash;15,000 US households hold more than $100M, no public source enumerates them, and privately-held wealth is by construction undocumented. This is a deliberately spread census of ${ROWS.length} people &mdash; sampled across every band, region and sector so the <em>shape</em> of the population is legible &mdash; not a ranking and not a complete roster. Every figure carries a provenance tag: <span class="tag R">R</span> published by Forbes or a comparable named list, <span class="tag E">E</span> modelled from an SEC-disclosed stake times a fetched price, <span class="tag I">I</span> third-party or dated estimate. Treat E and I as directional. <b>Two known artifacts.</b> The published sub-$1B cohort skews female, because Forbes&rsquo; Self-Made Women list is nearly the only publisher that verifies figures below $1B &mdash; that skew measures publishing, not wealth. And private industrial and family fortunes are systematically under-represented against listed-equity ones, because they surface only when a company sells. Figures move daily with share prices; this snapshot is ${ASOF}.`;
 
-/* hover tooltips on the scatter */
 const tip=$('#tip');
+
+/* tabs */
+$('#tabs').querySelectorAll('button').forEach((b)=>b.onclick=()=>{
+  $('#tabs').querySelectorAll('button').forEach((x)=>x.classList.toggle('on', x===b));
+  document.querySelectorAll('.pane').forEach((p)=>p.classList.toggle('on', p.id==='p-'+b.dataset.p));
+  render();
+});
+
+/* click a bar to filter the table to that net-worth bin */
+$('#cDist').addEventListener('click',(e)=>{
+  const b=e.target.dataset && e.target.dataset.bin;
+  if(b==null) return;
+  F.bin = (F.bin===+b) ? null : +b;
+  render();
+});
+$('#cDist').addEventListener('mousemove',(e)=>{
+  const t2=e.target, b=t2.dataset && t2.dataset.bin;
+  if(b==null){ tip.style.opacity=0; return; }
+  const bin=BINS[+b], k=t2.dataset.sect;
+  const inB=ROWS.filter((r)=>binOf(r.nw)===+b);
+  const nm = k==='__other' ? 'Other' : SECTORS[k];
+  const cnt = inB.filter((r)=> k==='__other' ? !sectorSlots(ROWS).slice(0,7).some((s)=>s.k===r.sect) : r.sect===k).length;
+  const fmt=(v)=> v>=1 ? '$'+(+v.toFixed(1))+'B' : '$'+Math.round(v*1000)+'M';
+  tip.innerHTML=`<b>${esc(nm)}</b><br><span>${cnt} of ${inB.length} in ${fmt(bin.lo)}-${fmt(bin.hi)}</span>`;
+  tip.style.opacity=1; tip.style.left=Math.min(innerWidth-244,e.clientX+13)+'px'; tip.style.top=(e.clientY+13)+'px';
+});
+$('#cDist').addEventListener('mouseleave',()=>tip.style.opacity=0);
+
+/* hover tooltips on the scatter */
 $('#cScat').addEventListener('mousemove',(e)=>{
   const t=e.target;
   if(t.tagName==='circle'){ const r=ROWS.find((x)=>x.id===t.dataset.id);
