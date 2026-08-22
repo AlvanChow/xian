@@ -88,7 +88,8 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 
 .tbar{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
 .tbar .n{font-size:12px;color:var(--dim)}.tbar .n b{color:var(--txt);font-variant-numeric:tabular-nums}
-.grid{display:grid;grid-template-columns:22px minmax(140px,1.5fr) 38px minmax(90px,1fr) 68px minmax(78px,.9fr) 52px 44px 46px 52px 60px 30px;gap:10px;align-items:center;padding:0 16px}
+.grid{display:grid;grid-template-columns:24px minmax(128px,1.35fr) minmax(116px,1.25fr) 34px minmax(84px,.95fr) 64px minmax(72px,.8fr) 46px 34px 38px 46px 54px 26px;gap:9px;align-items:center;padding:0 16px;min-width:1010px}
+#tableScroll{overflow-x:auto}
 .hd{position:sticky;top:44px;background:var(--bg);border-bottom:1px solid var(--line);z-index:4;height:32px;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--mut)}
 .hd button{background:none;border:0;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;padding:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
 .hd button:hover{color:var(--txt)}
@@ -100,6 +101,8 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .row .rk{color:var(--mut);font-size:11px;font-variant-numeric:tabular-nums}
 .row .nm{font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .cy{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* the company is what the person actually built — it reads as content, not metadata */
+.row .co{color:var(--txt);font-weight:450}
 .row .num{font-variant-numeric:tabular-nums;text-align:right}
 .row .nw{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
 .tag{display:inline-block;width:15px;height:15px;line-height:15px;text-align:center;border-radius:4px;font-size:9.5px;font-weight:700;font-family:var(--mono)}
@@ -155,8 +158,6 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   .charts{grid-template-columns:1fr}
   .tbar{position:static;flex-wrap:wrap;gap:8px 14px}
   /* the table is the one thing that must not reflow — let it scroll in its own box */
-  #rows,.hd{min-width:760px}
-  #tableScroll{overflow-x:auto}
   .hd{position:static}
 }
 </style>
@@ -304,7 +305,8 @@ let sortKey='nw', sortDir=-1, sel=null;
    Same rule the Scarcity board follows. */
 const COLS = [
   {k:'rank',  h:'#',        w:0, cell:(r,i)=>`<div class="rk r">${i+1}</div>`, nosort:true},
-  {k:'n',     h:'Name',     get:(r)=>r.n.toLowerCase(), cell:(r)=>`<div class="nm" title="${esc(r.n)} &mdash; ${esc(r.co)}">${esc(r.n)}</div>`},
+  {k:'n',     h:'Name',     get:(r)=>r.n.toLowerCase(), cell:(r)=>`<div class="nm" title="${esc(r.n)}">${esc(r.n)}</div>`},
+  {k:'co',    h:'Company',  get:(r)=>r.co.toLowerCase(), cell:(r)=>`<div class="cy co" title="${esc(r.co)}">${esc(r.co)}</div>`},
   {k:'age',   h:'Age',      get:(r)=>r.age??-1, cell:(r)=>`<div class="num">${r.age??'-'}</div>`, r:true},
   {k:'city',  h:'City',     get:(r)=>r.city.toLowerCase(), cell:(r)=>`<div class="cy" title="${esc(r.city)}, ${esc(r.state)}">${esc(r.city)}</div>`},
   {k:'nw',    h:'Worth',    get:(r)=>r.nw, cell:(r)=>`<div class="nw">${money(r.nw)}</div>`, r:true},
