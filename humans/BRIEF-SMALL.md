@@ -29,7 +29,15 @@ Work from **filings to people**, not from names to figures:
    Put the share count, the price, and the date in `m`. Tag `E`.
 3. **Regional business journals and city rich lists** — Crain's Chicago/Detroit/NY, the
    Business Journals' local lists, Puget Sound Business Journal, D CEO, Boston Business
-   Journal. These reach below $1B where Forbes does not. Tag `R` or `I` by quality.
+   Journal. Some reach below $1B where Forbes does not. Tag `R` or `I` by quality.
+   **Verify the entry level before spending budget.** A pass checked the LA Business Journal's
+   Wealthiest Angelenos and found it does *not* reach this band: the October 2025 print
+   edition is 50 names and rank 50 is $1.3B. The "21-50" page that surfaces in search is a
+   stale 2008 archive. Assume a list is above the band until you have seen its tail.
+3b. **The Forbes Self-Made Women list is machine-readable** at
+   `forbesapi/person/self-made-women/<year>` and returns city, age and net worth for all 100
+   entries — the single best sub-$1B source found in this census. The 2026 edition was cut to
+   billionaires only, so pull the earlier years and tag carried-forward figures `I`.
 4. **Announced transaction prices** × a disclosed ownership share. Tag `E`, show the maths.
 
 **Never** use celebritynetworth or any aggregator. Those numbers are invented. A figure that
