@@ -88,10 +88,17 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 
 .tbar{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:5}
 .tbar .n{font-size:12px;color:var(--dim)}.tbar .n b{color:var(--txt);font-variant-numeric:tabular-nums}
-.grid{display:grid;grid-template-columns:24px minmax(128px,1.35fr) minmax(116px,1.25fr) 34px minmax(84px,.95fr) 64px minmax(72px,.8fr) 46px 34px 38px 46px 54px 26px;gap:9px;align-items:center;padding:0 16px;min-width:1010px}
+.grid{display:grid;grid-template-columns:var(--gt);gap:9px;align-items:center;padding:0 16px;min-width:1010px}
 #tableScroll{overflow-x:auto}
 .hd{position:sticky;top:44px;background:var(--bg);border-bottom:1px solid var(--line);z-index:4;height:32px;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--mut)}
 .hd button{background:none;border:0;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;padding:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
+.hd > div{cursor:grab;position:relative}
+.hd > div[draggable="true"]:active{cursor:grabbing}
+.hd .dragging{opacity:.4}
+.hd .dropL::before,.hd .dropR::after{content:'';position:absolute;top:2px;bottom:2px;width:2px;background:var(--accent);border-radius:1px}
+.hd .dropL::before{left:-5px}.hd .dropR::after{right:-5px}
+.hd button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+.colreset{background:none;border:0;color:var(--accent);cursor:pointer;font-size:11px;font-family:var(--sans);padding:0}
 .hd button:hover{color:var(--txt)}
 .hd button.srt{color:var(--accent)}
 .hd .r,.row .r{text-align:right}
@@ -267,6 +274,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
       <span class="n">median <b id="tMed">-</b></span>
       <span class="n">median years to fortune <b id="tYrs">-</b></span>
       <span class="n">median age started <b id="tAge">-</b></span>
+      <span class="n" style="margin-left:auto"><button class="colreset" id="colReset">reset columns</button></span>
     </div>
     <div id="tableScroll">
       <div class="grid hd" id="hdRow"></div>
@@ -304,20 +312,41 @@ let sortKey='nw', sortDir=-1, sel=null;
    together, so a header can never disagree with the ordering underneath it.
    Same rule the Scarcity board follows. */
 const COLS = [
-  {k:'rank',  h:'#',        w:0, cell:(r,i)=>`<div class="rk r">${i+1}</div>`, nosort:true},
-  {k:'n',     h:'Name',     get:(r)=>r.n.toLowerCase(), cell:(r)=>`<div class="nm" title="${esc(r.n)}">${esc(r.n)}</div>`},
-  {k:'co',    h:'Company',  get:(r)=>r.co.toLowerCase(), cell:(r)=>`<div class="cy co" title="${esc(r.co)}">${esc(r.co)}</div>`},
-  {k:'age',   h:'Age',      get:(r)=>r.age??-1, cell:(r)=>`<div class="num">${r.age??'-'}</div>`, r:true},
-  {k:'city',  h:'City',     get:(r)=>r.city.toLowerCase(), cell:(r)=>`<div class="cy" title="${esc(r.city)}, ${esc(r.state)}">${esc(r.city)}</div>`},
-  {k:'nw',    h:'Worth',    get:(r)=>r.nw, cell:(r)=>`<div class="nw">${money(r.nw)}</div>`, r:true},
-  {k:'sect',  h:'Sector',   get:(r)=>r.sect, cell:(r)=>`<div class="cy">${esc(SECTORS[r.sect].split(' ')[0])}</div>`},
-  {k:'started',h:'Began',   get:(r)=>r.started, cell:(r)=>`<div class="num">${r.started}</div>`, r:true},
-  {k:'startAge',h:'At',     get:(r)=>r.startAge, cell:(r)=>`<div class="num">${r.startAge}</div>`, r:true},
-  {k:'years', h:'Yrs',      get:(r)=>r.years??999, cell:(r)=>`<div class="num">${r.years??'-'}</div>`, r:true},
-  {k:'toFirst100',h:'To100M',get:(r)=>r.toFirst100??999, cell:(r)=>`<div class="num">${r.toFirst100??'-'}</div>`, r:true},
-  {k:'origin',h:'Origin',   get:(r)=>r.origin, cell:(r)=>`<div class="cy"><span class="od" style="background:${OCOL[r.origin]}"></span> ${ORIGINS[r.origin].split('-')[0]}</div>`},
-  {k:'p',     h:'Src',      get:(r)=>({R:0,E:1,I:2})[r.p], cell:(r)=>`<div><span class="tag ${r.p}" title="${PROV[r.p]} &mdash; ${esc(r.s)}">${r.p}</span></div>`},
+  {k:'rank', w:'24px',  h:'#',        w:0, cell:(r,i)=>`<div class="rk r">${i+1}</div>`, nosort:true},
+  {k:'n', w:'minmax(128px,1.35fr)',     h:'Name',     get:(r)=>r.n.toLowerCase(), cell:(r)=>`<div class="nm" title="${esc(r.n)}">${esc(r.n)}</div>`},
+  {k:'co', w:'minmax(116px,1.25fr)',    h:'Company',  get:(r)=>r.co.toLowerCase(), cell:(r)=>`<div class="cy co" title="${esc(r.co)}">${esc(r.co)}</div>`},
+  {k:'age', w:'34px',   h:'Age',      get:(r)=>r.age??-1, cell:(r)=>`<div class="num">${r.age??'-'}</div>`, r:true},
+  {k:'city', w:'minmax(84px,.95fr)',  h:'City',     get:(r)=>r.city.toLowerCase(), cell:(r)=>`<div class="cy" title="${esc(r.city)}, ${esc(r.state)}">${esc(r.city)}</div>`},
+  {k:'nw', w:'64px',    h:'Worth',    get:(r)=>r.nw, cell:(r)=>`<div class="nw">${money(r.nw)}</div>`, r:true},
+  {k:'sect', w:'minmax(72px,.8fr)',  h:'Sector',   get:(r)=>r.sect, cell:(r)=>`<div class="cy">${esc(SECTORS[r.sect].split(' ')[0])}</div>`},
+  {k:'started', w:'46px',h:'Began',   get:(r)=>r.started, cell:(r)=>`<div class="num">${r.started}</div>`, r:true},
+  {k:'startAge', w:'34px',h:'At',     get:(r)=>r.startAge, cell:(r)=>`<div class="num">${r.startAge}</div>`, r:true},
+  {k:'years', w:'38px', h:'Yrs',      get:(r)=>r.years??999, cell:(r)=>`<div class="num">${r.years??'-'}</div>`, r:true},
+  {k:'toFirst100', w:'46px',h:'To100M',get:(r)=>r.toFirst100??999, cell:(r)=>`<div class="num">${r.toFirst100??'-'}</div>`, r:true},
+  {k:'origin', w:'54px',h:'Origin',   get:(r)=>r.origin, cell:(r)=>`<div class="cy"><span class="od" style="background:${OCOL[r.origin]}"></span> ${ORIGINS[r.origin].split('-')[0]}</div>`},
+  {k:'p', w:'26px',     h:'Src',      get:(r)=>({R:0,E:1,I:2})[r.p], cell:(r)=>`<div><span class="tag ${r.p}" title="${PROV[r.p]} &mdash; ${esc(r.s)}">${r.p}</span></div>`},
 ];
+
+/* Column order is the reader's, not ours. Drag a header to move it; Alt+Left /
+   Alt+Right moves the focused one for anyone not using a mouse. Persisted per
+   viewer in localStorage, which can throw outright in a private window or a
+   thumbnailer, so every access is guarded and the default order is the fallback. */
+const COLKEY = 'vg.humans.colorder';
+let order = COLS.map((c)=>c.k);
+try {
+  const saved = JSON.parse(localStorage.getItem(COLKEY) || 'null');
+  // only trust a saved order that is a permutation of the columns we actually have
+  if(Array.isArray(saved) && saved.length===COLS.length && saved.every((k)=>COLS.some((c)=>c.k===k)))
+    order = saved;
+} catch(e) { /* no stored order available; the default stands */ }
+const saveOrder = ()=>{ try { localStorage.setItem(COLKEY, JSON.stringify(order)); } catch(e) {} };
+const cols = ()=> order.map((k)=>COLS.find((c)=>c.k===k));
+const gridTemplate = ()=> cols().map((c)=>c.w).join(' ');
+function moveCol(from, to){
+  if(to<0 || to>=order.length || from===to) return;
+  order.splice(to, 0, order.splice(from, 1)[0]);
+  saveOrder(); render();
+}
 
 function filtered(){
   const q = F.q.trim().toLowerCase();
@@ -621,20 +650,42 @@ function drawCharts(rs){
 
 /* ---- table ---- */
 function drawHead(){
-  $('#hdRow').innerHTML = COLS.map((c)=>{
-    if(c.nosort) return `<div class="r">${c.h}</div>`;
+  $('#tableScroll').style.setProperty('--gt', gridTemplate());
+  $('#hdRow').innerHTML = cols().map((c,i)=>{
     const on = sortKey===c.k;
-    return `<div class="${c.r?'r':''}"><button class="${on?'srt':''}" data-k="${c.k}">${c.h}${on?(sortDir<0?' ↓':' ↑'):''}</button></div>`;
+    const inner = c.nosort ? c.h
+      : `<button class="${on?'srt':''}" data-k="${c.k}">${c.h}${on?(sortDir<0?' ↓':' ↑'):''}</button>`;
+    return `<div class="${c.r?'r':''}" draggable="true" data-i="${i}" title="Drag to reorder. Alt+Left or Alt+Right to move with the keyboard.">${inner}</div>`;
   }).join('');
   $('#hdRow').querySelectorAll('button').forEach((b)=>b.onclick=()=>{
     const k=b.dataset.k;
-    if(sortKey===k) sortDir=-sortDir; else {sortKey=k; sortDir=(k==='n'||k==='city'||k==='sect'||k==='origin')?1:-1;}
+    if(sortKey===k) sortDir=-sortDir; else {sortKey=k; sortDir=(k==='n'||k==='co'||k==='city'||k==='sect'||k==='origin')?1:-1;}
     render();
+  });
+  let from=null;
+  $('#hdRow').querySelectorAll('[data-i]').forEach((el)=>{
+    el.ondragstart=(e)=>{ from=+el.dataset.i; el.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move'; try{e.dataTransfer.setData('text/plain',String(from));}catch(_){} };
+    el.ondragend=()=>{ from=null; $('#hdRow').querySelectorAll('[data-i]').forEach((x)=>x.classList.remove('dragging','dropL','dropR')); };
+    el.ondragover=(e)=>{ if(from===null) return; e.preventDefault(); e.dataTransfer.dropEffect='move';
+      const to=+el.dataset.i;
+      $('#hdRow').querySelectorAll('[data-i]').forEach((x)=>x.classList.remove('dropL','dropR'));
+      if(to!==from) el.classList.add(to>from?'dropR':'dropL'); };
+    el.ondrop=(e)=>{ e.preventDefault(); if(from===null) return; moveCol(from, +el.dataset.i); };
+    // keyboard path, so reordering is not mouse-only
+    el.querySelectorAll('button').forEach((b)=>b.addEventListener('keydown',(e)=>{
+      if(!e.altKey || (e.key!=='ArrowLeft' && e.key!=='ArrowRight')) return;
+      e.preventDefault();
+      const i=+el.dataset.i;
+      moveCol(i, e.key==='ArrowLeft' ? i-1 : i+1);
+      const nb=$('#hdRow').querySelector(`[data-i="${e.key==='ArrowLeft'?i-1:i+1}"] button`);
+      if(nb) nb.focus();
+    }));
   });
 }
 function drawRows(rs){
   $('#rows').innerHTML = rs.map((r,i)=>
-    `<div class="grid row${sel===r.id?' on':''}" data-id="${r.id}">${COLS.map((c)=>c.cell(r,i)).join('')}</div>`).join('')
+    `<div class="grid row${sel===r.id?' on':''}" data-id="${r.id}">${cols().map((c)=>c.cell(r,i)).join('')}</div>`).join('')
     || `<div class="empty"><b>Nothing matches those filters</b>Clear one and try again.</div>`;
   $('#rows').querySelectorAll('.row').forEach((el)=>el.onclick=()=>{ sel=el.dataset.id; render(); });
 }
@@ -724,6 +775,7 @@ $('#reset').onclick = ()=>{ F.bin=null; [F.ageb,F.band,F.region,F.sect,F.origin,
 $('#only45').onclick = ()=>{ const on=U45.every((k)=>F.ageb.has(k)) && F.ageb.size===4;
   F.ageb.clear(); if(!on) U45.forEach((k)=>F.ageb.add(k)); render(); };
 $('#hU45').textContent = ROWS.filter((r)=>r.u45).length;
+$('#colReset').onclick = ()=>{ order = COLS.map((c)=>c.k); saveOrder(); render(); };
 $('#hAsof').textContent = ASOF;
 $('#hCount').textContent = ROWS.length;
 $('#hStates').textContent = new Set(ROWS.map((r)=>r.state)).size;
