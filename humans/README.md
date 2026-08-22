@@ -54,6 +54,28 @@ founded by someone else. An heir also has `toFirst100` of 0: they cross $100M on
 inheritance rather than climbing to it, and recording that as a 20-year climb would make
 the speed charts lie.
 
+## The birth-year problem
+
+The single largest cause of a record being dropped from this census is not a missing net
+worth. It is a missing **date of birth**.
+
+Roughly twenty fully-sourced, in-band people were excluded because no published birth year
+exists for them anywhere — among them Levi's Jennifer and Bradley Haas at $452M and $437M,
+Enchanted Rock's founder at $319M, Columbia Sportswear's Molly Boyle at $183M with her own
+address filed in her 13G, Mistras' Aspasia Vahaviolos and Stephanie Foglia at $117M and
+$131M, Revolution Medicines' Margaret Horn at $159M, and Avala Global's Divya Nettimi, who
+runs $3.8B and led the first woman-led fund launch above $1B.
+
+The cause is structural and worth stating: **US proxy statements print the ages of
+DIRECTORS, and not of officers, 5% holders, or heirs.** So the census can date a
+sixty-year-old board member precisely and cannot date a thirty-five-year-old executive at
+all. That biases the age distribution old in a way no amount of research fixes, and it falls
+hardest on exactly the two groups this dataset is thinnest on — people under 45, and women,
+who are more often officers than directors in this cohort.
+
+Every one of those people is a valid record the moment a birth year surfaces. None was
+guessed at.
+
 ## Provenance (R / E / I)
 
 Reused verbatim from the main site, because the problem is the same one:

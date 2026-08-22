@@ -14,6 +14,12 @@ spam. **Do not work that way.**
 
 Work from **filings to people**, not from names to figures:
 
+0. **The best technique found so far — search filings by TOWN, not by name.** Run EDGAR
+   full-text search for SC 13D/13G cover pages against the town names in your territory. A
+   13D/G cover page carries the filer's own address, so a hit is a person who is both a five
+   percent holder AND documented as living there — it solves the stake and the residence
+   problem in one query, and it surfaces people no list has ever named. One pass ran roughly
+   100 town names this way and it produced three of its eleven records. Do this first.
 1. **SEC full-text search** (efts.sec.gov/LATEST/search-index?q=...) and EDGAR browse.
    The four documents that pay:
    - **SC 13D / SC 13G** — anyone holding >5% of a public company. A 5% stake in a $2B
