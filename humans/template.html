@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>The $100M-$5B census - ValueGrid</title>
+<title>The American $100M-$5B census - ValueGrid</title>
 <style>
 :root{
   --bg:#0a0e16; --bg2:#0d121d; --panel:#101725; --panel2:#0c121e; --line:#1c2536;
@@ -118,9 +118,9 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
     <h1 class="logo"><span class="mk"></span>ValueGrid <small>/ humans</small></h1>
     <div class="hsep"></div>
     <div class="hstat"><b id="hCount">0</b> people</div>
-    <div class="hstat"><b id="hCountries">0</b> countries</div>
+    <div class="hstat"><b id="hStates">0</b> states</div>
     <div class="hstat"><b id="hTotal">$0B</b> combined</div>
-    <div class="hright"><span>the $100M-$5B band &middot; as of <span id="hAsof"></span></span></div>
+    <div class="hright"><span>United States &middot; the $100M-$5B band &middot; as of <span id="hAsof"></span></span></div>
   </header>
 
   <aside id="left" class="cell">
@@ -150,7 +150,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
       </figure>
       <figure class="fig">
         <h3>Where they are</h3>
-        <p class="sub">By region. Coverage reflects what is publicly documented, which is itself uneven &mdash; see the note below the table.</p>
+        <p class="sub">By US region. Coverage tracks what is publicly documented, and disclosure is uneven by region &mdash; see the note below the table.</p>
         <svg id="cRegion" role="img" aria-label="People by region"></svg>
       </figure>
       <figure class="fig">
@@ -200,7 +200,7 @@ const COLS = [
   {k:'rank',  h:'#',        w:0, cell:(r,i)=>`<div class="rk r">${i+1}</div>`, nosort:true},
   {k:'n',     h:'Name',     get:(r)=>r.n.toLowerCase(), cell:(r)=>`<div class="nm" title="${esc(r.n)} &mdash; ${esc(r.co)}">${esc(r.n)}</div>`},
   {k:'age',   h:'Age',      get:(r)=>r.age??-1, cell:(r)=>`<div class="num">${r.age??'-'}</div>`, r:true},
-  {k:'city',  h:'City',     get:(r)=>r.city.toLowerCase(), cell:(r)=>`<div class="cy" title="${esc(r.city)}, ${esc(r.country)}">${esc(r.city)}</div>`},
+  {k:'city',  h:'City',     get:(r)=>r.city.toLowerCase(), cell:(r)=>`<div class="cy" title="${esc(r.city)}, ${esc(r.state)}">${esc(r.city)}</div>`},
   {k:'nw',    h:'Worth',    get:(r)=>r.nw, cell:(r)=>`<div class="nw">${money(r.nw)}</div>`, r:true},
   {k:'sect',  h:'Sector',   get:(r)=>r.sect, cell:(r)=>`<div class="cy">${esc(SECTORS[r.sect].split(' ')[0])}</div>`},
   {k:'started',h:'Began',   get:(r)=>r.started, cell:(r)=>`<div class="num">${r.started}</div>`, r:true},
@@ -219,7 +219,7 @@ function filtered(){
     if(F.sect.size && !F.sect.has(r.sect)) return false;
     if(F.origin.size && !F.origin.has(r.origin)) return false;
     if(F.p.size && !F.p.has(r.p)) return false;
-    if(q && !(r.n+' '+r.co+' '+r.city+' '+r.country+' '+r.did).toLowerCase().includes(q)) return false;
+    if(q && !(r.n+' '+r.co+' '+r.city+' '+r.state+' '+r.did).toLowerCase().includes(q)) return false;
     return true;
   });
 }
@@ -324,7 +324,7 @@ function drawDossier(){
   $('#dossier').innerHTML =
     `<div class="dh">
        <h2>${esc(r.n)}</h2>
-       <div class="meta">${r.age!=null?'Age '+r.age+' &middot; ':''}${esc(r.city)}, ${esc(r.country)} &middot; ${esc(SECTORS[r.sect])}<br>${esc(r.co)} &middot; ${ORIGINS[r.origin]}</div>
+       <div class="meta">${r.age!=null?'Age '+r.age+' &middot; ':''}${esc(r.city)}, ${esc(r.state)} &middot; ${esc(SECTORS[r.sect])}<br>${esc(r.co)} &middot; ${ORIGINS[r.origin]}</div>
        <div class="big"><b>${money(r.nw)}</b><span><span class="tag ${r.p}">${r.p}</span> ${PROV[r.p]} &middot; as of ${ASOF}</span></div>
        ${timeline(r)}
      </div>
@@ -378,9 +378,9 @@ $('#q').oninput = (e)=>{ F.q=e.target.value; render(); };
 $('#reset').onclick = ()=>{ [F.band,F.region,F.sect,F.origin,F.p].forEach((s)=>s.clear()); F.q=''; $('#q').value=''; render(); };
 $('#hAsof').textContent = ASOF;
 $('#hCount').textContent = ROWS.length;
-$('#hCountries').textContent = new Set(ROWS.map((r)=>r.country)).size;
+$('#hStates').textContent = new Set(ROWS.map((r)=>r.state)).size;
 $('#hTotal').textContent = '$'+Math.round(ROWS.reduce((a,r)=>a+r.nw,0))+'B';
-$('#note').innerHTML = `<b>What this is, and what it is not.</b> There is no complete list of the world&rsquo;s $100M&ndash;$5B fortunes, and there cannot be: roughly 30,000 people hold more than $100M, no public source enumerates them, and privately-held wealth is by construction undocumented. This is a deliberately spread census of ${ROWS.length} people &mdash; sampled across every band, region and sector so the <em>shape</em> of the population is legible &mdash; not a ranking and not a complete roster. Every figure carries a provenance tag: <span class="tag R">R</span> published by a named rich list, <span class="tag E">E</span> modelled from a disclosed stake, <span class="tag I">I</span> third-party or dated estimate. Treat E and I as directional. Figures move daily with share prices; this snapshot is ${ASOF}.`;
+$('#note').innerHTML = `<b>What this is, and what it is not.</b> There is no complete list of America&rsquo;s $100M&ndash;$5B fortunes, and there cannot be: on the standard estimates something like 12,000&ndash;15,000 US households hold more than $100M, no public source enumerates them, and privately-held wealth is by construction undocumented. This is a deliberately spread census of ${ROWS.length} people &mdash; sampled across every band, region and sector so the <em>shape</em> of the population is legible &mdash; not a ranking and not a complete roster. Every figure carries a provenance tag: <span class="tag R">R</span> published by Forbes or a comparable named list, <span class="tag E">E</span> modelled from an SEC-disclosed stake times a fetched price, <span class="tag I">I</span> third-party or dated estimate. Treat E and I as directional. <b>Two known artifacts.</b> The published sub-$1B cohort skews female, because Forbes&rsquo; Self-Made Women list is nearly the only publisher that verifies figures below $1B &mdash; that skew measures publishing, not wealth. And private industrial and family fortunes are systematically under-represented against listed-equity ones, because they surface only when a company sells. Figures move daily with share prices; this snapshot is ${ASOF}.`;
 
 /* hover tooltips on the scatter */
 const tip=$('#tip');

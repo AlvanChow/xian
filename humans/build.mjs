@@ -28,17 +28,20 @@ export const BANDS = [
   { id: 'b5', lo: 2.5,  hi: 5.0,  n: '$2.5B - $5B'   },
 ];
 
+/* US regions. The census is US-only, so "region" is domestic geography — which is
+   also the axis the sourcing varies along: Bay Area fortunes are visible through
+   S-1s and 13Gs, Midwest industrial ones are private and only surface in a sale. */
 export const REGIONS = {
-  na:    'North America',
-  latam: 'Latin America',
-  uk:    'UK & Ireland',
-  weur:  'Western Europe',
-  eeur:  'S/E Europe & Russia',
-  mena:  'Middle East & N. Africa',
-  afr:   'Sub-Saharan Africa',
-  sasia: 'South Asia',
-  china: 'Greater China',
-  apac:  'Japan, Korea, SEA & Oceania',
+  bay:   'SF Bay Area',
+  socal: 'Southern California',
+  pnw:   'Pacific Northwest',
+  mtn:   'Mountain West & Plains',
+  tx:    'Texas',
+  mw:    'Midwest',
+  se:    'Southeast',
+  ne:    'Northeast (ex-NYC)',
+  nyc:   'New York metro',
+  dc:    'DC, Maryland & Virginia',
 };
 
 export const SECTORS = {
@@ -50,6 +53,9 @@ export const SECTORS = {
 };
 
 const PROV = { R: 'Reported', E: 'Estimated', I: 'Inferred' };
+
+const STATES = new Set(('AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS ' +
+  'MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC').split(' '));
 const ORIGINS = { self: 'Self-made', inherited: 'Inherited', mixed: 'Mixed' };
 
 const bandOf = (nw) => BANDS.find((b) => nw >= b.lo && nw < b.hi) || BANDS[BANDS.length - 1];
@@ -72,7 +78,7 @@ function derive(r) {
 }
 
 const PROSE = ['did', 'why', 'obst', 'turn'];
-const REQ = ['id', 'n', 'city', 'country', 'region', 'nw', 'p', 'c', 's', 'm',
+const REQ = ['id', 'n', 'city', 'state', 'country', 'region', 'nw', 'p', 'c', 's', 'm',
   'sect', 'origin', 'co', 'did', 'started', 'startAge', 'why', 'comp', 'obst', 'turn'];
 
 function validate(rows) {
@@ -92,7 +98,8 @@ function validate(rows) {
     if (!REGIONS[r.region]) E(r, `unknown region ${r.region}`);
     if (!SECTORS[r.sect]) E(r, `unknown sector ${r.sect}`);
     if (!ORIGINS[r.origin]) E(r, `unknown origin ${r.origin}`);
-    if (!/^[A-Z]{2}$/.test(r.country || '')) E(r, `country must be ISO alpha-2, got ${r.country}`);
+    if (r.country !== 'US') E(r, `this census is US-only, got country ${r.country}`);
+    if (!STATES.has(r.state)) E(r, `unknown USPS state code ${r.state}`);
     if (!Array.isArray(r.comp) || !r.comp.length) E(r, 'comp must be a non-empty array');
     if (r.started && (r.started < 1900 || r.started > ASOF_YEAR)) E(r, `started ${r.started} implausible`);
     if (r.startAge != null && (r.startAge < 10 || r.startAge > 90)) E(r, `startAge ${r.startAge} implausible`);
@@ -124,7 +131,7 @@ function coverage(rows) {
     origin: by((r) => r.origin),
     prov: by((r) => r.p),
     women: null,
-    countries: new Set(rows.map((r) => r.country)).size,
+    states: new Set(rows.map((r) => r.state)).size,
     cities: new Set(rows.map((r) => r.city)).size,
     totalNw: +rows.reduce((a, r) => a + r.nw, 0).toFixed(1),
   };
@@ -153,7 +160,7 @@ rows = rows.map(derive).sort((a, b) => b.nw - a.nw);
 rows.forEach((r) => delete r._src);
 
 const cov = coverage(rows);
-console.log(`\n${cov.total} people | ${cov.countries} countries | ${cov.cities} cities | $${cov.totalNw}B combined`);
+console.log(`\n${cov.total} people | ${cov.states} states | ${cov.cities} cities | $${cov.totalNw}B combined`);
 console.log('bands  ', BANDS.map((b) => `${b.n}: ${cov.band[b.id] || 0}`).join('  |  '));
 console.log('prov   ', Object.entries(cov.prov).map(([k, v]) => `${k}:${v}`).join('  '));
 

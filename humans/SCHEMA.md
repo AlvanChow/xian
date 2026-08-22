@@ -8,9 +8,10 @@ Field naming mirrors src/rents.js so the provenance machinery (p/c/m/s) is reuse
   "id":      "ELON_MUSK",        // STABLE_UPPER_SNAKE, unique globally, ASCII only
   "n":       "Jane Doe",         // display name
   "age":     58,                 // integer, or null if genuinely unknown
-  "city":    "Bengaluru",        // primary city of residence
-  "country": "IN",               // ISO-3166 alpha-2
-  "region":  "sasia",            // one of: na | latam | uk | weur | eeur | mena | afr | sasia | china | apac
+  "city":    "Austin",           // primary city of residence
+  "country": "US",               // always "US" — this census is US-only
+  "state":   "TX",               // USPS two-letter state code
+  "region":  "tx",               // one of: bay | socal | pnw | mtn | tx | mw | se | ne | nyc | dc
   "nw":      2.4,                // net worth in $B. MUST be >= 0.1 and <= 5.0
   "p":       "R",                // provenance: R reported | E estimated | I inferred
   "c":       0.9,                // source confidence, 0 < c <= 1
