@@ -1,7 +1,8 @@
 # humans/ — the $100M–$5B census
 
 A companion dataset to the ValueGrid map: **the people** the capital flows run through,
-in the band between $100 million and $5 billion.
+in the band between $100 million and $5 billion — **United States only**, and organised
+around one question in particular: **who got there before 45.**
 
 Open `humans/index.html` — a single self-contained file, same as the root site.
 
@@ -51,6 +52,8 @@ so a person's arithmetic can never drift from their dates:
 | `ageAt100` | `startAge + toFirst100` — how old they were at the first $100M |
 | `since100` | `years − toFirst100` — years spent compounding after that |
 | `band` | bucketed from `nw` against the band edges declared once in `build.mjs` |
+| `ageb` | bucketed from `age`; the 45 line falls on a band edge, so under-45 is exactly the first four bands |
+| `u45` | `age < 45` — the cut the census is organised around |
 
 `build.mjs` also **fails the build** on: a net worth outside the $100M–$5B scope, a
 duplicate id, an unknown region/sector/origin, a confidence outside (0,1], a `started` year
@@ -76,12 +79,29 @@ node humans/build.mjs           # merge, validate, derive, emit
 node humans/build.mjs --check   # validate only; non-zero exit on any error
 ```
 
+## Why 45
+
+The band is full of people who took a whole career to get there and people who took six
+years, and a plain rich list cannot tell them apart — it sorts on the size of the fortune,
+which is the least interesting fact about it. Splitting on 45 separates the two populations,
+and once split, the sector chart stops being a list of industries and becomes an answer to
+"which routes are fast." Everything on the page is therefore reported against that cut:
+the age histogram, the scatter (which draws the 45 line rather than implying it), and the
+sector and region charts, which stack under-45 against 45-and-over rather than totalling them.
+
+Expect the split to be uneven by sector, and expect that unevenness to be real: crypto,
+software and the creator economy produce $100M in a person's 30s; Permian oil, private
+manufacturing and agriculture take a career. A file that showed those as equally young
+would be wrong.
+
 ## Reading the charts
 
-- **Where the band actually sits** — the census shape. Sampling is deliberate, so read
-  this as coverage, not as the real population (which is a steep power law: far more
-  people at $100M than at $5B).
-- **How long it took** — years since starting against today's figure, on a log scale
-  because the band spans 50× and a linear axis buries the entire sub-$1B half. Colour is
-  origin of wealth, and every use of it also carries a text label.
-- **Where they are** and **what they did** — region and sector coverage.
+- **How old they are** — the age histogram, under-45 bands in blue. Sampling is deliberate,
+  so read this as coverage of the census, not as the true age distribution of American
+  $100M+ fortunes (which skews considerably older than any list of founders suggests).
+- **Age against fortune** — every person by age and net worth, on a log y-axis because the
+  band spans 50× and a linear axis buries the entire sub-$1B half. The 45 line is drawn.
+  Colour is origin of wealth, and every use of it also carries a text label.
+- **Which routes are fast** — sector, stacked under-45 against 45-and-over. This is the
+  chart the whole dataset exists to produce.
+- **Where they are** — the same split by US region.

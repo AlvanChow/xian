@@ -49,7 +49,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .fig{background:var(--bg);padding:14px 16px 12px;min-width:0}
 .fig h3{margin:0 0 2px;font-size:12.5px;font-weight:600;color:var(--txt)}
 .fig p.sub{margin:0 0 10px;font-size:11.5px;color:var(--mut);line-height:1.45}
-.fig svg{display:block;width:100%;overflow:visible}
+.fig svg{display:block;width:100%;height:auto;overflow:visible}
 .lgd{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--dim)}
 .lgd i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
 
@@ -120,6 +120,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
     <div class="hstat"><b id="hCount">0</b> people</div>
     <div class="hstat"><b id="hStates">0</b> states</div>
     <div class="hstat"><b id="hTotal">$0B</b> combined</div>
+    <div class="hstat"><b id="hU45">0</b> under 45</div>
     <div class="hright"><span>United States &middot; the $100M-$5B band &middot; as of <span id="hAsof"></span></span></div>
   </header>
 
@@ -128,6 +129,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
       <h4>Search <button class="clr" id="reset">reset all</button></h4>
       <input class="srch" id="q" placeholder="Name, company, city&hellip;" autocomplete="off">
     </div>
+    <div class="sec"><h4>Age <button class="clr" id="only45">only under 45</button></h4><div id="fAge"></div></div>
     <div class="sec"><h4>Wealth band</h4><div id="fBand"></div></div>
     <div class="sec"><h4>Region</h4><div id="fRegion"></div></div>
     <div class="sec"><h4>Sector</h4><div id="fSect"></div></div>
@@ -138,30 +140,33 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   <main id="main" class="cell">
     <div class="charts">
       <figure class="fig">
-        <h3>Where the band actually sits</h3>
-        <p class="sub">People per wealth band. This is a curated census, not a complete one &mdash; the shape is the finding, not the count.</p>
-        <svg id="cBand" role="img" aria-label="Distribution of people across wealth bands"></svg>
+        <h3>How old they are</h3>
+        <p class="sub">People per age band. Everything left of the 45 line reached $100M+ in under half a working life.</p>
+        <svg id="cAge" role="img" aria-label="Distribution of people across age bands"></svg>
+        <div class="lgd" id="lAge"></div>
       </figure>
       <figure class="fig">
-        <h3>How long it took</h3>
-        <p class="sub">Years from starting out to today's figure, against that figure. Left is fast, right is slow &mdash; and the fast half is almost entirely one sector.</p>
-        <svg id="cScat" role="img" aria-label="Years to fortune against net worth, by origin of wealth"></svg>
+        <h3>Age against fortune</h3>
+        <p class="sub">Every person, by age and net worth. The left wall is the interesting edge &mdash; how young a $100M+ fortune gets, and what kind.</p>
+        <svg id="cScat" role="img" aria-label="Age against net worth, by origin of wealth"></svg>
         <div class="lgd" id="lScat"></div>
       </figure>
       <figure class="fig">
-        <h3>Where they are</h3>
-        <p class="sub">By US region. Coverage tracks what is publicly documented, and disclosure is uneven by region &mdash; see the note below the table.</p>
-        <svg id="cRegion" role="img" aria-label="People by region"></svg>
+        <h3>Which routes are fast</h3>
+        <p class="sub">Sector, split by the 45 line. A sector that is mostly blue is a fast route to $100M; mostly amber means it takes a career.</p>
+        <svg id="cSect" role="img" aria-label="People by sector, split under and over 45"></svg>
+        <div class="lgd" id="lSect"></div>
       </figure>
       <figure class="fig">
-        <h3>What they did</h3>
-        <p class="sub">By sector of the wealth-creating business, not of current holdings.</p>
-        <svg id="cSect" role="img" aria-label="People by sector"></svg>
+        <h3>Where they are</h3>
+        <p class="sub">US region, on the same split. Coverage tracks what is publicly documented, and disclosure is uneven by region &mdash; see the note below the table.</p>
+        <svg id="cRegion" role="img" aria-label="People by region, split under and over 45"></svg>
       </figure>
     </div>
 
     <div class="tbar">
       <span class="n"><b id="tCount">0</b> shown</span>
+      <span class="n"><b id="tU45">-</b> under 45</span>
       <span class="n">median <b id="tMed">-</b></span>
       <span class="n">median years to fortune <b id="tYrs">-</b></span>
       <span class="n">median age started <b id="tAge">-</b></span>
@@ -179,9 +184,12 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 const DB = /*__DATA__*/null;
 const ROWS = DB.rows, ASOF = DB.asof, ASOF_YEAR = +ASOF.slice(0,4);
 const BANDS = /*__BANDS__*/null, REGIONS = /*__REGIONS__*/null, SECTORS = /*__SECTORS__*/null;
+const AGEBANDS = /*__AGEBANDS__*/null;
+const U45C = 'var(--self)', O45C = 'var(--inherited)';
 const ORIGINS = {self:'Self-made', inherited:'Inherited', mixed:'Mixed'};
 const PROV = {R:'Reported', E:'Estimated', I:'Inferred'};
 const OCOL = {self:'var(--self)', inherited:'var(--inherited)', mixed:'var(--mixed)'};
+const U45 = ['a1','a2','a3','a4'];
 
 const $ = (s)=>document.querySelector(s);
 const esc = (s)=>String(s==null?'':s).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -190,7 +198,7 @@ const med = (a)=>{ if(!a.length) return null; const s=[...a].sort((x,y)=>x-y); c
   return s.length%2 ? s[m] : (s[m-1]+s[m])/2; };
 
 /* ---- state ---- */
-const F = {band:new Set(), region:new Set(), sect:new Set(), origin:new Set(), p:new Set(), q:''};
+const F = {ageb:new Set(), band:new Set(), region:new Set(), sect:new Set(), origin:new Set(), p:new Set(), q:''};
 let sortKey='nw', sortDir=-1, sel=null;
 
 /* Columns declared once — they drive the header, the cell and the ordering
@@ -214,6 +222,7 @@ const COLS = [
 function filtered(){
   const q = F.q.trim().toLowerCase();
   return ROWS.filter((r)=>{
+    if(F.ageb.size && !F.ageb.has(r.ageb)) return false;
     if(F.band.size && !F.band.has(r.band)) return false;
     if(F.region.size && !F.region.has(r.region)) return false;
     if(F.sect.size && !F.sect.has(r.sect)) return false;
@@ -236,7 +245,7 @@ function barChart(el, items, opt){
   const {label, value, color, w=430} = opt;
   const rowH=opt.rowH||21, padL=opt.padL||104, padR=42, h=items.length*rowH+6;
   const max = Math.max(1, ...items.map(value));
-  let s=`<svg viewBox="0 0 ${w} ${h}" height="${h}">`;
+  let s=`<svg viewBox="0 0 ${w} ${h}">`;
   items.forEach((d,i)=>{
     const y=i*rowH+3, bw=Math.max(2,(value(d)/max)*(w-padL-padR)), c=color?color(d):'var(--accent)';
     s+=`<text x="${padL-9}" y="${y+11}" text-anchor="end" font-size="11" fill="${TXT}">${esc(label(d))}</text>`;
@@ -246,40 +255,69 @@ function barChart(el, items, opt){
   el.innerHTML = s+'</svg>';
 }
 
-function scatter(el, rs){
-  const w=430,h=210,padL=36,padB=26,padT=8,padR=8;
-  const xs = rs.filter((r)=>r.years!=null);
-  const maxX = Math.max(10, ...xs.map((r)=>r.years));
-  // log y: the band spans 50x, and a linear axis buries the whole sub-$1B half
-  const ly=(v)=>Math.log10(v), y0=ly(0.1), y1=ly(5);
-  const X=(v)=>padL+(v/maxX)*(w-padL-padR);
-  const Y=(v)=>padT+(1-(ly(v)-y0)/(y1-y0))*(h-padT-padB);
-  let s=`<svg viewBox="0 0 ${w} ${h}" height="${h}">`;
-  [0.1,0.25,0.5,1,2.5,5].forEach((v)=>{
-    s+=`<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${w-padR}" y2="${Y(v).toFixed(1)}" stroke="${GRID}" stroke-width="1"></line>`;
-    s+=`<text x="${padL-6}" y="${(Y(v)+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="${MUT}">${v>=1?'$'+v+'B':'$'+v*1000+'M'}</text>`;
-  });
-  const step = maxX>60?20:maxX>30?10:5;
-  for(let t=0;t<=maxX;t+=step){
-    s+=`<text x="${X(t).toFixed(1)}" y="${h-padB+15}" text-anchor="middle" font-size="10" fill="${MUT}">${t}</text>`;
-  }
-  s+=`<text x="${(padL+(w-padR))/2}" y="${h-2}" text-anchor="middle" font-size="10" fill="${MUT}">years since they started</text>`;
-  xs.forEach((r)=>{
-    s+=`<circle cx="${X(r.years).toFixed(1)}" cy="${Y(r.nw).toFixed(1)}" r="4.2" fill="${OCOL[r.origin]}" fill-opacity=".82" stroke="var(--bg)" stroke-width="2" data-id="${r.id}"></circle>`;
+/* Stacked bar, two series: under 45 and 45+. A 2px surface gap sits between the
+   segments so the boundary reads without a stroke. */
+function stackChart(el, items, opt){
+  const {label, w=430} = opt, rowH=21, padL=opt.padL||132, padR=46, h=items.length*rowH+6;
+  const max = Math.max(1, ...items.map((d)=>d.a+d.b));
+  const span = w-padL-padR;
+  let s=`<svg viewBox="0 0 ${w} ${h}">`;
+  items.forEach((d,i)=>{
+    const y=i*rowH+6, aw=(d.a/max)*span, bw=(d.b/max)*span;
+    s+=`<text x="${padL-9}" y="${y+8}" text-anchor="end" font-size="11" fill="${TXT}">${esc(label(d))}</text>`;
+    if(d.a>0) s+=`<rect x="${padL}" y="${y}" width="${Math.max(2,aw)}" height="11" rx="4" fill="${U45C}"></rect>`;
+    if(d.b>0) s+=`<rect x="${padL+aw+(d.a>0?2:0)}" y="${y}" width="${Math.max(2,bw-(d.a>0?2:0))}" height="11" rx="4" fill="${O45C}"></rect>`;
+    s+=`<text x="${padL+aw+bw+7}" y="${y+9}" font-size="11" fill="${MUT}" font-variant-numeric="tabular-nums">${d.a+d.b}</text>`;
   });
   el.innerHTML = s+'</svg>';
 }
 
+function scatter(el, rs){
+  const w=430,h=224,padL=40,padB=34,padT=10,padR=10;
+  const xs = rs.filter((r)=>r.age!=null);
+  const maxX = 85, minX = 20;
+  // log y: the band spans 50x, and a linear axis buries the whole sub-$1B half
+  const ly=(v)=>Math.log10(v), y0=ly(0.1), y1=ly(5);
+  const X=(v)=>padL+((v-minX)/(maxX-minX))*(w-padL-padR);
+  const Y=(v)=>padT+(1-(ly(v)-y0)/(y1-y0))*(h-padT-padB);
+  let s=`<svg viewBox="0 0 ${w} ${h}">`;
+  [0.1,0.25,0.5,1,2.5,5].forEach((v)=>{
+    s+=`<line x1="${padL}" y1="${Y(v).toFixed(1)}" x2="${w-padR}" y2="${Y(v).toFixed(1)}" stroke="${GRID}" stroke-width="1"></line>`;
+    s+=`<text x="${padL-6}" y="${(Y(v)+3.5).toFixed(1)}" text-anchor="end" font-size="10" fill="${MUT}">${v>=1?'$'+v+'B':'$'+v*1000+'M'}</text>`;
+  });
+  for(let t=20;t<=maxX;t+=10){
+    s+=`<text x="${X(t).toFixed(1)}" y="${h-padB+15}" text-anchor="middle" font-size="10" fill="${MUT}">${t}</text>`;
+  }
+  // the 45 line — the cut the census is organised around, drawn not implied
+  s+=`<line x1="${X(45).toFixed(1)}" y1="${padT}" x2="${X(45).toFixed(1)}" y2="${h-padB}" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 3" opacity=".55"></line>`;
+  s+=`<text x="${(X(45)-5).toFixed(1)}" y="${padT+9}" text-anchor="end" font-size="9.5" fill="var(--accent)">under 45</text>`;
+  s+=`<text x="${(padL+(w-padR))/2}" y="${h-2}" text-anchor="middle" font-size="10" fill="${MUT}">age</text>`;
+  xs.forEach((r)=>{
+    s+=`<circle cx="${X(r.age).toFixed(1)}" cy="${Y(r.nw).toFixed(1)}" r="4.2" fill="${OCOL[r.origin]}" fill-opacity=".82" stroke="var(--bg)" stroke-width="2" data-id="${r.id}"></circle>`;
+  });
+  el.innerHTML = s+'</svg>';
+}
+
+const split = (rs,fn,k)=>({a:rs.filter((r)=>fn(r)===k&&r.u45).length, b:rs.filter((r)=>fn(r)===k&&!r.u45).length});
+
 function drawCharts(rs){
-  barChart($('#cBand'), BANDS.map((b)=>({...b, c:rs.filter((r)=>r.band===b.id).length})),
-    {label:(d)=>d.n, value:(d)=>d.c, rowH:26, padL:98});
+  barChart($('#cAge'), AGEBANDS.map((b)=>({...b, c:rs.filter((r)=>r.ageb===b.id).length})),
+    {label:(d)=>d.n, value:(d)=>d.c, rowH:22, padL:74,
+     color:(d)=>U45.includes(d.id)?U45C:O45C});
+  const nu=rs.filter((r)=>r.u45).length;
+  $('#lAge').innerHTML = `<span><i style="background:${U45C}"></i>Under 45 <span style="color:var(--mut)">${nu}</span></span>`
+    + `<span><i style="background:${O45C}"></i>45 and over <span style="color:var(--mut)">${rs.filter((r)=>r.u45===false).length}</span></span>`
+    + (rs.length?`<span style="color:var(--mut)">${Math.round(nu/rs.length*100)}% under 45</span>`:'');
   scatter($('#cScat'), rs);
   $('#lScat').innerHTML = Object.entries(ORIGINS).map(([k,v])=>
     `<span><i style="background:${OCOL[k]}"></i>${v} <span style="color:var(--mut)">${rs.filter((r)=>r.origin===k).length}</span></span>`).join('');
-  const reg = Object.entries(REGIONS).map(([k,n])=>({n, c:rs.filter((r)=>r.region===k).length})).sort((a,b)=>b.c-a.c);
-  barChart($('#cRegion'), reg, {label:(d)=>d.n, value:(d)=>d.c, padL:132});
-  const sec = Object.entries(SECTORS).map(([k,n])=>({n, c:rs.filter((r)=>r.sect===k).length})).sort((a,b)=>b.c-a.c).filter((d)=>d.c);
-  barChart($('#cSect'), sec, {label:(d)=>d.n, value:(d)=>d.c, padL:132});
+  const sec = Object.entries(SECTORS).map(([k,n])=>({n, ...split(rs,(r)=>r.sect,k)}))
+    .filter((d)=>d.a+d.b).sort((x,y)=>(y.a+y.b)-(x.a+x.b));
+  stackChart($('#cSect'), sec, {label:(d)=>d.n});
+  $('#lSect').innerHTML = `<span><i style="background:${U45C}"></i>Under 45</span><span><i style="background:${O45C}"></i>45 and over</span>`;
+  const reg = Object.entries(REGIONS).map(([k,n])=>({n, ...split(rs,(r)=>r.region,k)}))
+    .filter((d)=>d.a+d.b).sort((x,y)=>(y.a+y.b)-(x.a+x.b));
+  stackChart($('#cRegion'), reg, {label:(d)=>d.n});
 }
 
 /* ---- table ---- */
@@ -356,6 +394,7 @@ function drawFilters(){
       const k=b.dataset.k; set.has(k)?set.delete(k):set.add(k); render(); });
   };
   const cnt = (fn,k)=>ROWS.filter((r)=>fn(r)===k).length;
+  grp('#fAge', F.ageb, AGEBANDS.map((b)=>({k:b.id, n:b.n, c:cnt((r)=>r.ageb,b.id)})));
   grp('#fBand', F.band, BANDS.map((b)=>({k:b.id, n:b.n, c:cnt((r)=>r.band,b.id)})));
   grp('#fRegion', F.region, Object.entries(REGIONS).map(([k,n])=>({k,n,c:cnt((r)=>r.region,k)})).sort((a,b)=>b.c-a.c));
   grp('#fSect', F.sect, Object.entries(SECTORS).map(([k,n])=>({k,n,c:cnt((r)=>r.sect,k)})).filter((x)=>x.c).sort((a,b)=>b.c-a.c));
@@ -372,10 +411,15 @@ function render(){
   $('#tYrs').textContent = ys.length ? med(ys)+' yrs' : '-';
   const as = rs.map((r)=>r.startAge).filter((v)=>v!=null);
   $('#tAge').textContent = as.length ? med(as) : '-';
+  const nu = rs.filter((r)=>r.u45).length;
+  $('#tU45').textContent = rs.length ? `${nu} (${Math.round(nu/rs.length*100)}%)` : '-';
 }
 
 $('#q').oninput = (e)=>{ F.q=e.target.value; render(); };
-$('#reset').onclick = ()=>{ [F.band,F.region,F.sect,F.origin,F.p].forEach((s)=>s.clear()); F.q=''; $('#q').value=''; render(); };
+$('#reset').onclick = ()=>{ [F.ageb,F.band,F.region,F.sect,F.origin,F.p].forEach((s)=>s.clear()); F.q=''; $('#q').value=''; render(); };
+$('#only45').onclick = ()=>{ const on=U45.every((k)=>F.ageb.has(k)) && F.ageb.size===4;
+  F.ageb.clear(); if(!on) U45.forEach((k)=>F.ageb.add(k)); render(); };
+$('#hU45').textContent = ROWS.filter((r)=>r.u45).length;
 $('#hAsof').textContent = ASOF;
 $('#hCount').textContent = ROWS.length;
 $('#hStates').textContent = new Set(ROWS.map((r)=>r.state)).size;

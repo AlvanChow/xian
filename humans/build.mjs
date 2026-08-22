@@ -31,6 +31,19 @@ export const BANDS = [
 /* US regions. The census is US-only, so "region" is domestic geography — which is
    also the axis the sourcing varies along: Bay Area fortunes are visible through
    S-1s and 13Gs, Midwest industrial ones are private and only surface in a sale. */
+/* Age bands. The 45 line is the one the census is organised around, so it falls
+   on a band edge rather than inside one — under-45 is exactly the first four. */
+export const AGEBANDS = [
+  { id: 'a1', lo: 0,  hi: 30, n: 'Under 30' },
+  { id: 'a2', lo: 30, hi: 35, n: '30-34' },
+  { id: 'a3', lo: 35, hi: 40, n: '35-39' },
+  { id: 'a4', lo: 40, hi: 45, n: '40-44' },
+  { id: 'a5', lo: 45, hi: 55, n: '45-54' },
+  { id: 'a6', lo: 55, hi: 65, n: '55-64' },
+  { id: 'a7', lo: 65, hi: 200, n: '65+' },
+];
+export const U45 = ['a1', 'a2', 'a3', 'a4'];
+
 export const REGIONS = {
   bay:   'SF Bay Area',
   socal: 'Southern California',
@@ -59,6 +72,7 @@ const STATES = new Set(('AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA M
 const ORIGINS = { self: 'Self-made', inherited: 'Inherited', mixed: 'Mixed' };
 
 const bandOf = (nw) => BANDS.find((b) => nw >= b.lo && nw < b.hi) || BANDS[BANDS.length - 1];
+const ageBandOf = (a) => (a == null ? null : (AGEBANDS.find((b) => a >= b.lo && a < b.hi) || AGEBANDS[AGEBANDS.length - 1]).id);
 
 /* Derived measures — computed, never typed. */
 function derive(r) {
@@ -66,6 +80,8 @@ function derive(r) {
   return {
     ...r,
     band: bandOf(r.nw).id,
+    ageb: ageBandOf(r.age),
+    u45: r.age != null ? r.age < 45 : null,      // the census's primary cut
     years,                                                  // time taken to reach today's figure
     // $M of net worth accumulated per year since starting. The single most
     // comparable number across a 40-year industrialist and a 6-year exit.
@@ -130,8 +146,9 @@ function coverage(rows) {
     sect: by((r) => r.sect),
     origin: by((r) => r.origin),
     prov: by((r) => r.p),
-    women: null,
+    u45: rows.filter((r) => r.u45).length,
     states: new Set(rows.map((r) => r.state)).size,
+    ageb: by((r) => r.ageb),
     cities: new Set(rows.map((r) => r.city)).size,
     totalNw: +rows.reduce((a, r) => a + r.nw, 0).toFixed(1),
   };
@@ -163,6 +180,8 @@ const cov = coverage(rows);
 console.log(`\n${cov.total} people | ${cov.states} states | ${cov.cities} cities | $${cov.totalNw}B combined`);
 console.log('bands  ', BANDS.map((b) => `${b.n}: ${cov.band[b.id] || 0}`).join('  |  '));
 console.log('prov   ', Object.entries(cov.prov).map(([k, v]) => `${k}:${v}`).join('  '));
+console.log(`under 45: ${cov.u45} of ${cov.total} (${Math.round((cov.u45 / cov.total) * 100)}%)`);
+console.log('ages   ', AGEBANDS.map((b) => `${b.n}: ${cov.ageb[b.id] || 0}`).join('  |  '));
 
 if (!process.argv.includes('--check')) {
   writeFileSync(join(HERE, 'humans.json'), JSON.stringify({ asof: ASOF, rows }, null, 0));
@@ -173,6 +192,7 @@ if (!process.argv.includes('--check')) {
   const page = readFileSync(join(HERE, 'template.html'), 'utf8')
     .replace('/*__DATA__*/null', JSON.stringify({ asof: ASOF, rows }))
     .replace('/*__BANDS__*/null', JSON.stringify(BANDS))
+    .replace('/*__AGEBANDS__*/null', JSON.stringify(AGEBANDS))
     .replace('/*__REGIONS__*/null', JSON.stringify(REGIONS))
     .replace('/*__SECTORS__*/null', JSON.stringify(SECTORS));
   if (page.includes('__DATA__')) { console.error('FATAL: data placeholder not substituted'); process.exit(1); }

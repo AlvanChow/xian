@@ -8,9 +8,29 @@ The census is **US-only**: every record is `"country": "US"` with a USPS `state`
 check the current figure before excluding *or* including. Do not include a person whose
 figure you cannot source. A short honest file beats a padded one.
 
-## The band quota is the whole point
+## PRIORITY: people under 45
+**Age is now the primary axis of interest.** Under 45 means born 1982 or later (age < 45
+as of 2026). Aim for **at least half your records under 45**, and treat an under-45 record
+as worth roughly two over-45 records when you are choosing what to spend research budget on.
+
+Two honest caveats that override the target:
+- **Do not invent, guess, or shade an age to hit it.** `age` is validated against
+  `started + startAge`; a fudged age fails the build.
+- **Some slices genuinely have very few under-45 fortunes.** Permian oil, Midwest private
+  manufacturing, and old family industry are structurally older — the wealth takes decades
+  to build. If your slice cannot reach half, get as close as the real people allow and
+  **say so explicitly in your reply**, with your actual under-45 count. That finding is
+  itself valuable: it says which routes to $100M are fast and which are not.
+
+Under-45 fortunes concentrate in: software and SaaS, crypto, marketplaces, DTC and
+consumer brands, fintech, biotech founders, gaming and creator economy, sports and
+entertainment, and inherited wealth that transferred early. Hunt there first.
+
+## The band quota still matters
 Do NOT fill your file with the richest names you can recall. The sub-$1B half is the
-harder and more valuable half, and it is where this census earns its keep.
+harder and more valuable half, and it is where this census earns its keep. Note that the
+under-45 priority and the sub-$1B priority mostly point the same way — young fortunes are
+disproportionately in the $100M-$1B bands.
 
 ## Sources, best first
 1. **Forbes Real-Time Billionaires** and the **Forbes 400** — for $1B+. Tag `R`.
