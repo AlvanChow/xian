@@ -158,7 +158,7 @@ function coverage(rows) {
 }
 
 const files = readdirSync(DATA).filter((f) => f.endsWith('.json')).sort();
-let rows = [];  // eslint-disable-line prefer-const
+let rows = [];
 for (const f of files) {
   let parsed;
   try { parsed = JSON.parse(readFileSync(join(DATA, f), 'utf8')); }
