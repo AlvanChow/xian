@@ -9,7 +9,9 @@ Field naming mirrors src/rents.js so the provenance machinery (p/c/m/s) is reuse
   "n":       "Jane Doe",         // display name
   "age":     58,                 // integer, or null if genuinely unknown
   "city":    "Austin",           // primary city of residence
-  "country": "US",               // always "US" — this census is US-only
+  "country": "US",               // always "US" — this census is US-only, on RESIDENCE
+                                 // not citizenship: it maps where the money sits.
+                                 // A Barbadian or Canadian citizen resident in LA is in.
   "state":   "TX",               // USPS two-letter state code
   "region":  "tx",               // one of: bay | socal | pnw | mtn | tx | mw | se | ne | nyc | dc
   "nw":      2.4,                // net worth in $B. MUST be >= 0.1 and <= 5.0

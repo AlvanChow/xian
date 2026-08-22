@@ -26,6 +26,16 @@ So this is a **census, not a ranking and not a roster**: a deliberate spread acr
 wealth band, region and sector, sized so the *shape* of the population is legible. Adding
 people makes it denser; it never makes it complete. The table says so on its face.
 
+## Two rules that decide edge cases
+
+**US means residence, not citizenship.** The census maps where money sits, so a Barbadian
+or Canadian citizen living in Los Angeles is in it, and an American living in Monaco is not.
+
+**For inherited wealth, `started` is when *they* took control** — not when the business was
+founded by someone else. An heir also has `toFirst100` of 0: they cross $100M on
+inheritance rather than climbing to it, and recording that as a 20-year climb would make
+the speed charts lie.
+
 ## Provenance (R / E / I)
 
 Reused verbatim from the main site, because the problem is the same one:
