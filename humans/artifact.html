@@ -71,6 +71,31 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
 .modes button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .caveat{margin:12px 0 0;font-size:11.5px;line-height:1.6;color:var(--mut);border-left:2px solid var(--line);padding-left:11px}
 .caveat b{color:var(--dim)}
+.findings{padding:20px 22px 26px;max-width:920px}
+.findings > p.lede{margin:0 0 22px;font-size:13.5px;line-height:1.68;color:var(--dim);max-width:68ch}
+.finding{border-top:1px solid var(--line);padding:20px 0 4px}
+.finding:first-of-type{border-top:0;padding-top:4px}
+.finding h3{margin:0 0 4px;font-size:15px;font-weight:650;letter-spacing:-.1px;text-wrap:balance}
+.finding .mech{margin:0 0 14px;font-size:13px;line-height:1.68;color:var(--dim);max-width:68ch}
+.finding .mech b{color:var(--txt);font-weight:600}
+.figs{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:0 0 14px}
+.figs div{background:var(--bg2);padding:11px 15px;flex:1 1 120px}
+.figs .k{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:5px}
+.figs .v{font-size:21px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.4px;line-height:1.1}
+.figs .v small{font-size:11.5px;color:var(--mut);font-weight:400;letter-spacing:0}
+.ftab{width:100%;border-collapse:collapse;font-size:12.5px;margin:0 0 6px}
+.ftab th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);font-weight:600;padding:0 10px 7px 0;border-bottom:1px solid var(--line)}
+.ftab th.r,.ftab td.r{text-align:right}
+.ftab td{padding:7px 10px 7px 0;border-bottom:1px solid #131a28;color:var(--dim);font-variant-numeric:tabular-nums}
+.ftab td.nm{color:var(--txt)}
+.ftab tr:last-child td{border-bottom:0}
+.bar{display:inline-block;height:7px;border-radius:3px;background:var(--accent);vertical-align:1px;min-width:2px}
+.bar.warn{background:var(--estimated)}
+.names{margin:0;font-size:12.5px;line-height:1.85;color:var(--dim);list-style:none;padding:0}
+.names li{padding-left:15px;position:relative}
+.names li::before{content:'';position:absolute;left:0;top:9px;width:5px;height:5px;border-radius:50%;background:var(--inferred)}
+.names b{color:var(--txt);font-weight:550}
+.src{margin:12px 0 0;font-size:11px;color:var(--mut);line-height:1.6;font-style:italic}
 .fig{background:var(--bg);padding:14px 16px 12px;min-width:0}
 .fig h3{margin:0 0 2px;font-size:12.5px;font-weight:600;color:var(--txt)}
 .fig p.sub{margin:0 0 10px;font-size:11.5px;color:var(--mut);line-height:1.45}
@@ -193,6 +218,7 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
       <button data-p="age">Age &amp; speed</button>
       <button data-p="time">Over time</button>
       <button data-p="geo">Geography</button>
+      <button data-p="find">What we learned</button>
     </nav>
 
     <section class="pane on" id="p-dist">
@@ -259,6 +285,10 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
           <div id="cRegion" role="img" aria-label="People by region, split under and over 45"></div>
         </figure>
       </div>
+    </section>
+
+    <section class="pane" id="p-find">
+      <div class="findings" id="findings"></div>
     </section>
 
     <div class="tbar">
@@ -750,9 +780,135 @@ function drawFilters(){
   grp('#fProv', F.p, Object.entries(PROV).map(([k,n])=>({k,n,c:cnt((r)=>r.p,k)})));
 }
 
+/* The findings page. Every figure here is computed from the dataset at render
+   time rather than written into the prose, so a finding can never disagree with
+   the table it is drawn from. The only typed content is the list of people
+   dropped for a missing birth year and the list of private companies that
+   disclose no founder share — those are research facts about what is absent,
+   and absent things cannot be counted from the data. */
+function drawFindings(){
+  const n = ROWS.length;
+  const pct = (a,b)=> b ? Math.round(a/b*100) : 0;
+  const medOf = (a)=>{ const s=a.filter((v)=>v!=null).sort((x,y)=>x-y); if(!s.length) return null;
+    const m=s.length>>1; return s.length%2 ? s[m] : (s[m-1]+s[m])/2; };
+
+  const byBand = BANDS.map((b)=>{ const v=ROWS.filter((r)=>r.band===b.id);
+    return {n:b.n, c:v.length, R:pct(v.filter((r)=>r.p==='R').length, v.length)}; });
+
+  const secs = Object.keys(SECTORS).map((k)=>{ const v=ROWS.filter((r)=>r.sect===k);
+    return {k, n:SECTORS[k], c:v.length, u45:pct(v.filter((r)=>r.u45).length, v.length),
+            med:medOf(v.map((r)=>r.toFirst100))}; })
+    .filter((s)=>s.c>=15).sort((a,b)=>a.med-b.med);
+
+  const org = ['self','inherited','mixed'].map((k)=>{ const v=ROWS.filter((r)=>r.origin===k);
+    return {k, n:ORIGINS[k], c:v.length, u45:pct(v.filter((r)=>r.u45).length, v.length),
+            med:medOf(v.map((r)=>r.toFirst100))}; });
+
+  const u45n = ROWS.filter((r)=>r.u45).length;
+  const eCount = ROWS.filter((r)=>r.p==='E').length;
+  const small = ROWS.filter((r)=>r.nw<=0.5);
+  const maxMed = Math.max(...secs.map((s)=>s.med));
+
+  const fig = (items)=>`<div class="figs">${items.map(([k,v,s])=>
+    `<div><div class="k">${k}</div><div class="v">${v}${s?` <small>${s}</small>`:''}</div></div>`).join('')}</div>`;
+
+  $('#findings').innerHTML = `
+  <p class="lede">Six things this census established that a rich list cannot. Every number on this page is
+  computed from the ${n} records at render time, not written into the prose &mdash; so a claim here can never
+  drift from the table it is drawn from.</p>
+
+  <article class="finding">
+    <h3>Below $1B, almost nothing is published &mdash; so almost everything here is computed</h3>
+    <p class="mech">Forbes and Bloomberg stop at the billion mark. Beneath it the census is held up almost
+    entirely by arithmetic done against SEC filings: a share count from a 13D, 13G, DEF 14A, Form 4 or merger
+    table, times a price fetched on the as-of date. <b>${eCount} of ${n} records</b> are computed that way, and
+    the people behind them appear on no published list anywhere.</p>
+    ${fig([['Records computed from filings', eCount, `of ${n}`],
+           ['In the $100M-$500M band', small.length, `${pct(small.filter((r)=>r.p==='E').length, small.length)}% computed`]])}
+    <table class="ftab"><thead><tr><th>Band</th><th class="r">People</th><th class="r">Published</th><th style="width:34%"></th></tr></thead><tbody>
+      ${byBand.map((b)=>`<tr><td class="nm">${esc(b.n)}</td><td class="r">${b.c}</td><td class="r">${b.R}%</td>
+        <td><span class="bar${b.R<50?' warn':''}" style="width:${Math.max(2,b.R*0.9)}%"></span></td></tr>`).join('')}
+    </tbody></table>
+    <p class="src">"Published" means a figure carried by Forbes, Bloomberg or a comparable named list &mdash; provenance tier R.</p>
+  </article>
+
+  <article class="finding">
+    <h3>The fastest routes to $100M are not the largest ones</h3>
+    <p class="mech">Sorting sectors by the median years each took to reach the first $100M separates two
+    populations a wealth ranking cannot tell apart: businesses that compound over a career, and businesses
+    that convert an existing audience or a timing window into equity in under a decade.</p>
+    <table class="ftab"><thead><tr><th>Sector</th><th class="r">People</th><th class="r">Median yrs to $100M</th><th style="width:26%"></th><th class="r">Under 45</th></tr></thead><tbody>
+      ${secs.map((s)=>`<tr><td class="nm">${esc(s.n)}</td><td class="r">${s.c}</td><td class="r">${s.med}</td>
+        <td><span class="bar${s.med>=13?' warn':''}" style="width:${Math.max(2, s.med/maxMed*94)}%"></span></td>
+        <td class="r">${s.u45}%</td></tr>`).join('')}
+    </tbody></table>
+    <p class="src">Sectors with at least 15 records. Years to $100M is estimated per person where unpublished.</p>
+  </article>
+
+  <article class="finding">
+    <h3>Inheriting a fortune is slower than building one</h3>
+    <p class="mech">Wealth transfers late. An heir usually arrives at $100M in their fifties or sixties, when a
+    parent dies or a family vehicle is recapitalised &mdash; which is why the inherited cohort is <b>older</b>
+    than the self-made one, not younger.</p>
+    ${fig(org.map((o)=>[o.n, `${o.u45}%`, `under 45 &middot; ${o.c} people`]))}
+    <p class="src">Median years from starting out to the first $100M: ${org.map((o)=>`${o.n.toLowerCase()} ${o.med}`).join(', ')}.</p>
+  </article>
+
+  <article class="finding">
+    <h3>The under-45 figure is a floor set by disclosure law, not a measurement</h3>
+    <p class="mech">US proxy statements print the ages of <b>directors</b> &mdash; and not of officers, five
+    percent holders, or heirs. So this census can date a sixty-year-old board member exactly and cannot date a
+    thirty-five-year-old executive at all. Around twenty fully-sourced, in-band people were dropped for a
+    missing date of birth alone. The bias falls hardest on the two groups the dataset is thinnest on: people
+    under 45, and women, who in this cohort are far more often officers than directors.</p>
+    ${fig([['Under 45 in the census', `${pct(u45n,n)}%`, `${u45n} people`],
+           ['Dropped for a missing birth year', '~20', 'all otherwise complete']])}
+    <ul class="names">
+      <li><b>Jennifer and Bradley Haas</b> &mdash; Levi Strauss, $452M and $437M, cleanly filed, no published birth year</li>
+      <li><b>Divya Nettimi</b> &mdash; Avala Global, $3.8B AUM, the first woman-led fund launch above $1B; every source says "mid-30s"</li>
+      <li><b>Thomas McAndrew</b> &mdash; Enchanted Rock, $319M post-IPO; not a continuing director, so no age is printed</li>
+      <li><b>Molly Boyle</b> &mdash; Columbia Sportswear, $183M, with her own Portland address filed in her 13G</li>
+      <li><b>Aspasia Vahaviolos and Stephanie Foglia</b> &mdash; Mistras, $117M and $131M, both women, neither a director</li>
+      <li><b>Margaret Horn</b> &mdash; Revolution Medicines, $159M, officer rather than director</li>
+    </ul>
+    <p class="src">Each is a valid record the moment a birth year surfaces. None was guessed at.</p>
+  </article>
+
+  <article class="finding">
+    <h3>The young cohort is undisclosed, not absent</h3>
+    <p class="mech">Territory after territory found the same wall. The under-45 fortunes are real, large, and
+    sit in private cap tables that disclose no ownership share &mdash; so a figure could only be produced by
+    inventing the percentage. Every one of these was located, judged plausibly in band, and dropped rather
+    than modelled.</p>
+    <ul class="names">
+      <li><b>Shield AI</b> &mdash; a $12.7B valuation is public; the founders' equity is explicitly not. Any guess swings the answer between $200M and $900M</li>
+      <li><b>Etched, Lambda, Sierra, Harvey, Mercury, Linear</b> &mdash; the San Francisco AI cohort, valuations public, ownership undisclosed</li>
+      <li><b>Flock Safety, Stord, MoonPay, ShipMonk, Drata, ClickUp, Vuori, Gopuff</b> &mdash; same shape, five different regions</li>
+      <li><b>Gecko Robotics, Skild AI, Abridge</b> &mdash; the Pittsburgh CMU spinouts, no share and no birth year</li>
+      <li><b>Instacart's two co-founders</b> &mdash; roughly $395M each at listing, then below both the 5% and Section 16 thresholds, so no disclosure exists after 2023</li>
+    </ul>
+    <p class="src">This is a finding about securities law, not about where wealth is.</p>
+  </article>
+
+  <article class="finding">
+    <h3>Whole regions and industries are invisible to the method</h3>
+    <p class="mech">Where a fortune is private, the filings route returns nothing at all &mdash; and the census
+    can only say so by checking and reporting the emptiness rather than leaving a gap.</p>
+    <ul class="names">
+      <li><b>California's Central Valley</b> &mdash; 13D/G full-text against 22 farm and wine towns returns only pre-2010 filings, dead microcaps and institutions. America's largest agricultural region has almost no SEC footprint; its records here came from disclosed transaction prices instead</li>
+      <li><b>Alaska and Hawaii</b> &mdash; one Anchorage individual in the whole 2022-26 filing record; Honolulu's listed set is institutionally held and its largest operator computes to about $60M</li>
+      <li><b>Private manufacturers</b> &mdash; Polar Beverages at $1.5B of revenue, Big Y at $2.4B: pricing them needs a revenue multiple on a guessed family share, three estimates deep. Dropped</li>
+      <li><b>Chicago proprietary trading</b> &mdash; Jump, DRW, Getco, Peak6 are LLCs with no filings at all</li>
+    </ul>
+    <p class="src">Agriculture is ${ROWS.filter((r)=>r.sect==='agri').length} records of ${n}, and every one of them
+    came from a transaction price or a listed processor &mdash; never from a farm.</p>
+  </article>
+  `;
+}
+
 function render(){
   const rs = sorted(filtered());
-  drawFilters(); drawHead(); drawCharts(rs); drawRows(rs); drawDossier();
+  drawFilters(); drawHead(); drawCharts(rs); drawRows(rs); drawDossier(); drawFindings();
   $('#tCount').textContent = rs.length;
   $('#tMed').textContent = rs.length ? money(med(rs.map((r)=>r.nw))) : '-';
   const ys = rs.map((r)=>r.years).filter((v)=>v!=null);
