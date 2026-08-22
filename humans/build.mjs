@@ -105,7 +105,7 @@ function validate(rows) {
 
   for (const r of rows) {
     for (const k of REQ) if (r[k] === undefined || r[k] === null || r[k] === '') E(r, `missing ${k}`);
-    if (seen.has(r.id)) E(r, `duplicate id (also in ${seen.get(r.id)})`);
+    if (seen.has(r.id)) E(r, `duplicate id survived resolution (also in ${seen.get(r.id)})`);
     else seen.set(r.id, r._src);
     if (!/^[A-Z0-9_]+$/.test(r.id || '')) E(r, 'id must be A-Z 0-9 _');
     if (!(r.nw >= 0.1 && r.nw <= 5.0)) E(r, `nw ${r.nw} outside the $100M-$5B scope`);
@@ -155,7 +155,7 @@ function coverage(rows) {
 }
 
 const files = readdirSync(DATA).filter((f) => f.endsWith('.json')).sort();
-let rows = [];
+let rows = [];  // eslint-disable-line prefer-const
 for (const f of files) {
   let parsed;
   try { parsed = JSON.parse(readFileSync(join(DATA, f), 'utf8')); }
@@ -164,6 +164,33 @@ for (const f of files) {
   rows.push(...parsed.map((r) => ({ ...r, _src: f })));
   console.log(`  ${f.padEnd(14)} ${String(parsed.length).padStart(3)} records`);
 }
+
+/* Cross-file duplicates are expected: ten independent passes, and a person can sit in
+   both a geographic slice and a national vertical. Two passes reaching the same person
+   from the same filing is corroboration, not an error — so resolve rather than reject,
+   deterministically and out loud. Highest source confidence wins; ties go to the first
+   file alphabetically so the result never depends on directory order.
+
+   A material disagreement between the two figures is the interesting case, and it is
+   preserved in the surviving record's methodology field rather than silently discarded:
+   two people reading one filing and getting different numbers means one of them is
+   wrong, and the reader should be able to see that. */
+const dupes = new Map();
+for (const r of rows) {
+  const prev = dupes.get(r.id);
+  if (!prev) { dupes.set(r.id, r); continue; }
+  const [keep, drop] = (r.c > prev.c || (r.c === prev.c && r._src < prev._src)) ? [r, prev] : [prev, r];
+  const gap = Math.abs(keep.nw - drop.nw) / Math.max(keep.nw, drop.nw);
+  console.log(`  dup ${r.id}: kept ${keep._src} ($${keep.nw}B, c=${keep.c}) over ${drop._src} ($${drop.nw}B, c=${drop.c})`
+    + (gap > 0.1 ? `  <- FIGURES DISAGREE by ${Math.round(gap * 100)}%` : ''));
+  if (gap > 0.1) {
+    keep.m += ` A second independent pass priced this at $${drop.nw}B from the same filing (${drop.s});`
+      + ` the two disagree by ${Math.round(gap * 100)}% and the higher-confidence read is shown.`;
+    keep.c = Math.min(keep.c, 0.5);   // an unresolved disagreement is not a confident figure
+  }
+  dupes.set(r.id, keep);
+}
+rows = [...dupes.values()];
 
 const { errs, warns } = validate(rows);
 if (warns.length) { console.log(`\n${warns.length} warning(s):`); warns.slice(0, 20).forEach((w) => console.log(`  ! ${w}`)); }

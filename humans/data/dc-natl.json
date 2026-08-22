@@ -60,36 +60,6 @@
   "turn": "The 2019 decision to keep the GPUs and rent them out rather than liquidate the mining fleet."
  },
  {
-  "id": "JOHN_H_TYSON",
-  "n": "John H. Tyson",
-  "age": 72,
-  "city": "Springdale",
-  "country": "US",
-  "state": "AR",
-  "region": "se",
-  "nw": 2.9,
-  "p": "R",
-  "c": 0.85,
-  "s": "Forbes profile, real-time net worth as of 21 Aug 2026",
-  "m": "Published Forbes figure for the third-generation Tyson Foods stake",
-  "sect": "agri",
-  "origin": "inherited",
-  "co": "Tyson Foods",
-  "did": "Third-generation owner of the chicken company his grandfather started hauling birds to Kansas City in 1935; became chairman in 1998 and drove the 8.5 billion dollar 2001 acquisition of IBP that turned a poultry firm into the largest US beef and pork packer as well.",
-  "started": 1998,
-  "startAge": 44,
-  "toFirst100": 0,
-  "why": "Class B shares carrying ten votes each kept family control through every capital raise, so the family could bet the balance sheet on IBP in a hostile fight with Smithfield without risking dilution or a proxy revolt. Protein diversification then smoothed the chicken cycle that had capped the company for decades.",
-  "comp": [
-   "JBS",
-   "Smithfield Foods",
-   "Cargill",
-   "Pilgrims Pride"
-  ],
-  "obst": "Tyson tried to walk away from the IBP deal in 2001 alleging accounting fraud and lost in Delaware Chancery Court, forced to close at 30 dollars a share; he later stepped back from the CEO role in 2006 amid poor results and entered treatment for substance abuse, returning as chairman.",
-  "turn": "Judge Leo Strines June 2001 ruling ordering Tyson to complete the IBP purchase, which built the modern company."
- },
- {
   "id": "BRANNIN_MCBEE",
   "n": "Brannin McBee",
   "age": 41,
@@ -199,7 +169,7 @@
   "started": 2012,
   "startAge": 24,
   "toFirst100": 5,
-  "why": "Coinbase won by being the only exchange that treated US regulators as customers rather than adversaries, obtaining money-transmitter licences state by state while Mt Gox and its successors operated offshore. That made it the default on-ramp for American retail and later for institutions that could not touch unlicensed venues.",
+  "why": "Coinbase won by treating US regulators as customers, taking money-transmitter licences state by state while Mt Gox and its successors ran offshore. That made it the default on-ramp for American retail and later for institutions barred from unlicensed venues.",
   "comp": [
    "Mt Gox",
    "Kraken",
@@ -229,7 +199,7 @@
   "started": 1985,
   "startAge": 27,
   "toFirst100": 9,
-  "why": "AOL solved the two things that kept ordinary Americans off the internet: a single flat monthly price instead of hourly metering, and software that installed itself from a disk that arrived unbidden in the mail. Distribution, not technology, was the product,",
+  "why": "AOL solved the two things keeping ordinary Americans off the internet: one flat monthly price instead of hourly metering, and software that installed itself from a disk that arrived unbidden in the mail. Distribution, not technology, was the product.",
   "comp": [
    "CompuServe",
    "Prodigy",
@@ -259,7 +229,7 @@
   "started": 1985,
   "startAge": 32,
   "toFirst100": 8,
-  "why": "Jackson bought vineyard land rather than renting grapes, so as coastal California acreage went from cheap to irreplaceable the company captured the appreciation and the supply. Vintners Reserve Chardonnay, an off-dry accident from a stuck fermentation, then created a mass-premium category priced above jug wine and below Napa.",
+  "why": "Jackson bought vineyard land rather than renting grapes, so as coastal California acreage became irreplaceable the company captured both the appreciation and the supply. Vintners Reserve Chardonnay, an off-dry accident, then created a mass-premium tier above jug wine and below Napa.",
   "comp": [
    "E and J Gallo",
    "Constellation Brands",
@@ -285,11 +255,11 @@
   "sect": "finance",
   "origin": "self",
   "co": "Magic Johnson Enterprises / EquiTrust",
-  "did": "Earned about 40 million dollars playing for the Lakers and turned it into an operating company: Starbucks and cinema franchises in Black neighbourhoods in the 1990s, then a controlling 60 percent of EquiTrust Life Insurance in 2015, which he has grown from 16 billion to 33 billion in assets, alongside stakes in the Dodgers, LAFC,",
+  "did": "Earned about 40 million dollars playing for the Lakers and turned it into an operating company: Starbucks and cinema franchises in Black neighbourhoods in the 1990s, then a controlling 60 percent of EquiTrust Life Insurance in 2015, which he has grown from 16 billion to 33 billion in assets.",
   "started": 1987,
   "startAge": 28,
   "toFirst100": 14,
-  "why": "He bought into categories where his name lowered a real cost, not a vanity one. Retailers and theatre chains would not enter South Central Los Angeles on their own underwriting; his partnership de-risked the site for them and he took equity rather than a licensing fee.",
+  "why": "He bought into categories where his name lowered a real cost, not a vanity one. Retailers would not enter South Central Los Angeles on their own underwriting; his partnership de-risked the site and he took equity rather than a fee. EquiTrust then converted brand capital into an annuity balance sheet.",
   "comp": [
    "Michael Jordan",
    "LeBron James",
@@ -375,11 +345,11 @@
   "sect": "health",
   "origin": "self",
   "co": "United Therapeutics",
-  "did": "Founded Sirius Satellite Radio in 1990, then in 1996 started United Therapeutics in Silver Spring after her daughter was diagnosed with pulmonary arterial hypertension, licensing an abandoned Glaxo molecule that became Remodulin and building a company that now also grows genetically modified pig organs for human transplant.",
+  "did": "Founded Sirius Satellite Radio in 1990, then started United Therapeutics in Silver Spring in 1996 after her daughter was diagnosed with pulmonary arterial hypertension, licensing an abandoned Glaxo molecule that became Remodulin; the company now also grows gene-edited pig organs for transplant.",
   "started": 1996,
   "startAge": 42,
   "toFirst100": 11,
-  "why": "She bought a compound the discoverer had shelved, treprostinil, for a disease with a few thousand US patients and no approved therapy, which meant orphan-drug exclusivity, no competing trials and pricing power. She then reformulated the same molecule as inhaled, oral and implanted-pump versions,",
+  "why": "She bought a compound its discoverer had shelved, treprostinil, for a disease with a few thousand US patients and no approved therapy, which meant orphan exclusivity and pricing power. She then reformulated the same molecule as inhaled, oral and pump-delivered versions, extending the franchise two decades.",
   "comp": [
    "Actelion",
    "Gilead Sciences",
@@ -409,7 +379,7 @@
   "started": 2020,
   "startAge": 22,
   "toFirst100": 4,
-  "why": "Settling in USDC on Polygon meant Polymarket needed no banking relationships and could take global liquidity from day one, which is exactly what a prediction market needs to produce a credible price. Once media cited its odds during the 2024 election, the quoted price itself became the product and pulled in the next round of traders.",
+  "why": "Settling in USDC on Polygon meant Polymarket needed no banking relationships and could take global liquidity from day one, which is what a prediction market needs to produce a credible price. Once media cited its odds in 2024, the quoted price became the product and pulled in the next traders.",
   "comp": [
    "Kalshi",
    "PredictIt",
@@ -418,6 +388,36 @@
   ],
   "obst": "The CFTC fined Polymarket 1.4 million dollars in January 2022 and ordered it to shut US access, forcing a rebuild as an offshore venue; the FBI raided Coplans Manhattan apartment and seized his phone in November 2024, days after the election, before the investigation was closed in mid-2025.",
   "turn": "The July 2025 acquisition of QCX, a licensed US derivatives exchange, which let Polymarket re-enter America legally and cleared the way for the ICE deal."
+ },
+ {
+  "id": "BRAD_KELLEY",
+  "n": "Brad Kelley",
+  "age": 69,
+  "city": "Franklin",
+  "country": "US",
+  "state": "TN",
+  "region": "se",
+  "nw": 1.4,
+  "p": "R",
+  "c": 0.85,
+  "s": "Forbes profile, real-time net worth as of 21 Aug 2026",
+  "m": "Published Forbes figure, most of it now held as ranchland rather than operating businesses",
+  "sect": "agri",
+  "origin": "self",
+  "co": "Commonwealth Brands / Calumet Farm",
+  "did": "Built Commonwealth Brands into the fourth-largest US cigarette maker selling discount USA Gold, sold it to Imperial Tobacco for 1 billion dollars in 2001, and put the proceeds into more than 500,000 acres of ranch and timber land from Texas to Florida plus Calumet Farm, the historic Kentucky thoroughbred nursery.",
+  "started": 1991,
+  "startAge": 34,
+  "toFirst100": 7,
+  "why": "The 1998 tobacco master settlement charged makers by past market share; as a recent entrant Commonwealth owed almost nothing and undercut Philip Morris by a dollar a pack. He then rotated into ranchland, an asset with no mark-to-market and buyers who pay for scarcity, not yield.",
+  "comp": [
+   "Philip Morris USA",
+   "R.J. Reynolds",
+   "Lorillard",
+   "Ted Turner"
+  ],
+  "obst": "States moved fast to close the settlement loophole with escrow statutes forcing non-participating manufacturers to post per-pack reserves, which is why he sold in 2001; his 2012 purchase of Calumet then landed a stable whose reputation had been destroyed by the previous owners fraud conviction and bankruptcy.",
+  "turn": "The 1998 master settlement agreement, which handed a discount outsider a structural price advantage over the incumbents that signed it."
  },
  {
   "id": "JUNE_OU",
@@ -435,11 +435,11 @@
   "sect": "crypto",
   "origin": "self",
   "co": "Figure Technology Solutions",
-  "did": "Built and ran the engineering organisation at SoFi as its chief technology officer from 2012, then co-founded Figure with her husband Michael Cagney in 2018 and, as president, put home-equity loan origination, servicing and securitisation entirely on Provenance, a public blockchain, taking the company public in September 2025.",
+  "did": "Built and ran engineering at SoFi as chief technology officer from 2012, then co-founded Figure with her husband Michael Cagney in 2018 and as president put home-equity origination, servicing and securitisation entirely on Provenance, a public blockchain, taking the company public in September 2025.",
   "started": 2018,
   "startAge": 52,
   "toFirst100": 3,
-  "why": "Mortgage-adjacent lending loses most of its margin to reconciliation between originator, servicer, warehouse lender and rating agency, each keeping its own ledger. Recording the loan on a shared chain collapsed that cost and cut HELOC closing from six weeks to five days,",
+  "why": "Home-equity lending loses most of its margin to reconciliation between originator, servicer, warehouse lender and rating agency, each keeping its own ledger. A shared chain collapsed that cost and cut HELOC closing from six weeks to five days. That is a plumbing achievement, not a crypto one.",
   "comp": [
    "Rocket Mortgage",
    "Better.com",
@@ -499,7 +499,7 @@
   "started": 2007,
   "startAge": 38,
   "toFirst100": 5,
-  "why": "Politico attacked the one part of newspaper economics that still worked: selling scarce, time-sensitive information to people who bill by the hour. Free web coverage built the brand while Politico Pro, a subscription costing tens of thousands a year for lobbyists and agencies, produced the margin that general-interest news had lost.",
+  "why": "Politico attacked the one part of newspaper economics that still worked: selling scarce, time-sensitive information to people who bill by the hour. Free web coverage built the brand while Politico Pro, costing lobbyists tens of thousands a year, produced the margin general news had lost.",
   "comp": [
    "The Hill",
    "Roll Call",
@@ -525,11 +525,11 @@
   "sect": "agri",
   "origin": "mixed",
   "co": "Phibro Animal Health",
-  "did": "Took over Philipp Brothers Chemicals from the Engelhard commodity house in the 1980s and turned it into Phibro Animal Health, which sells medicated feed additives, coccidiostats, vaccines and trace minerals into poultry, swine, cattle and dairy operations, and bought Zoetis medicated feed portfolio for 350 million dollars in 2024.",
+  "did": "Took over Philipp Brothers Chemicals from the Engelhard commodity house in the 1980s and turned it into Phibro Animal Health, selling medicated feed additives, coccidiostats, vaccines and trace minerals into poultry, swine and dairy, and buying Zoetis medicated feed portfolio for 350 million in 2024.",
   "started": 1984,
   "startAge": 36,
   "toFirst100": 20,
-  "why": "Feed additives are a registered-product business: each molecule carries an FDA or USDA approval tied to a specific species and claim, and the approvals are decades old and effectively unrepeatable. Owning that registration book means integrators must buy from him regardless of price,",
+  "why": "Feed additives are a registered-product business: each molecule carries an FDA or USDA approval tied to a species and claim, and those approvals are decades old and effectively unrepeatable. Integrators must buy from him regardless of price, and generic entry needs a new approval nobody will fund.",
   "comp": [
    "Zoetis",
    "Elanco",
@@ -559,7 +559,7 @@
   "started": 2021,
   "startAge": 62,
   "toFirst100": 1,
-  "why": "Mining is an arbitrage on stranded electricity, and he already owned the scarce input: interconnection rights and long-term power agreements at the Nautilus site next to the Susquehanna nuclear plant. When AI compute began outbidding bitcoin for the same megawatts, the asset he owned was the substation queue position, not the miners.",
+  "why": "Mining is an arbitrage on stranded electricity, and he already owned the scarce input: interconnection rights and long-term power agreements beside the Susquehanna nuclear plant. When AI compute began outbidding bitcoin for the same megawatts, the asset he owned was the substation queue position.",
   "comp": [
    "Riot Platforms",
    "MARA Holdings",
@@ -589,7 +589,7 @@
   "started": 2021,
   "startAge": 43,
   "toFirst100": 2,
-  "why": "He treated the business as a land-and-power play rather than a mining play from the start, buying interconnection capacity in North Dakota where wind overbuild had made electricity nearly free at night. When AI demand arrived, the constraint was megawatts already permitted,",
+  "why": "He treated it as a land-and-power play, not a mining play, buying interconnection capacity in North Dakota where wind overbuild made night-time electricity nearly free. When AI demand arrived the binding constraint was permitted megawatts, and he had them while hyperscalers queued for grid connections.",
   "comp": [
    "Core Scientific",
    "TeraWulf",
@@ -619,7 +619,7 @@
   "started": 2020,
   "startAge": 26,
   "toFirst100": 4,
-  "why": "Rather than owning miners, US Bitcoin sold managed infrastructure: it built and operated sites for other people, taking a fee that did not depend on the bitcoin price. That kept revenue when the 2022 crash bankrupted asset-heavy rivals, and it left the firm holding operating expertise it could then buy distressed capacity with.",
+  "why": "Rather than owning miners, US Bitcoin sold managed infrastructure, building and operating sites for others at a fee independent of the bitcoin price. That kept revenue when the 2022 crash bankrupted asset-heavy rivals, and left the firm with the expertise to buy distressed capacity cheaply.",
   "comp": [
    "Core Scientific",
    "Riot Platforms",
@@ -649,7 +649,7 @@
   "started": 2021,
   "startAge": 45,
   "toFirst100": 1,
-  "why": "The scarce skill was not mining but energy project finance: securing interconnection agreements, negotiating behind-the-meter power purchase agreements with a nuclear operator, and permitting substations. Those take years and relationships, which is why the sites could not be replicated by better-funded miners during the boom.",
+  "why": "The scarce skill was energy project finance, not mining: securing interconnection agreements, negotiating behind-the-meter power purchase deals with a nuclear operator, and permitting substations. Those take years and relationships, which is why better-funded miners could not replicate the sites.",
   "comp": [
    "Riot Platforms",
    "Cipher Mining",
@@ -679,7 +679,7 @@
   "started": 2001,
   "startAge": 44,
   "toFirst100": 18,
-  "why": "She fixed the business by refusing revenue: she cut the information-technology segment that had bloated through acquisitions, walked away from low-margin bids, and concentrated capital in submarines and Gulfstream, two franchises with multi-decade order books and effectively no new entrants. Margin, not growth, produced the equity value.",
+  "why": "She fixed the company by refusing revenue: cutting the IT segment that had bloated through acquisitions, walking away from low-margin bids, and concentrating capital in submarines and Gulfstream, two franchises with multi-decade order books and no new entrants. Margin, not growth, made the equity.",
   "comp": [
    "Lockheed Martin",
    "Raytheon",
@@ -709,7 +709,7 @@
   "started": 2013,
   "startAge": 41,
   "toFirst100": 8,
-  "why": "Tether had the market but not the auditors. Circle built USDC as the compliant alternative, with attested reserves, US money-transmitter licences and later a bank charter application, which is the only version an American exchange, fintech or corporate treasury could touch. The revenue is simply interest on the float,",
+  "why": "Tether had the market but not the auditors. Circle built USDC as the compliant alternative, with attested reserves and US money-transmitter licences, the only version an American exchange or corporate treasury could touch. The revenue is interest on the float, which rose with every Fed hike.",
   "comp": [
    "Tether",
    "Paxos",
@@ -769,14 +769,14 @@
   "started": 2012,
   "startAge": 30,
   "toFirst100": 6,
-  "why": "Daily fantasy was legally a game of skill and therefore not gambling, which let DraftKings advertise nationally and build a database of millions of verified sports bettors years before betting was legal. When PASPA fell in 2018, customer acquisition for the sportsbook was already done and the licences followed the users.",
+  "why": "Daily fantasy was legally a game of skill, not gambling, so DraftKings could advertise nationally and build a database of millions of verified sports bettors years before betting was legal. When PASPA fell in 2018, customer acquisition was already done and the licences followed the users.",
   "comp": [
    "FanDuel",
    "BetMGM",
    "Caesars Sportsbook",
    "Fanatics Betbetting"
   ],
-  "obst": "In 2015 the New York attorney general declared daily fantasy illegal gambling and ordered DraftKings to stop taking New York entries, and a DraftKings employee winning a large FanDuel prize triggered an insider-data scandal, congressional attention and a near-collapse in payment processing;",
+  "obst": "In 2015 the New York attorney general declared daily fantasy illegal gambling and ordered DraftKings to stop taking entries there, while an employee winning a large FanDuel prize triggered an insider-data scandal and a collapse in payment processing; the FTC then blocked a FanDuel merger in 2017.",
   "turn": "Murphy v NCAA in May 2018, which struck down PASPA and turned a fantasy site into a sportsbook."
  },
  {
@@ -825,18 +825,18 @@
   "sect": "media",
   "origin": "mixed",
   "co": "Sinclair Broadcast Group",
-  "did": "Turned his fathers single Baltimore UHF station into the largest owner of local television stations in America, using local marketing agreements to control two stations in a market where FCC rules allowed one, and buying the Allbritton and Tribune station groups;",
+  "did": "Turned his fathers single Baltimore UHF station into the largest owner of local television stations in America, using local marketing agreements to control two stations where FCC rules allowed one, buying the Allbritton and Tribune groups, and paying 9.6 billion dollars for the Bally regional sports networks in 2019.",
   "started": 1986,
   "startAge": 36,
   "toFirst100": 8,
-  "why": "The local marketing agreement was a legal structure nobody else had industrialised: Sinclair sold a licence to a nominal third party then bought back the advertising and programming, effectively operating two stations per market.",
+  "why": "The local marketing agreement was a structure nobody else industrialised: Sinclair sold a licence to a nominal third party then bought back the advertising and programming, effectively running two stations per market. That doubled the retransmission fees it could extract per market at little extra cost.",
   "comp": [
    "Nexstar Media",
    "Gray Television",
    "Tegna",
    "Scripps"
   ],
-  "obst": "The FCC and Justice Department killed his 3.9 billion dollar Tribune Media acquisition in 2018 over alleged misrepresentation of the divestitures, costing a 1 billion dollar break fee and an FCC hearing designation; the Diamond Sports regional sports subsidiary then filed for bankruptcy in 2023,",
+  "obst": "The FCC and Justice Department killed his 3.9 billion dollar Tribune Media acquisition in 2018 over alleged misrepresentation of divestitures, costing a 1 billion dollar break fee; the Diamond Sports subsidiary then filed for bankruptcy in 2023, writing off most of the 9.6 billion purchase.",
   "turn": "The 2019 purchase of 21 regional sports networks from Disney, a bet on cable carriage that went badly and defines the current valuation."
  },
  {
@@ -859,7 +859,7 @@
   "started": 1989,
   "startAge": 41,
   "toFirst100": 17,
-  "why": "He refused to follow the industry into value-added, branded and antibiotic-free chicken, staying in big-bird deboning for food service where he had the lowest cost per pound in America. Building new plants only when he could get a hundred contract growers within a fifty-mile radius kept live-haul costs down and margins above larger.",
+  "why": "He refused to follow the industry into branded and antibiotic-free chicken, staying in big-bird deboning for food service with the lowest cost per pound in America. Building plants only where a hundred contract growers sat within fifty miles kept live-haul costs down and margins above larger rivals.",
   "comp": [
    "Tyson Foods",
    "Pilgrims Pride",
@@ -885,7 +885,7 @@
   "sect": "tech",
   "origin": "self",
   "co": "QSS Group",
-  "did": "An Indian immigrant with a Colorado computer-science degree who bought a one-person Maryland IT firm in 1994, built QSS Group into a 300 million dollar federal systems integrator with roughly 2,000 staff serving NASA, the FAA and the Department of Homeland Security, and sold it to Perot Systems in 2007 for about 250 million dollars.",
+  "did": "An Indian immigrant with a Colorado computer-science degree who bought a one-person Maryland IT firm in 1994, built QSS Group into a 300 million dollar federal systems integrator serving NASA, the FAA and Homeland Security, and sold it to Perot Systems in 2007 for about 250 million dollars.",
   "started": 1994,
   "startAge": 41,
   "toFirst100": 13,
@@ -979,7 +979,7 @@
   "started": 1994,
   "startAge": 38,
   "toFirst100": 20,
-  "why": "Eggs are a commodity with no brand power, so the only durable advantage is buying capacity below replacement cost. Cal-Maine bought family egg farms in the troughs of a violently cyclical market, funded from cash rather than debt,",
+  "why": "Eggs are a commodity with no brand power, so the only durable edge is buying capacity below replacement cost. Cal-Maine bought family egg farms in the troughs of a violent cycle using cash rather than debt, and paid a variable dividend only in profitable years so the balance sheet was never impaired.",
   "comp": [
    "Rose Acre Farms",
    "Versova",
@@ -1009,7 +1009,7 @@
   "started": 1989,
   "startAge": 45,
   "toFirst100": 16,
-  "why": "NCI was built inside the 8(a) minority set-aside, then converted incumbency on long-duration operations-and-maintenance contracts into a moat: once a contractor runs an agencys help desk and network operations, recompetes favour the incumbent because transition risk is priced into the evaluation.",
+  "why": "NCI was built inside the 8(a) minority set-aside, then converted incumbency on long operations-and-maintenance contracts into a moat: once a contractor runs an agencys help desk and network, recompetes favour the incumbent because transition risk is scored. Low overhead let him underbid larger integrators.",
   "comp": [
    "ManTech",
    "CACI International",
