@@ -28,6 +28,9 @@ people makes it denser; it never makes it complete. The table says so on its fac
 
 ## Two rules that decide edge cases
 
+**The $5B cap is inclusive.** A figure of exactly $5.0B is in scope. One research pass read
+it as exclusive and dropped Stephen Mandel at $5.0B on that basis; he is a valid backfill.
+
 **US means residence, not citizenship.** The census maps where money sits, so a Barbadian
 or Canadian citizen living in Los Angeles is in it, and an American living in Monaco is not.
 

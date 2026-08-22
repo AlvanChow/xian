@@ -14,7 +14,8 @@ Field naming mirrors src/rents.js so the provenance machinery (p/c/m/s) is reuse
                                  // A Barbadian or Canadian citizen resident in LA is in.
   "state":   "TX",               // USPS two-letter state code
   "region":  "tx",               // one of: bay | socal | pnw | mtn | tx | mw | se | ne | nyc | dc
-  "nw":      2.4,                // net worth in $B. MUST be >= 0.1 and <= 5.0
+  "nw":      2.4,                // net worth in $B. MUST be >= 0.1 and <= 5.0.
+                                 // BOTH ENDS INCLUSIVE: exactly 5.0 is in scope, not out.
   "p":       "R",                // provenance: R reported | E estimated | I inferred
   "c":       0.9,                // source confidence, 0 < c <= 1
   "s":       "Forbes Real-Time, Aug 2026",   // the actual source

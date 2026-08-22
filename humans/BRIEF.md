@@ -4,7 +4,8 @@ Read `humans/SCHEMA.md` for the record contract. This file is the *research* met
 The census is **US-only**: every record is `"country": "US"` with a USPS `state`.
 
 ## Scope
-`nw` strictly between **0.1 and 5.0** ($100M–$5B). Anyone above $5B is out of scope —
+`nw` between **0.1 and 5.0** ($100M–$5B), **both ends inclusive** — a figure of exactly
+$5.0B is in scope, not out. Anyone above $5B is out of scope —
 check the current figure before excluding *or* including. Do not include a person whose
 figure you cannot source. A short honest file beats a padded one.
 
