@@ -7,7 +7,7 @@ Live site: **https://alvanchow.github.io/xian/**
 ![ValueGrid](https://img.shields.io/badge/render-canvas-5b8cff) ![provenance](https://img.shields.io/badge/provenance-R%2FE%2FI-3fd68a)
 
 Three tabs, three questions. The **Map** answers *where does the money go?* The **Scarcity board**
-answers *where is the money stuck?* The **Humans** census answers *who ends up holding it — and how
+answers *where is the money stuck?* The **Individuals** census answers *who ends up holding it — and how
 long did that take?*
 
 ## The Map
@@ -89,7 +89,7 @@ carried in the hash. Each view emits only its own keys — a board link never ca
 selected node or period, and the map's state is held in memory across a tab switch rather than in
 the URL.
 
-## The Humans census
+## The Individuals census
 
 The people the flows run through, in the band between **$100 million and $5 billion**, United
 States only — and organised around one question in particular: **who got there before 45.**
@@ -112,6 +112,8 @@ States only — and organised around one question in particular: **who got there
   per viewer.
 
 Deep-linkable: `#view=humans&h=MATEI_ZAHARIA`, with the active view, sort and filters in the hash.
+(The hash key, the source files and the CSS classes keep the `humans` name the view was built
+under — renaming them would break links that are already published, for no reader-facing gain.)
 
 **What it does not claim.** There is no complete list of American $100M–$5B fortunes and there
 cannot be. This is a deliberately spread census, not a ranking and not a roster, and three biases
@@ -211,7 +213,7 @@ Pages serves.
 
 The census is the one view that fetches. Its 557 records are ~900KB, and inlining them put that
 on the first paint of every visitor, including the majority who only ever open the Map. They now
-load once, on the first click of the Humans tab, which keeps `index.html` at ~450KB (120KB
+load once, on the first click of the Individuals tab, which keeps `index.html` at ~450KB (120KB
 gzipped) — the weight it was before the census existed. The trade is that the census alone needs
 the page **served over http** rather than opened from disk; it says so on screen instead of
 failing silently, and the Map and the Scarcity board still work from `file://` exactly as before.
