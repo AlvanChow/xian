@@ -1,0 +1,33 @@
+[
+  {
+    "id": "JOSH_SILVERMAN",
+    "n": "Josh Silverman",
+    "age": 57,
+    "city": "Brooklyn",
+    "country": "US",
+    "state": "NY",
+    "region": "nyc",
+    "nw": 0.25,
+    "p": "E",
+    "c": 0.7,
+    "s": "Etsy Forms 4 filed by Silverman (SEC CIK 1525358) 2017-6 Aug 2026; Etsy DEF 14A 17 Apr 2026 for age 57 and Brooklyn filing address",
+    "m": "Summed every Form 4: 4,550,439 options exercised at 10.62 and 384.1M of gross open-market sales, a 343.2M pre-tax gain; at a 48% NYC combined rate that nets about 178M, plus 368k shares held at 84 on 6 Aug 2026 (31M) and pre-Etsy proceeds",
+    "sect": "tech",
+    "origin": "self",
+    "co": "Etsy",
+    "did": "Took over Etsy in Dumbo, Brooklyn as CEO in May 2017 with the stock near 11 dollars and the company losing money, cut about 230 jobs in two rounds that year, raised the seller transaction fee from 3.5% to 5% in 2018 and to 6.5% in 2022, and ran it to a 13B GMV peak before stepping down at the end of 2025.",
+    "started": 2017,
+    "startAge": 48,
+    "toFirst100": 3,
+    "why": "Etsy already had about 30 million buyers and was undercharging them. Silverman monetised the installed base instead of buying growth: a fee rise plus on-site paid ads cost almost nothing to deliver on a marketplace already built, so operating margin went from low single digits to the high twenties.",
+    "comp": [
+      "Amazon Handmade",
+      "eBay",
+      "Shopify",
+      "Wayfair",
+      "Alibaba"
+    ],
+    "obst": "He inherited a company that had missed guidance repeatedly since its 2015 IPO with activist holders Black-and-White Capital and TPG pushing for an outright sale, and had to impose fee rises on a seller base whose loyalty to the brand was the only real asset Etsy had.",
+    "turn": "The 2018 fee rise from 3.5% to 5%: sellers threatened a mass exodus, almost none left, and the incremental revenue fell straight through to profit, which re-rated the stock from about 20 dollars to over 60 within eighteen months."
+  }
+]

@@ -6,8 +6,9 @@ Live site: **https://alvanchow.github.io/xian/**
 
 ![ValueGrid](https://img.shields.io/badge/render-canvas-5b8cff) ![provenance](https://img.shields.io/badge/provenance-R%2FE%2FI-3fd68a)
 
-Two tabs, two questions. The **Map** answers *where does the money go?* The **Scarcity board**
-answers *where is the money stuck?*
+Three tabs, three questions. The **Map** answers *where does the money go?* The **Scarcity board**
+answers *where is the money stuck?* The **Humans** census answers *who ends up holding it — and how
+long did that take?*
 
 ## The Map
 
@@ -88,6 +89,44 @@ carried in the hash. Each view emits only its own keys — a board link never ca
 selected node or period, and the map's state is held in memory across a tab switch rather than in
 the URL.
 
+## The Humans census
+
+The people the flows run through, in the band between **$100 million and $5 billion**, United
+States only — and organised around one question in particular: **who got there before 45.**
+
+- **557 people, 48 states, 224 cities.** Bottom-heavy by design: 176 records sit in $100M–$250M
+  and 160 in $250M–$500M, which is the true shape of the population and the opposite of what a
+  rich list shows.
+- **353 records are computed, not looked up.** Forbes and Bloomberg stop at the billion mark, so
+  beneath it every figure is a share count taken from a named SEC filing — a 13D, 13G, DEF 14A,
+  Form 4, S-1 or merger-consideration table — times a price fetched on the as-of date, with the
+  count, the price and the filing date carried on the record. The published rate by band runs
+  100%, 93%, 17%, 11%, 1% as the bands descend.
+- **A dossier for every person**: what they built, the year they started and their age then, how
+  long it took to reach the first $100M, why it worked, who they competed against, what nearly
+  stopped them, and a per-figure provenance table.
+- **Five views** — the net-worth distribution stacked by sector, age and speed, what kind of
+  wealth each era made, geography, and a findings page whose every number is computed from the
+  dataset at render time rather than written into the prose.
+- **A sortable table with drag-to-reorder columns** (Alt+←/→ moves the focused one), remembered
+  per viewer.
+
+Deep-linkable: `#view=humans&h=MATEI_ZAHARIA`, with the active view, sort and filters in the hash.
+
+**What it does not claim.** There is no complete list of American $100M–$5B fortunes and there
+cannot be. This is a deliberately spread census, not a ranking and not a roster, and three biases
+are documented rather than hidden: the **birth-year problem** (US proxies print the ages of
+*directors* and not of officers, holders or heirs, so ~20 fully-sourced people were dropped for a
+missing date of birth, which biases the age distribution old and falls hardest on people under 45
+and on women); **`city` is best-effort residence**, since an SEC-derived record often has only the
+filer's HQ city; and figures are **gross beneficial ownership** except where a record's own
+methodology says it nets something down. Full method in [`humans/README.md`](humans/README.md).
+
+The dataset is **generated**: `humans/build.mjs` merges the regional research files, validates
+them, derives every computable measure, and emits `src/humans.js`. It fails the build on a net
+worth outside scope, a duplicate id, an unknown enum, or an `age` that disagrees with
+`started + startAge` by more than two years.
+
 ## The provenance model (R / E / I)
 
 Every node and every flow is tagged with one of three confidence tiers, and carries a confidence score (0–1), a methodology string, and a source string:
@@ -126,17 +165,25 @@ src/
   data.js      # COMPANIES + FLOWS (export const)
   facts.js     # GENERATED — real SEC-reported revenue series (do not edit)
   rents.js     # Scarcity board: RENTS + ARCHIVE + the derived rank score
+  humans.js    # GENERATED — census metadata + the on-demand loader (see humans/)
+  public/humans-data.json  # GENERATED — the 557 records, fetched on first open
   app.js       # render loop, projection/zoom, interaction, inspector, drill-down, scarcity board
 scripts/
   postbuild.mjs   # copies the inlined build to repo-root index.html
   fetch-data.mjs  # fetches reported revenue from SEC XBRL -> src/facts.js
+humans/
+  build.mjs       # merge + validate + derive -> src/humans.js, humans/index.html
+  data/*.json     # the regional research files
+  README.md       # method, provenance, and the census's known biases
+index.html      # BUILT single-file deliverable (GitHub Pages entry point)
+humans-data.json # GENERATED — served beside it, fetched by the census on demand
 tests/
-  smoke.spec.js   # Playwright browser smoke tests
-  unit/           # node:test data-integrity tests (data.test.mjs, rents.test.mjs)
+  smoke.spec.js   # Playwright smoke tests for the map and board (file://)
+  census.spec.js  # Playwright smoke tests for the census (served build)
+  unit/           # node:test data-integrity tests (data, rents, micro, humans)
 .github/workflows/
   ci.yml            # lint + unit + build (staleness guard) + smoke tests
   refresh-data.yml  # monthly SEC data refresh + rebuild + commit
-index.html      # BUILT single-file deliverable (GitHub Pages entry point)
 ```
 
 ## Run it
@@ -158,7 +205,16 @@ npx playwright install chromium   # one-time
 npm test
 ```
 
-The build produces a **single, fully self-contained `index.html`** at the repo root — no external CSS/JS requests — which is exactly what GitHub Pages serves.
+The build produces a **self-contained `index.html`** at the repo root — no external CSS/JS
+requests — plus **`humans-data.json`** beside it. Both are committed and both are what GitHub
+Pages serves.
+
+The census is the one view that fetches. Its 557 records are ~900KB, and inlining them put that
+on the first paint of every visitor, including the majority who only ever open the Map. They now
+load once, on the first click of the Humans tab, which keeps `index.html` at ~450KB (120KB
+gzipped) — the weight it was before the census existed. The trade is that the census alone needs
+the page **served over http** rather than opened from disk; it says so on screen instead of
+failing silently, and the Map and the Scarcity board still work from `file://` exactly as before.
 
 ## Deploy (GitHub Pages, deploy-from-branch)
 

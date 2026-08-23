@@ -179,12 +179,13 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
    The two views share the four grid cells; only the contents swap. Gating on a
    data-view attribute keeps every responsive branch and `order:` rule below
    working for both views without a second layout. */
-#app[data-view="map"] .v-rents{display:none}
-#app[data-view="rents"] .v-map{display:none}
+#app[data-view="map"] .v-rents,#app[data-view="map"] .v-humans{display:none}
+#app[data-view="rents"] .v-map,#app[data-view="rents"] .v-humans{display:none}
+#app[data-view="humans"] .v-map,#app[data-view="humans"] .v-rents{display:none}
 .hgrp{display:flex;align-items:center;gap:22px}
 /* Both center panes fill the cell and establish the positioning context the
    absolutely-placed map overlays (.ctl, #tip, #timebar) resolve against. */
-#centerMap,#centerRents{position:absolute;inset:0}
+#centerMap,#centerRents,#centerHumans{position:absolute;inset:0}
 #centerRents{display:flex;flex-direction:column;background:var(--bg)}
 
 .rhead{display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:22px 26px 20px;border-bottom:1px solid var(--line)}
@@ -327,9 +328,9 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   #left,#right{border-left:0;border-right:0;border-top:1px solid var(--line)}
   /* The board is a list, not a viewport-anchored canvas: give it the screen and
      put the filters below it, since the ranking is the point on a phone. */
-  #app[data-view="rents"] #center{height:auto;min-height:calc(100svh - 60px)}
-  #app[data-view="rents"] #left{order:3}
-  #app[data-view="rents"] #right{order:2}
+  #app[data-view="rents"] #center,#app[data-view="humans"] #center{height:auto;min-height:calc(100svh - 60px)}
+  #app[data-view="rents"] #left,#app[data-view="humans"] #left{order:3}
+  #app[data-view="rents"] #right,#app[data-view="humans"] #right{order:2}
   /* The table keeps every column on a phone and scrolls sideways for them —
      hiding columns would remove sorts, which are the point of the table. */
   .thead,.trow{padding:0 14px}
@@ -349,3 +350,138 @@ body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13p
   .livedot.on i{animation:none}
   .track i,#tip{transition:none}
 }
+
+
+/* ============================================================================
+   Humans — the $100M-$5B census. Reuses the board's rail, chip and provenance
+   conventions rather than introducing a second visual language; only the pieces
+   the board has no equivalent for (stacked charts, the age timeline, the
+   findings page) bring their own rules.
+   ============================================================================ */
+
+/* Eight stacked-segment slots, validated as a set against --bg on the adjacent
+   pairlist that a stack actually is: lightness band, chroma floor, CVD worst
+   dE 8.4, normal-vision worst dE 19.3, contrast — all pass. Eight is the
+   ceiling, so the sector list folds to the top seven plus Other rather than
+   cycling hues. Every use also carries a text label. */
+:root{
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --self:#5b8cff; --inherited:#c98500; --mixed:#199e70;
+}
+
+/* Same shape as the board: the pane fills the cell and one inner child scrolls,
+   rather than the pane itself overflowing its container. */
+#centerHumans{display:flex;flex-direction:column;background:var(--bg)}
+#hBody{flex:1;overflow-y:auto;min-height:0}
+.htabs{margin:0 16px 0;align-self:flex-start}
+.htabs button{padding:6px 12px;font-size:12px}
+#hPanes{border-bottom:1px solid var(--line)}
+.hpane{display:none}.hpane.on{display:block}
+.hcharts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border-top:1px solid var(--line)}
+.hfig{background:var(--bg);padding:14px 16px 12px;min-width:0}
+.hfig.wide{grid-column:1/-1}
+.hfig h3{margin:0 0 2px;font-size:12.5px;font-weight:600;color:var(--txt)}
+.hfig p.sub{margin:0 0 10px;font-size:11.5px;color:var(--mut);line-height:1.45}
+.hfig svg{display:block;width:100%;height:auto;overflow:visible}
+.hlgd{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--dim)}
+.hlgd i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.hslgd{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.hslgd button{display:flex;align-items:center;gap:7px;background:var(--panel2);border:1px solid var(--line);border-radius:7px;
+  padding:5px 10px;cursor:pointer;font-family:var(--mono);font-size:11.5px;color:var(--dim);transition:.12s}
+.hslgd button:hover{border-color:var(--dim);color:var(--txt)}
+.hslgd button.on{border-color:var(--accent);color:var(--txt);background:var(--panel)}
+.hslgd button.off{opacity:.42}
+.hslgd i{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+.hslgd .rk{color:var(--mut);font-size:10.5px}
+.hslgd .ct{color:var(--txt);font-variant-numeric:tabular-nums;font-weight:600}
+.hmodes{display:flex;gap:2px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:2px;margin:0 0 14px;width:fit-content}
+.hmodes button{background:none;border:0;padding:6px 12px;cursor:pointer;font-family:var(--sans);font-size:12px;color:var(--dim);border-radius:6px}
+.hmodes button.on{background:var(--accent-fill);color:#fff;font-weight:600}
+.hcaveat{margin:12px 0 0;font-size:11.5px;line-height:1.6;color:var(--mut);border-left:2px solid var(--line);padding-left:11px}
+.hcaveat b{color:var(--dim)}
+
+.htbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid var(--line);font-size:12px;color:var(--dim)}
+.htbar b{color:var(--txt);font-variant-numeric:tabular-nums}
+#hScroll{overflow-x:auto}
+.hgrid{display:grid;grid-template-columns:var(--hgt);gap:9px;align-items:center;padding:0 16px;min-width:1010px}
+.hhd{border-bottom:1px solid var(--line);height:32px;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);position:sticky;top:0;background:var(--bg);z-index:4}
+.hhd > div{cursor:grab;position:relative}
+.hhd > div[draggable="true"]:active{cursor:grabbing}
+.hhd .dragging{opacity:.4}
+.hhd .dropL::before,.hhd .dropR::after{content:'';position:absolute;top:2px;bottom:2px;width:2px;background:var(--accent);border-radius:1px}
+.hhd .dropL::before{left:-5px}.hhd .dropR::after{right:-5px}
+.hhd button{background:none;border:0;color:inherit;font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;padding:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
+.hhd button:hover{color:var(--txt)}
+.hhd button.srt{color:var(--accent)}
+.hhd .r,.hrow .r{text-align:right}
+.hrow{height:34px;border-bottom:1px solid #131a28;cursor:pointer;font-size:12.5px}
+.hrow:hover{background:var(--panel2)}
+.hrow.on{background:var(--panel);box-shadow:inset 2px 0 0 var(--accent)}
+.hrow .rk{color:var(--mut);font-size:11px;font-variant-numeric:tabular-nums}
+.hrow .nm{font-weight:550;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .cy{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .co{color:var(--txt);font-weight:450;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hrow .num{font-variant-numeric:tabular-nums;text-align:right}
+.hrow .nw{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.hod{display:inline-block;width:8px;height:8px;border-radius:2px}
+.hnote{padding:12px 16px 22px;color:var(--mut);font-size:11.5px;line-height:1.6;border-top:1px solid var(--line);margin:0}
+.hnote b{color:var(--dim)}
+.colreset{background:none;border:0;color:var(--accent);cursor:pointer;font-size:11px;font-family:var(--sans);padding:0}
+
+#hinspector{overflow-y:auto}
+.hdh{padding:16px 17px 13px;border-bottom:1px solid var(--line)}
+.hdh h2{margin:0 0 3px;font-size:17px;font-weight:650;line-height:1.25}
+.hdh .meta{color:var(--dim);font-size:12px;line-height:1.6}
+.hdh .big{margin-top:11px;display:flex;align-items:baseline;gap:9px}
+.hdh .big b{font-size:27px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.hdh .big span{color:var(--mut);font-size:11.5px}
+.hkpi{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.hkpi div{background:var(--bg2);padding:11px 12px}
+.hkpi .k{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:4px}
+.hkpi .v{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.hkpi .v small{font-size:11px;color:var(--mut);font-weight:400}
+.hds{padding:14px 17px;border-bottom:1px solid var(--line)}
+.hds h5{margin:0 0 6px;font-size:10.5px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:var(--mut)}
+.hds p{margin:0;line-height:1.62;color:var(--txt);font-size:12.5px}
+.hrival{display:flex;flex-wrap:wrap;gap:6px}
+.hrival span{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 9px;font-size:11.5px;color:var(--dim)}
+.htl{position:relative;margin:14px 0 4px;height:46px}
+.htl .ax{position:absolute;left:0;right:0;top:19px;height:2px;background:var(--line)}
+.htl .fill{position:absolute;top:19px;height:2px;background:var(--accent)}
+.htl .pt{position:absolute;top:14px;width:12px;height:12px;border-radius:50%;border:2px solid var(--bg);transform:translateX(-50%)}
+.htl .lb{position:absolute;font-size:10px;color:var(--mut);white-space:nowrap;transform:translateX(-50%)}
+.htl .lb.t{top:0}.htl .lb.b{top:33px}
+.hpv{width:100%;border-collapse:collapse;font-size:11.5px}
+.hpv td{padding:5px 0;border-bottom:1px solid #131a28;color:var(--dim);vertical-align:top}
+.hpv td:first-child{color:var(--mut);width:76px;padding-right:10px}
+.hempty{padding:44px 24px;text-align:center;color:var(--mut);line-height:1.7;font-size:12.5px}
+.hempty b{display:block;color:var(--dim);font-size:13.5px;margin-bottom:7px;font-weight:600}
+
+.hfind{padding:20px 22px 26px;max-width:920px}
+.hfind > p.lede{margin:0 0 22px;font-size:13.5px;line-height:1.68;color:var(--dim);max-width:68ch}
+.finding{border-top:1px solid var(--line);padding:20px 0 4px}
+.finding:first-of-type{border-top:0;padding-top:4px}
+.finding h3{margin:0 0 4px;font-size:15px;font-weight:650;letter-spacing:-.1px;text-wrap:balance}
+.finding .mech{margin:0 0 14px;font-size:13px;line-height:1.68;color:var(--dim);max-width:68ch}
+.finding .mech b{color:var(--txt);font-weight:600}
+.figs{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin:0 0 14px}
+.figs div{background:var(--bg2);padding:11px 15px;flex:1 1 120px}
+.figs .k{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);margin-bottom:5px}
+.figs .v{font-size:21px;font-weight:650;font-variant-numeric:tabular-nums;letter-spacing:-.4px;line-height:1.1}
+.figs .v small{font-size:11.5px;color:var(--mut);font-weight:400;letter-spacing:0}
+.ftab{width:100%;border-collapse:collapse;font-size:12.5px;margin:0 0 6px}
+.ftab th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--mut);font-weight:600;padding:0 10px 7px 0;border-bottom:1px solid var(--line)}
+.ftab th.r,.ftab td.r{text-align:right}
+.ftab td{padding:7px 10px 7px 0;border-bottom:1px solid #131a28;color:var(--dim);font-variant-numeric:tabular-nums}
+.ftab td.nm{color:var(--txt)}
+.ftab tr:last-child td{border-bottom:0}
+.fbar{display:inline-block;height:7px;border-radius:3px;background:var(--accent);vertical-align:1px;min-width:2px}
+.fbar.warn{background:var(--estimated)}
+.names{margin:0;font-size:12.5px;line-height:1.85;color:var(--dim);list-style:none;padding:0}
+.names li{padding-left:15px;position:relative}
+.names li::before{content:'';position:absolute;left:0;top:9px;width:5px;height:5px;border-radius:50%;background:var(--inferred)}
+.names b{color:var(--txt);font-weight:550}
+.fsrc{margin:12px 0 0;font-size:11px;color:var(--mut);line-height:1.6;font-style:italic}
+
+@media(max-width:1180px){.hcharts{grid-template-columns:1fr}}
