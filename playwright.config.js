@@ -9,6 +9,16 @@ import { defineConfig } from '@playwright/test';
 // non-deterministic results, so we force a single serial worker.
 export default defineConfig({
   testDir: './tests',
+  // The map and board specs load the built file over file://. The census fetches
+  // its records, which file:// forbids, so it is tested against a served build —
+  // `vite preview` serves dist/, where index.html and humans-data.json sit side
+  // by side exactly as they do on Pages.
+  webServer: {
+    command: 'npm run preview -- --port 4173 --strictPort',
+    url: 'http://localhost:4173/',
+    reuseExistingServer: true,
+    timeout: 60_000,
+  },
   // Only pick up Playwright specs; tests/unit/*.test.mjs run under node:test.
   testMatch: '**/*.spec.js',
   fullyParallel: false,

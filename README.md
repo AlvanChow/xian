@@ -165,7 +165,8 @@ src/
   data.js      # COMPANIES + FLOWS (export const)
   facts.js     # GENERATED — real SEC-reported revenue series (do not edit)
   rents.js     # Scarcity board: RENTS + ARCHIVE + the derived rank score
-  humans.js    # GENERATED — the $100M-$5B census (do not edit; see humans/)
+  humans.js    # GENERATED — census metadata + the on-demand loader (see humans/)
+  public/humans-data.json  # GENERATED — the 557 records, fetched on first open
   app.js       # render loop, projection/zoom, interaction, inspector, drill-down, scarcity board
 scripts/
   postbuild.mjs   # copies the inlined build to repo-root index.html
@@ -174,13 +175,15 @@ humans/
   build.mjs       # merge + validate + derive -> src/humans.js, humans/index.html
   data/*.json     # the regional research files
   README.md       # method, provenance, and the census's known biases
+index.html      # BUILT single-file deliverable (GitHub Pages entry point)
+humans-data.json # GENERATED — served beside it, fetched by the census on demand
 tests/
-  smoke.spec.js   # Playwright browser smoke tests
+  smoke.spec.js   # Playwright smoke tests for the map and board (file://)
+  census.spec.js  # Playwright smoke tests for the census (served build)
   unit/           # node:test data-integrity tests (data, rents, micro, humans)
 .github/workflows/
   ci.yml            # lint + unit + build (staleness guard) + smoke tests
   refresh-data.yml  # monthly SEC data refresh + rebuild + commit
-index.html      # BUILT single-file deliverable (GitHub Pages entry point)
 ```
 
 ## Run it
@@ -202,7 +205,16 @@ npx playwright install chromium   # one-time
 npm test
 ```
 
-The build produces a **single, fully self-contained `index.html`** at the repo root — no external CSS/JS requests — which is exactly what GitHub Pages serves.
+The build produces a **self-contained `index.html`** at the repo root — no external CSS/JS
+requests — plus **`humans-data.json`** beside it. Both are committed and both are what GitHub
+Pages serves.
+
+The census is the one view that fetches. Its 557 records are ~900KB, and inlining them put that
+on the first paint of every visitor, including the majority who only ever open the Map. They now
+load once, on the first click of the Humans tab, which keeps `index.html` at ~450KB (120KB
+gzipped) — the weight it was before the census existed. The trade is that the census alone needs
+the page **served over http** rather than opened from disk; it says so on screen instead of
+failing silently, and the Map and the Scarcity board still work from `file://` exactly as before.
 
 ## Deploy (GitHub Pages, deploy-from-branch)
 

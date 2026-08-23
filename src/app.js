@@ -9,7 +9,7 @@ const FACTS=GEN.FACTS, MCAPS=GEN.MCAPS||{}, MCAP_ASOF=GEN.MCAP_ASOF||null, YEAR_
 import { PERIODS } from './years.js';
 import { RENTS, ARCHIVE, CATS, BARS, BARWHY, RENT_ASOF, rMult, rentScore, rentProv, rTrend, rRun, rVol, rSubs, rBars, rVolume } from './rents.js';
 import { MICRO, MCATS, MCAT, MBARS, MBARWHY, MICRO_ASOF, mMult, mPayback, microScore, microProv, mVolume } from './micro.js';
-import { HUMANS, HBANDS, HAGEBANDS, HREGIONS, HSECTORS, HORIGINS, HASOF } from './humans.js';
+import { loadHumans, HCOUNT, HBANDS, HAGEBANDS, HREGIONS, HSECTORS, HORIGINS, HASOF } from './humans.js';
 
 const C=COMPANIES, FL=FLOWS;
 const byId=Object.fromEntries(C.map(c=>[c.id,c]));
@@ -1115,8 +1115,10 @@ function applyHash(){
     if(HCOLS.some(c=>c.k===hs[0])){hSortKey=hs[0];hSortDir=hs[1]==='asc'?1:-1;}
     [['hage','ageb'],['hband','band'],['hreg','region'],['hsec','sect']].forEach(([q,k])=>{
       hF[k].clear();if(p.has(q))p.get(q).split(',').filter(Boolean).forEach(v=>hF[k].add(v));});
-    const hid=(p.get('h')||'').toUpperCase();
-    hSel=HUMANS.some(r=>r.id===hid)?hid:null;
+    // The records are fetched, so nothing can be validated against them yet —
+    // hold the requested id and let the first render drop it if it resolves to
+    // nobody. Validating here silently discarded every cold deep link.
+    hSel=(p.get('h')||'').toUpperCase()||null;
   }
   const wantRents=p.get('view')==='rents';
   setTab(wantHumans?'humans':wantRents?'rents':'map',false);
@@ -1159,6 +1161,9 @@ const HSCOL=['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)','var(--
 const U45B=['a1','a2','a3','a4'];
 const HASOF_Y=+HASOF.slice(0,4);
 
+/* The records arrive asynchronously, so HUMANS starts empty and is filled once.
+   Everything below reads it through the same name it always did. */
+let HUMANS=[], hLoadState='idle';   // idle | loading | ready | error
 const hF={bin:null,ageb:new Set(),band:new Set(),region:new Set(),sect:new Set(),origin:new Set(),p:new Set(),q:''};
 let hSel=null, hSortKey='nw', hSortDir=-1, hPane='dist', hTimeMode='share';
 
@@ -1506,7 +1511,29 @@ function hFindings(){
   </div>`;
 }
 
+/* Kicks the fetch on first use and renders whatever state we are in. Called by
+   setTab and by the hash router, both of which are synchronous. */
 function renderHumans(){
+  if(hLoadState==='ready'){hRender();return;}
+  if(hLoadState==='error'){hRenderMessage('The census could not load',
+    'This view fetches its data, so index.html has to be served over http rather than opened from disk. Run <code>npm run preview</code>, or open the deployed site.');return;}
+  hRenderMessage('Loading the census…',`${HCOUNT} people, fetched once and cached.`);
+  if(hLoadState==='loading')return;
+  hLoadState='loading';
+  loadHumans().then(rows=>{HUMANS=rows;hLoadState='ready';if(tab==='humans')hRender();})
+    .catch(err=>{hLoadState='error';console.error('census load failed:',err);if(tab==='humans')renderHumans();});
+}
+function hRenderMessage(title,body){
+  document.getElementById('hPanes').innerHTML=`<div class="hempty"><b>${title}</b>${body}</div>`;
+  document.getElementById('hStats').innerHTML='';
+  document.getElementById('hRows').innerHTML='';
+  document.getElementById('hHead').innerHTML='';
+  document.getElementById('hNote').innerHTML='';
+  document.getElementById('hinspector').innerHTML='';
+  document.getElementById('hHN').textContent=HCOUNT;
+}
+function hRender(){
+  if(hSel&&!HUMANS.some(r=>r.id===hSel))hSel=null;
   const rs=hSorted(hFiltered()), slots=hSectorSlots();
   const paneHTML=`
     <section class="hpane${hPane==='dist'?' on':''}" id="hp-dist"><div class="hcharts"><figure class="hfig wide">
